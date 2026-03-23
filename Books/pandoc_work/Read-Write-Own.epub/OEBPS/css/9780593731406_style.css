@@ -1,0 +1,797 @@
+@font-face {
+	font-family: "Gill Sans Nova";
+	font-style: normal;
+	font-weight: normal;
+	src: url("../fonts/GillSansNova-Book.otf");
+}
+@font-face {
+	font-family: "Gill Sans Nova";
+	font-style: italic;
+	font-weight: normal;
+	src: url("../fonts/GillSansNova-BookItalic.otf");
+}
+@font-face {
+	font-family: "Gill Sans Nova";
+	font-style: normal;
+	font-weight: bold;
+	src: url("../fonts/GillSansNova-Bold.otf");
+}
+@font-face {
+	font-family: "Gill Sans Nova";
+	font-style: italic;
+	font-weight: bold;
+	src: url("../fonts/GillSansNova-BoldItalic.otf");
+}
+.gill-sans-nova {
+	font-family: "Gill Sans Nova";
+}
+.gill-sans-nova-dc::first-letter {
+	font-family: "Gill Sans Nova";
+}
+/* ========== DEFAULTS: Easypress and Vendor ===========*/
+/* version 1.0.2 */
+/* --------------- paragraph and alignment classes --------------- */
+.indent {
+	text-indent: 1.5em;
+}
+.small {
+	font-size: 0.9em;
+}
+.left {
+	text-align: left;
+}
+.right {
+	text-align: right;
+}
+.center {
+	text-align: center;
+	text-indent: 0;
+}
+/* ---------------- heading alignment --------------- */
+h1, h2, h3, h4, h5, h6 {
+	text-align: center;
+}
+/* --------------- default textbox styles --------------- */
+aside.textbox, div.textbox {
+	margin: 2em 4% 2em 4%;
+	padding: 4%;
+}
+.textbox {
+	border: 1px solid;
+}
+/* --------------- create space above paragraph --------------- */
+p.spaceabove, div.spaceabove, li.spaceabove {
+	margin-top: 1em;
+}
+p.morespaceabove, div.morespaceabove, li.morespaceabove {
+	margin-top: 2.5em;
+}
+p.nospaceabove {
+	margin-top: 0;
+}
+.page_top_padding {
+	margin-top: 10%;
+}
+/* --------------- hanging indents --------------- */
+p.hanging {
+	margin-left: 10%;
+	text-indent: -10%;
+	text-align: left;
+}
+/* --------------- figure and figcaption -----------------*/
+.figure {
+	text-align: center;
+	margin-top: 1em;
+	margin-bottom: 1em;
+	page-break-inside: avoid;
+}
+.figure_top {
+	text-align: center;
+	margin-top: 1em;
+	margin-bottom: 0;
+	page-break-inside: avoid;
+}
+.figure_bottom {
+	text-align: center;
+	margin-top: 0;
+	margin-bottom: 1em;
+	page-break-inside: avoid;
+}
+.figure_nomargin {
+	text-align: center;
+	page-break-inside: avoid;
+}
+div.figcaption, figcaption.figcaption {
+	text-align: center;
+}
+.figcaption {
+	margin-left: 5%;
+	margin-right: 5%;
+	margin-top: 1em;
+}
+p.figcaption {
+	text-align: center;
+	margin-left: 0;
+	margin-right: 0;
+}
+.figcopyright {
+	text-align: left;
+	font-size: 0.7em;
+}
+span.figure_inline img {
+	vertical-align: middle;
+}
+/* ---------------- image classes -------------------*/
+.width_100 {
+	width: 100%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_90 {
+	margin: 0 5%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_80 {
+	margin: 0 10%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_70 {
+	margin: 0 15%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_60 {
+	margin: 0 20%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_50 {
+	margin: 0 25%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_40 {
+	margin: 0 30%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_30 {
+	margin: 0 35%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_20 {
+	margin: 0 40%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_10 {
+	margin: 0 45%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.height_100 {
+	text-align: center;
+	height: 100%;
+	height: 98vh;
+	max-height: 100%;
+	max-width: 100%;
+	clear: both;
+}
+img.inline {
+	vertical-align: middle;
+}
+/* ---------------- character styles --------------- */
+.underline {
+	text-decoration: underline;
+}
+.bold {
+	font-weight: bold;
+}
+.italic {
+	font-style: italic;
+}
+.roman {
+	font-style: normal;
+}
+/* ===================== END DEFAULTS ==================*/
+.para-ata {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-indent: 5.2%;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-ataf {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-atat-ata-pg {
+	font-weight: bold;
+	font-size: 0.91em;
+	line-height: inherit;
+	margin-bottom: 5em;
+	text-align: left;
+	margin-top: 0;
+}
+.para-bl {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	margin-top: 1.36em;
+	margin-left: 5.2%;
+	margin-right: 5.2%;
+	text-align: justify;
+	margin-bottom: 0;
+}
+.para-blf {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	margin-top: 1.36em;
+	margin-left: 5.2%;
+	margin-right: 5.2%;
+	text-align: justify;
+	margin-bottom: 0;
+}
+.para-bll {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	margin-top: 1.36em;
+	margin-bottom: 1.36em;
+	margin-left: 5.2%;
+	margin-right: 5.2%;
+	text-align: justify;
+}
+.para-bmh1 {
+	font-weight: bold;
+	font-size: 0.8em;
+	line-height: inherit;
+	margin-top: 1.25em;
+	margin-bottom: 1.25em;
+	text-align: left;
+}
+.para-bmp {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-indent: 5.2%;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-bmpf {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-bmt-ack-pg {
+	font-weight: bold;
+	font-size: 1.45em;
+	line-height: inherit;
+	margin-bottom: 3.31em;
+	text-align: left;
+	margin-top: 0;
+}
+.para-bmt-idx-pg {
+	font-weight: bold;
+	font-size: 1.45em;
+	line-height: inherit;
+	margin-bottom: 3.31em;
+	text-align: left;
+	margin-top: 0;
+}
+.para-bmt-nt-pg {
+	font-weight: bold;
+	font-size: 1.27em;
+	line-height: inherit;
+	margin-bottom: 3.78em;
+	text-align: left;
+	margin-top: 0;
+}
+.para-cepi {
+	font-weight: bold;
+	font-size: 0.82em;
+	line-height: inherit;
+	margin-right: 6.9%;
+	text-align: left;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-cepif {
+	font-size: 0.82em;
+	line-height: inherit;
+	margin-right: 10.4%;
+	text-align: left;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-ceps {
+	font-weight: bold;
+	font-size: 0.8em;
+	line-height: inherit;
+	margin-bottom: 3.75em;
+	margin-right: 6.9%;
+	text-align: left;
+	margin-top: 0;
+}
+.para-crt {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 0.82em;
+	line-height: inherit;
+	text-align: left;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-crtf {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 0.82em;
+	line-height: inherit;
+	margin-top: 0.33em;
+	text-align: left;
+	margin-bottom: 0;
+}
+.para-crtf-crt-pg {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 0.82em;
+	line-height: inherit;
+	margin-top: 0.33em;
+	text-align: left;
+	margin-bottom: 0;
+}
+.para-ct-alt2-chap-pg {
+	font-size: 1.82em;
+	line-height: inherit;
+	margin-bottom: 0.95em;
+	text-align: left;
+	margin-top: 0;
+}
+.para-ct-chap-pg {
+	font-size: 1.82em;
+	line-height: inherit;
+	margin-bottom: 0.95em;
+	text-align: left;
+	margin-top: 0;
+}
+.para-dedf-ded-pg {
+	font-weight: bold;
+	font-size: 0.82em;
+	line-height: inherit;
+	text-align: left;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-en {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 0.84em;
+	line-height: inherit;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-epif-epi-pg {
+	font-size: 0.82em;
+	line-height: inherit;
+	margin-right: 10.4%;
+	text-align: left;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-eps {
+	font-weight: bold;
+	font-size: 0.8em;
+	line-height: inherit;
+	margin-bottom: 3.75em;
+	margin-right: 6.9%;
+	text-align: left;
+	margin-top: 0;
+}
+.para-extf {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	margin-top: 1.36em;
+	margin-left: 5.2%;
+	margin-right: 5.2%;
+	text-align: justify;
+	margin-bottom: 0;
+}
+.para-extl {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	margin-bottom: 1.36em;
+	text-indent: 5.2%;
+	margin-left: 5.2%;
+	margin-right: 5.2%;
+	text-align: justify;
+	margin-top: 0;
+}
+.para-exts {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	margin-top: 1.36em;
+	margin-bottom: 1.36em;
+	margin-left: 5.2%;
+	margin-right: 5.2%;
+	text-align: justify;
+}
+.para-fmh1 {
+	font-weight: bold;
+	font-size: 1em;
+	line-height: inherit;
+	margin-top: 1.82em;
+	margin-bottom: 0.91em;
+	text-align: left;
+}
+.para-fmp {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-indent: 5.2%;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-fmpaft {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-fmpf {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-fmt-in-pg {
+	font-weight: bold;
+	font-size: 1.45em;
+	line-height: inherit;
+	margin-bottom: 3.31em;
+	text-align: left;
+	margin-top: 0;
+}
+.para-fmt-toc-pg {
+	font-weight: bold;
+	font-size: 1.45em;
+	line-height: inherit;
+	margin-bottom: 3.31em;
+	text-align: left;
+	margin-top: 0;
+}
+.para-h1 {
+	font-weight: bold;
+	font-size: 1em;
+	line-height: inherit;
+	margin-top: 1.82em;
+	margin-bottom: 0.91em;
+	text-align: left;
+}
+.para-h1aft {
+	font-weight: bold;
+	font-size: 1em;
+	line-height: inherit;
+	margin-top: 1.82em;
+	margin-bottom: 0.91em;
+	text-align: left;
+}
+.para-p {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-indent: 5.2%;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-paft {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-pcon {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-pf {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-align: justify;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-toc {
+	font-weight: bold;
+	font-size: 0.82em;
+	line-height: inherit;
+	text-align: left;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-toc-alt {
+	font-weight: bold;
+	font-size: 0.82em;
+	line-height: inherit;
+	text-align: left;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-toc1 {
+	font-weight: bold;
+	font-style: italic;
+	font-size: 0.8em;
+	line-height: inherit;
+	margin-top: 0.37em;
+	margin-left: 9.3%;
+	text-align: left;
+	margin-bottom: 0;
+}
+.para-tocbm {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 0.8em;
+	line-height: inherit;
+	margin-top: 0.37em;
+	margin-left: 9.3%;
+	text-align: left;
+	margin-bottom: 0;
+}
+.para-tocbmf {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 0.8em;
+	line-height: inherit;
+	margin-top: 2.2em;
+	margin-left: 9.3%;
+	text-align: left;
+	margin-bottom: 0;
+}
+.para-tocfm {
+	font-weight: bold;
+	font-size: 0.91em;
+	line-height: inherit;
+	text-align: left;
+	margin-bottom: 0;
+	margin-top: 0;
+}
+.para-tocpt {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1.27em;
+	line-height: inherit;
+	margin-top: 1.21em;
+	margin-bottom: 0.2em;
+	text-align: left;
+}
+.char-b {
+	font-weight: bold;
+	font-size: 0.86em;
+}
+.char-ccust1 {
+	font-weight: bold;
+	font-size: 1.82em;
+}
+.char-dcrit-i {
+	font-style: italic;
+}
+.char-i {
+	font-style: italic;
+}
+.char-kp {
+	font-weight: bold;
+	font-size: 0.75em;
+}
+.char-kp-i {
+	font-weight: bold;
+	font-style: italic;
+}
+.char-sc {
+	font-weight: normal;
+	font-style: normal;
+}
+.char-toc-b {
+	font-weight: bold;
+	font-size: 0.82em;
+	line-height: inherit;
+}
+.char-tocpn-b {
+	font-weight: bold;
+}
+.char-url {
+	font-weight: normal;
+	font-style: normal;
+}
+.width_67 {
+	margin: 0 16.5%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_72 {
+	margin: 0 14%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_80 {
+	margin: 0 10%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_82 {
+	margin: 0 9%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_85 {
+	margin: 0 7.5%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.width_91 {
+	margin: 0 4.5%;
+	text-align: center;
+	max-height: 100%;
+	clear: both;
+}
+.cso_9 {
+	font-size: 0.9em;
+}
+.cso_10 {
+	font-size: 1em;
+}
+p.link_to_text {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 0.7em;
+	line-height: inherit;
+	text-align: justify;
+	margin: 1em 0 1.5em 0;
+}
+ol.blindnotes {
+	list-style-type: none;
+	padding: 0;
+}
+li.para-en {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: inherit;
+	text-align: justify;
+	padding: 0;
+	margin: 0;
+}
+section.index-section {}
+section.index-nav-bar {
+	margin: 1em 0;
+	page-break-inside: avoid;
+	border-bottom: 2px solid #757575;
+	border-top: 2px solid #757575;
+	width: 100%;
+}
+span.index-nav-bar-letter {
+	text-align: center;
+	padding: 0.15em;
+	color: #757575;
+}
+ul.index {
+	list-style-type: none;
+	font-size: 1em;
+	padding: 0;
+}
+p.index-nav-bar {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: 1.5em;
+	text-indent: 0;
+	text-align: center;
+	margin: 0.1em;
+	padding: 0.4em;
+}
+p.para-inhn {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	text-indent: 0;
+	margin: 0 0 1em 0;
+}
+h2.para-inh1 {
+	font-weight: bold;
+	font-style: normal;
+	font-size: 1.3em;
+	line-height: 1.3;
+	text-indent: 0;
+	text-align: left;
+	margin: 2em 0 0 0;
+}
+li.para-in {
+	font-size: 1em;
+	margin-left: 0;
+}
+p.para-in {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: 1.4;
+	text-indent: -2em;
+	text-align: left;
+	margin: 0.8em 0 0 2em;
+}
+li.para-in1 {
+	font-size: 1em;
+	margin-left: 0;
+}
+p.para-in1 {
+	font-weight: normal;
+	font-style: normal;
+	font-size: 1em;
+	line-height: 1.4;
+	text-indent: -2em;
+	text-align: left;
+	margin: 0.8em 0 0 4em;
+}
+.symbol {
+	color: #939393;
+}

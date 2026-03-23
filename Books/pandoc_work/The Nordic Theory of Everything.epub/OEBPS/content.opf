@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package version="2.0" xmlns="http://www.idpf.org/2007/opf" unique-identifier="uid">
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+<dc:title>The Nordic Theory of Everything</dc:title>
+<dc:language>en</dc:language>
+<dc:identifier id="uid">3864245704</dc:identifier>
+<dc:creator>Partanen, Anu</dc:creator>
+<dc:publisher>HarperCollins</dc:publisher>
+<dc:source>9780062316561</dc:source>
+<dc:date opf:event="publication">2016-06-28</dc:date>
+<dc:rights>All rights reserved</dc:rights>
+<!-- Extra MetaData from RESC
+<meta property="dcterms:modified">2016-05-09T02:55:48Z</meta>
+-->
+<meta name="cover" content="x_cover-image" />
+<meta name="output encoding" content="utf-8" />
+<meta name="primary-writing-mode" content="horizontal-lr" />
+<!-- BEGIN INFORMATION ONLY 
+<meta name="Cover ThumbNail Image" content="Images/image00277.jpeg" />
+<meta name="Drm Ebookbase Book Id" content="0006004023136" />
+<meta name="ASIN" content="B018QLGBF2" />
+<meta name="Creator Software" content="201" />
+<meta name="Creator Major Version" content="2" />
+<meta name="Creator Minor Version" content="9" />
+<meta name="Creator Build Number" content="0" />
+<meta name="Clipping Limit" content="100" />
+<meta name="Text to Speech Disabled" content="0" />
+<meta name="Font Signature (hex)" content="0300000002000000000000000000008000200000000000000000000000000000e5bbfdef01e501f801a901f64094409340994098409c409d41ac" />
+<meta name="Tamper Proof Keys (hex)" content="01000000d000000001940000000191000000019500000001960000000197" />
+<meta name="Language_524" content="en" />
+<meta name="ASIN_504" content="B018QLGBF2" />
+<meta name="override-kindle-fonts" content="false" />
+<meta name="K8(129)_Masthead/Cover_Image" content="kindle:embed:0005" />
+<meta name="K8(131)_Unidentified_Count" content="4294967295" />
+<meta name="kindlegen_Source-Target" content="Source-Target:c1-c2 KT_Version:2.9 Build:0805-4a0c57c" />
+<meta name="Rental_Indicator" content="0000000000000000" />
+<meta name="kindlegen_BuildRev_Number" content="0505-6c28606" />
+<meta name="Has Fake Cover" content="0" />
+<meta name="K8(125)_Count_of_Resources_Fonts_Images" content="6" />
+<meta name="Watermark (hex)" content="6174763a6b696e3a323a732f6f583153333859685446367758486b336155395837774f57726357317731746c6b7276626c5357757a346434665039643037777454326878414d6843686e626f4d4b505230546e6a5959595a506c50344a50366f4c7046476c4e4531556f617864316b6b2f374c356b324a772f4d77456435456d596f6537574231725a4d4c6454707052454b6d5a383959484467313842793734764d42767a7068433374764d522f377243506266493d3a447644565771674552677a74497034436f684434765735416b526b3d" />
+<meta name="Unknown_(403) (hex)" content="00" />
+<meta name="Unknown_but_changes_with_file_name_only_542" content="b9Yf" />
+<meta name="sample" content="0" />
+<meta name="547 (hex)" content="496e4d656d6f7279" />
+<meta name="cdeType" content="EBOK" />
+<meta name="kindlegen_Input_Source_Type" content="dtc-epub" />
+<meta name="Unknown_(407) (hex)" content="0000000000000000" />
+<meta name="Updated_Title" content="The Nordic Theory of Everything: In Search of a Better Life" />
+<meta name="Unknown_(405) (hex)" content="00" />
+<meta name="StartOffset" content="48864" />
+END INFORMATION ONLY -->
+</metadata>
+<manifest>
+<item id="x_cover" media-type="application/xhtml+xml" href="Text/cover_page.xhtml" />
+<item id="x_x9780062316561" media-type="application/xhtml+xml" href="Text/part0000.xhtml" />
+<item id="x_toc" media-type="application/xhtml+xml" href="Text/part0001.xhtml" />
+<item id="x_x9780062316561-2" media-type="application/xhtml+xml" href="Text/part0002.xhtml" />
+<item id="x_x9780062316561-3" media-type="application/xhtml+xml" href="Text/part0003.xhtml" />
+<item id="x_x9780062316561-4" media-type="application/xhtml+xml" href="Text/part0004.xhtml" />
+<item id="x_x9780062316561-5" media-type="application/xhtml+xml" href="Text/part0005.xhtml" />
+<item id="x_x9780062316561-6" media-type="application/xhtml+xml" href="Text/part0006.xhtml" />
+<item id="x_x9780062316561-7" media-type="application/xhtml+xml" href="Text/part0007.xhtml" />
+<item id="x_x9780062316561-8" media-type="application/xhtml+xml" href="Text/part0008.xhtml" />
+<item id="x_x9780062316561-9" media-type="application/xhtml+xml" href="Text/part0009.xhtml" />
+<item id="x_x9780062316561-10" media-type="application/xhtml+xml" href="Text/part0010.xhtml" />
+<item id="x_x9780062316561-11" media-type="application/xhtml+xml" href="Text/part0011.xhtml" />
+<item id="x_x9780062316561-12" media-type="application/xhtml+xml" href="Text/part0012.xhtml" />
+<item id="x_x9780062316561-13" media-type="application/xhtml+xml" href="Text/part0013.xhtml" />
+<item id="x_x9780062316561-14" media-type="application/xhtml+xml" href="Text/part0014.xhtml" />
+<item id="x_x9780062316561-15" media-type="application/xhtml+xml" href="Text/part0015.xhtml" />
+<item id="x_x9780062316561-16" media-type="application/xhtml+xml" href="Text/part0016.xhtml" />
+<item id="x_x9780062316561-17" media-type="application/xhtml+xml" href="Text/part0017.xhtml" />
+<item id="x_x9780062316561-18" media-type="application/xhtml+xml" href="Text/part0018.xhtml" />
+<item id="x_BA1" media-type="application/xhtml+xml" href="Text/part0019.xhtml" />
+<item id="x_x9780062316561-19" media-type="application/xhtml+xml" href="Text/part0020.xhtml" />
+<item id="x_x9780062316561-20" media-type="application/xhtml+xml" href="Text/part0021.xhtml" />
+<item id="item23" media-type="text/css" href="Styles/style0001.css" />
+<item id="item24" media-type="image/jpeg" href="Images/image00272.jpeg" />
+<item id="x_cover-image" media-type="image/jpeg" href="Images/cover00273.jpeg" />
+<item id="item26" media-type="image/jpeg" href="Images/image00274.jpeg" />
+<item id="item27" media-type="image/jpeg" href="Images/image00275.jpeg" />
+<item id="ncx" media-type="application/x-dtbncx+xml" href="toc.ncx" />
+</manifest>
+<spine toc="ncx">
+<itemref idref="x_cover" linear="no"/>
+<itemref idref="x_x9780062316561"/>
+<itemref idref="x_toc"/>
+<itemref idref="x_x9780062316561-2"/>
+<itemref idref="x_x9780062316561-3"/>
+<itemref idref="x_x9780062316561-4"/>
+<itemref idref="x_x9780062316561-5"/>
+<itemref idref="x_x9780062316561-6"/>
+<itemref idref="x_x9780062316561-7"/>
+<itemref idref="x_x9780062316561-8"/>
+<itemref idref="x_x9780062316561-9"/>
+<itemref idref="x_x9780062316561-10"/>
+<itemref idref="x_x9780062316561-11"/>
+<itemref idref="x_x9780062316561-12"/>
+<itemref idref="x_x9780062316561-13"/>
+<itemref idref="x_x9780062316561-14"/>
+<itemref idref="x_x9780062316561-15"/>
+<itemref idref="x_x9780062316561-16"/>
+<itemref idref="x_x9780062316561-17"/>
+<itemref idref="x_x9780062316561-18"/>
+<itemref idref="x_BA1"/>
+<itemref idref="x_x9780062316561-19"/>
+<itemref idref="x_x9780062316561-20"/>
+</spine>
+<tours>
+</tours>
+<guide>
+<reference type="text" title="Chapter 1" href="Text/part0003.xhtml" />
+<reference type="toc" title="Contents" href="Text/part0001.xhtml" />
+<reference type="cover" title="Cover" href="Text/cover_page.xhtml" />
+</guide>
+</package>

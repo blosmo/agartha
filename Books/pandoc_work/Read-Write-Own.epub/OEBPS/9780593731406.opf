@@ -1,0 +1,149 @@
+<package xmlns="http://www.idpf.org/2007/opf" prefix="schema: http://schema.org/ rendition: http://www.idpf.org/vocab/rendition/# ibooks: http://vocabulary.itunes.apple.com/rdf/ibooks/vocabulary-extensions-1.0/" unique-identifier="EbookISBN" version="3.0" xml:lang="en-US">
+ 	<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:opf="http://www.idpf.org/2007/opf" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+ 		<meta content="coverimg" name="cover"/>
+  		<meta content="2023-12-11T00:00:00Z" name="created"/>
+ 		<meta content="Easypress PRH_prodD2" name="generator"/>
+ 		<dc:title id="maintitle">Read Write Own</dc:title>
+		<meta property="title-type" refines="#maintitle">main</meta>
+		<meta property="display-seq" refines="#maintitle">1</meta>
+		<dc:title id="subtitle">Building the Next Era of the Internet</dc:title>
+		<meta property="title-type" refines="#subtitle">subtitle</meta>
+		<meta property="display-seq" refines="#subtitle">2</meta>
+	 		<dc:language>en-US</dc:language>
+ 		<dc:rights>Copyright © 2024 by Chris Dixon</dc:rights>
+ 		<meta content="Random House" name="imprint"/>
+		<dc:creator id="creator1">Chris Dixon</dc:creator>
+		<meta property="display-seq" refines="#creator1">1</meta>
+		<meta property="role" refines="#creator1" scheme="marc:relators">aut</meta>
+		<meta property="file-as" refines="#creator1">Dixon, Chris</meta>
+		<dc:publisher>Random House Publishing Group</dc:publisher>
+ 		<meta property="dcterms:modified">2024-01-16T09:26:23Z</meta>
+		<dc:date>2024-01-30</dc:date>
+ 		<dc:identifier id="EbookISBN">9780593731406</dc:identifier>
+ 		<dc:source id="SourceISBN">9780593731383</dc:source>
+ 		<meta property="ibooks:specified-fonts">true</meta>
+ 		<meta property="schema:accessMode">textual</meta>
+		<meta property="schema:accessMode">visual</meta>
+		<meta property="schema:accessModeSufficient">textual,visual</meta>
+		<meta property="schema:accessibilityFeature">readingOrder</meta>
+		<meta property="schema:accessibilityFeature">tableOfContents</meta>
+		<meta property="schema:accessibilityHazard">none</meta>
+		<meta property="schema:accessibilitySummary">Accessibility metadata derived programmatically based on file type.</meta>
+		<meta property="schema:accessibilityFeature">printPageNumbers</meta>
+		<meta property="schema:accessibilityFeature">structuralNavigation</meta>
+		<meta property="schema:accessibilityFeature">index</meta>
+		<meta content="2.1.0" name="EPUB_Scrub_version"/>
+		<meta content="2024-01-16T09:26:23Z" name="EPUB_Scrub_date"/>
+	<description xmlns="http://purl.org/dc/elements/1.1/">&lt;b&gt;A potent exploration of the power of blockchains to reshape the future of the internet&amp;mdash;and how that affects us all&amp;mdash;from influential technology entrepreneur and startup investor Chris Dixon&lt;/b&gt;&lt;br&gt;&lt;b&gt; &lt;/b&gt;&lt;br&gt;&lt;b&gt;&amp;ldquo;A must for anyone who wants to better understand the real potential of blockchains and web3.&amp;rdquo;&amp;mdash;Robert Iger, CEO, Disney&lt;/b&gt;&lt;br&gt;&lt;b&gt; &lt;/b&gt;&lt;br&gt;&lt;b&gt;&amp;ldquo;A compelling vision of where the internet should go and how to get there.&amp;rdquo;&amp;mdash;Sam Altman, co-founder, OpenAI&lt;/b&gt;&lt;br&gt;The internet of today is a far cry from its early promise of a decentralized, democratic network of innovation, connection, and freedom. In the past decade, it has fallen almost entirely under the control of a very small group of companies like Apple, Google, and Facebook. In &lt;i&gt;Read Write Own,&lt;/i&gt; tech visionary Chris Dixon argues that the dream of an open network for fostering creativity and entrepreneurship doesn&amp;rsquo;t have to die and can, in fact, be saved with...</description>
+</metadata>
+ 	<manifest>
+ 		<item href="9780593731406_ncx.ncx" id="toc" media-type="application/x-dtbncx+xml"/>
+ 		<item href="9780593731406_nav.xhtml" id="generatedNavDoc" media-type="application/xhtml+xml" properties="nav"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_cvi_r1.xhtml" id="cvi" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_tp_r1.xhtml" id="tp" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_cop_r1.xhtml" id="cop" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_epi_r1.xhtml" id="epi" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_toc_r1.xhtml" id="inlinetoc" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_itr_r1.xhtml" id="itr" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_p001_r1.xhtml" id="p001" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c001_r1.xhtml" id="c001" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c002_r1.xhtml" id="c002" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c003_r1.xhtml" id="c003" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_p002_r1.xhtml" id="p002" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c004_r1.xhtml" id="c004" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c005_r1.xhtml" id="c005" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c006_r1.xhtml" id="c006" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_p003_r1.xhtml" id="p003" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c007_r1.xhtml" id="c007" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c008_r1.xhtml" id="c008" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c009_r1.xhtml" id="c009" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c010_r1.xhtml" id="c010" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c011_r1.xhtml" id="c011" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_p004_r1.xhtml" id="p004" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c012_r1.xhtml" id="c012" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_p005_r1.xhtml" id="p005" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c013_r1.xhtml" id="c013" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c014_r1.xhtml" id="c014" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_c015_r1.xhtml" id="c015" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_ded_r1.xhtml" id="ded" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_ack_r1.xhtml" id="ack" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_nts_r1.xhtml" id="nts" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_idx_r1.xhtml" id="idx" media-type="application/xhtml+xml"/>
+ 		<item href="xhtml/Dixo_9780593731406_epub3_ata_r1.xhtml" id="ata" media-type="application/xhtml+xml"/>
+ 		<item href="css/9780593731406_style.css" id="css1" media-type="text/css"/>
+ 		<item href="images/9780593731406_cover.jpg" id="coverimg" media-type="image/jpeg" properties="cover-image"/>
+ 		<item href="css/prh_resets.css" id="extra1" media-type="text/css"/>
+ 		<item href="css/rh_static.css" id="extra2" media-type="text/css"/>
+ 		<item href="fonts/GillSansNova-Book.otf" id="ef1a" media-type="font/otf"/>
+ 		<item href="fonts/GillSansNova-BookItalic.otf" id="ef1b" media-type="font/otf"/>
+ 		<item href="fonts/GillSansNova-Bold.otf" id="ef1c" media-type="font/otf"/>
+ 		<item href="fonts/GillSansNova-BoldItalic.otf" id="ef1d" media-type="font/otf"/>
+ 		<item href="images/9780593731406_title_page.jpg" id="img1" media-type="image/jpeg"/>
+ 		<item href="images/009_Dixo_9780593731383_all_art_r5.jpg" id="img2" media-type="image/jpeg"/>
+ 		<item href="images/011_Dixo_9780593731383_all_art_r3.jpg" id="img3" media-type="image/jpeg"/>
+ 		<item href="images/012_Dixo_9780593731383_art_r5.jpg" id="img4" media-type="image/jpeg"/>
+ 		<item href="images/Dixo_9780593731406_epub3_013_r1.jpg" id="img5" media-type="image/jpeg"/>
+ 		<item href="images/013_Dixo_9780593731383_art_r6.jpg" id="img6" media-type="image/jpeg"/>
+ 		<item href="images/014_Dixo_9780593731383_all_art_r3.jpg" id="img7" media-type="image/jpeg"/>
+ 		<item href="images/015_Dixo_9780593731383_all_art_r3.jpg" id="img8" media-type="image/jpeg"/>
+ 		<item href="images/016_Dixo_9780593731383_all_art_r4.jpg" id="img9" media-type="image/jpeg"/>
+ 		<item href="images/001_Dixo_9780593731383_all_art_r3.jpg" id="img10" media-type="image/jpeg"/>
+ 		<item href="images/002_Dixo_9780593731383_all_art_r3.jpg" id="img11" media-type="image/jpeg"/>
+ 		<item href="images/003_Dixo_9780593731383_all_art_r3.jpg" id="img12" media-type="image/jpeg"/>
+ 		<item href="images/004_Dixo_9780593731383_all_art_r3.jpg" id="img13" media-type="image/jpeg"/>
+ 		<item href="images/005_Dixo_9780593731383_all_art_r5.jpg" id="img14" media-type="image/jpeg"/>
+ 		<item href="images/006_Dixo_9780593731383_art_r6.jpg" id="img15" media-type="image/jpeg"/>
+ 		<item href="images/007_Dixo_9780593731383_all_art_r3.jpg" id="img16" media-type="image/jpeg"/>
+ 		<item href="images/008_Dixo_9780593731383_all_art_r3.jpg" id="img17" media-type="image/jpeg"/>
+  		<item href="images/part01.jpg" id="img18" media-type="image/jpeg"/>
+ 		<item href="images/part02.jpg" id="img19" media-type="image/jpeg"/>
+ 		<item href="images/part03.jpg" id="img20" media-type="image/jpeg"/>
+ 		<item href="images/part04.jpg" id="img21" media-type="image/jpeg"/>
+ 		<item href="images/part05.jpg" id="img22" media-type="image/jpeg"/>
+ 		<item href="fonts/Shift-BoldItalic.otf" id="Shift-BoldItalic.otf" media-type="font/otf"/>
+		<item href="fonts/Shift-Bold.otf" id="Shift-Bold.otf" media-type="font/otf"/>
+		<item href="images/next-reads_logo.jpg" id="next-reads_logo.jpg" media-type="image/jpeg"/>
+		<item href="xhtml/next-reads.xhtml" id="next-reads.xhtml" media-type="application/xhtml+xml"/>
+	</manifest>
+ 	<spine toc="toc">
+ 		<itemref idref="cvi"/>
+ 		<itemref idref="tp"/>
+ 		<itemref idref="cop"/>
+ 		<itemref idref="epi"/>
+ 		<itemref idref="inlinetoc"/>
+ 		<itemref idref="itr"/>
+ 		<itemref idref="p001"/>
+ 		<itemref idref="c001"/>
+ 		<itemref idref="c002"/>
+ 		<itemref idref="c003"/>
+ 		<itemref idref="p002"/>
+ 		<itemref idref="c004"/>
+ 		<itemref idref="c005"/>
+ 		<itemref idref="c006"/>
+ 		<itemref idref="p003"/>
+ 		<itemref idref="c007"/>
+ 		<itemref idref="c008"/>
+ 		<itemref idref="c009"/>
+ 		<itemref idref="c010"/>
+ 		<itemref idref="c011"/>
+ 		<itemref idref="p004"/>
+ 		<itemref idref="c012"/>
+ 		<itemref idref="p005"/>
+ 		<itemref idref="c013"/>
+ 		<itemref idref="c014"/>
+ 		<itemref idref="c015"/>
+ 		<itemref idref="ded"/>
+ 		<itemref idref="ack"/>
+ 		<itemref idref="nts"/>
+ 		<itemref idref="idx"/>
+ 		<itemref idref="ata"/>
+ 		<itemref idref="next-reads.xhtml"/>
+	</spine>
+ 	<guide>
+		<reference href="xhtml/Dixo_9780593731406_epub3_cvi_r1.xhtml" title="Cover" type="cover"/>
+		<reference href="xhtml/Dixo_9780593731406_epub3_toc_r1.xhtml" title="Table of Contents" type="toc"/>
+		<reference href="xhtml/Dixo_9780593731406_epub3_toc_r1.xhtml" title="Text" type="text"/>
+		<reference href="xhtml/Dixo_9780593731406_epub3_toc_r1.xhtml" title="Start" type="start"/>
+		<reference href="xhtml/Dixo_9780593731406_epub3_cop_r1.xhtml" title="Copyright" type="copyright-page"/>
+	</guide>
+</package>

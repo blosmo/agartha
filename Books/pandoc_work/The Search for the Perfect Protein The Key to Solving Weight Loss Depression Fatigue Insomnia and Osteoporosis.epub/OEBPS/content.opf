@@ -1,0 +1,148 @@
+<?xml version='1.0' encoding='UTF-8'?><package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="bookid">
+	<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+		<meta name="generator" content="Adobe InDesign 13.0.1"/>
+		<meta name="cover" content="cover.jpg"/>
+		<dc:title>The Search for the Perfect Protein: The Key to Solving Weight Loss, Depression, Fatigue, Insomnia, and Osteoporosis</dc:title>
+		<dc:creator>David Minkoff</dc:creator>
+		<dc:subject/>
+		<dc:description/>
+		<dc:publisher>Lioncrest Publishing</dc:publisher>
+		<dc:date>2019-05-04T17:33:28Z</dc:date>
+		<dc:source/>
+		<dc:relation/>
+		<dc:coverage/>
+		<dc:rights>Copyright © 2019 David Minkoff. All rights reserved.</dc:rights>
+		<dc:language>en-US</dc:language>
+		<dc:identifier id="bookid">urn:uuid:697MTXVS-3ZKJ-4SLK-WPNU-DD7LFFYC9NSA</dc:identifier>
+	</metadata>
+	<manifest>
+		<item id="leaguegothic-regular-ttf"
+          href="fonts/leaguegothic-regular.ttf"
+          media-type="application/x-font-ttf" />
+    	<item id="firasans-regular-ttf"
+          href="fonts/FiraSans-Regular.ttf"
+          media-type="application/x-font-ttf" />
+    	<item id="firasans-italic-ttf"
+          href="fonts/FiraSans-Italic.ttf"
+          media-type="application/x-font-ttf" />
+    	<item id="firasans-medium-ttf"
+          href="fonts/FiraSans-Medium.ttf"
+          media-type="application/x-font-ttf" />
+        <item id="firasans-mediumitalic-ttf"
+          href="fonts/FiraSans-MediumItalic.ttf"
+          media-type="application/x-font-ttf" />
+    	<item id="firasans-bold-ttf"
+          href="fonts/FiraSans-Bold.ttf"
+          media-type="application/x-font-ttf" />
+    	<item id="firasans-bolditalic-ttf"
+          href="fonts/FiraSans-BoldItalic.ttf"
+          media-type="application/x-font-ttf" />
+        <item id="sil-open-font-license-11-txt"
+          href="fonts/SIL-Open-Font-License-1.1.txt"
+          media-type="text/plain" />
+		<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1" href="output-1.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-1" href="output-1-1.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-2" href="output-1-2.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-3" href="output-1-3.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-4" href="output-1-4.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-5" href="output-1-5.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-6" href="output-1-6.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-7" href="output-1-7.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-8" href="output-1-8.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-9" href="output-1-9.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-10" href="output-1-10.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-11" href="output-1-11.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-12" href="output-1-12.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-13" href="output-1-13.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-14" href="output-1-14.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-15" href="output-1-15.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-16" href="output-1-16.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-17" href="output-1-17.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-18" href="output-1-18.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-19" href="output-1-19.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-20" href="output-1-20.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-21" href="output-1-21.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-22" href="output-1-22.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-23" href="output-1-23.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-24" href="output-1-24.xhtml" media-type="application/xhtml+xml"/>
+		<item id="output-1-25" href="output-1-25.xhtml" media-type="application/xhtml+xml"/>
+		<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+		<item id="style.css" href="css/style.css" media-type="text/css"/>
+		<item id="DM38_PaleovsNotPaleo.png" href="image/DM38_PaleovsNotPaleo.png" media-type="image/png"/>
+		<item id="DM37_ThighMuscleMass21vs63.png" href="image/DM37_ThighMuscleMass21vs63.png" media-type="image/png"/>
+		<item id="DM31_Parasite.jpg" href="image/DM31_Parasite.jpg" media-type="image/jpeg"/>
+		<item id="DM32_IncreasedZonulinLeakyGut.png" href="image/DM32_IncreasedZonulinLeakyGut.png" media-type="image/png"/>
+		<item id="DM25_ProteolyticEnzymesandTheirActions.png" href="image/DM25_ProteolyticEnzymesandTheirActions.png" media-type="image/png"/>
+		<item id="DM24_BacterialandYeastToxinsOrganicAcids.png" href="image/DM24_BacterialandYeastToxinsOrganicAcids.png" media-type="image/png"/>
+		<item id="DM10_EssentialAminoAcids.png" href="image/DM10_EssentialAminoAcids.png" media-type="image/png"/>
+		<item id="DM11_AminoAcidPathways.png" href="image/DM11_AminoAcidPathways.png" media-type="image/png"/>
+		<item id="DM17_ObeseWoman.png" href="image/DM17_ObeseWoman.png" media-type="image/png"/>
+		<item id="DM30_GastrointestinalWall.png" href="image/DM30_GastrointestinalWall.png" media-type="image/png"/>
+		<item id="DM4_Proteins-and-their-function.png" href="image/DM4_Proteins-and-their-function.png" media-type="image/png"/>
+		<item id="DM22_SignsofLowStomachAcid.png" href="image/DM22_SignsofLowStomachAcid.png" media-type="image/png"/>
+		<item id="DM9_InsufficientProtein.png" href="image/DM9_InsufficientProtein.png" media-type="image/png"/>
+		<item id="DM1_GlyphosateAgComparison.png" href="image/DM1_GlyphosateAgComparison.png" media-type="image/png"/>
+		<item id="DM28_ProteinsintheBody.png" href="image/DM28_ProteinsintheBody.png" media-type="image/png"/>
+		<item id="DM35_XRayBoneComparison.png" href="image/DM35_XRayBoneComparison.png" media-type="image/png"/>
+		<item id="DM36_ArmMuscleMass21vs36.png" href="image/DM36_ArmMuscleMass21vs36.png" media-type="image/png"/>
+		<item id="DM3_AminoAcidStructure.png" href="image/DM3_AminoAcidStructure.png" media-type="image/png"/>
+		<item id="DM7_Cell-Membrane.png" href="image/DM7_Cell-Membrane.png" media-type="image/png"/>
+		<item id="DM5_InsulinStructure.png" href="image/DM5_InsulinStructure.png" media-type="image/png"/>
+		<item id="DM27_AminosasBuildingBlocks.png" href="image/DM27_AminosasBuildingBlocks.png" media-type="image/png"/>
+		<item id="DM19_GlysophateFoods.png" href="image/DM19_GlysophateFoods.png" media-type="image/png"/>
+		<item id="DM39a_PerfectAmino_Case-Study.png" href="image/DM39a_PerfectAmino_Case-Study.png" media-type="image/png"/>
+		<item id="DM26_PatientAminoAcidLevels.png" href="image/DM26_PatientAminoAcidLevels.png" media-type="image/png"/>
+		<item id="DM12_AminoAcidUtilization.png" href="image/DM12_AminoAcidUtilization.png" media-type="image/png"/>
+		<item id="DM39b_PerfectAmino_Case-Study.png" href="image/DM39b_PerfectAmino_Case-Study.png" media-type="image/png"/>
+		<item id="DM15_AthleteonTrack.png" href="image/DM15_AthleteonTrack.png" media-type="image/png"/>
+		<item id="DM20_MercuryFluShot.png" href="image/DM20_MercuryFluShot.png" media-type="image/png"/>
+		<item id="DM14_TotalvsUseableProtein.png" href="image/DM14_TotalvsUseableProtein.png" media-type="image/png"/>
+		<item id="DM34_BoneMatrix.png" href="image/DM34_BoneMatrix.png" media-type="image/png"/>
+		<item id="Lioncrest_FullColor_OnWhite.png" href="image/Lioncrest_FullColor_OnWhite.png" media-type="image/png"/>
+		<item id="DM21_SevenFunctionsStomachAcid.png" href="image/DM21_SevenFunctionsStomachAcid.png" media-type="image/png"/>
+		<item id="DM13_Nutritional_Value_Dietary_Protein.png" href="image/DM13_Nutritional_Value_Dietary_Protein.png" media-type="image/png"/>
+		<item id="cover.jpg" href="image/cover.jpg" media-type="image/jpeg"/>
+		<item id="DM29_VilliMicrovilli.png" href="image/DM29_VilliMicrovilli.png" media-type="image/png"/>
+		<item id="DM2_Glyphosate_Profile.png" href="image/DM2_Glyphosate_Profile.png" media-type="image/png"/>
+		<item id="DM6_ActinMyosin.png" href="image/DM6_ActinMyosin.png" media-type="image/png"/>
+		<item id="DM16_MalnourishedChild.png" href="image/DM16_MalnourishedChild.png" media-type="image/png"/>
+		<item id="DM33_PictureofDion.png" href="image/DM33_PictureofDion.png" media-type="image/png"/>
+		<item id="DM23_CausesofLowStomachAcid.png" href="image/DM23_CausesofLowStomachAcid.png" media-type="image/png"/>
+		<item id="DM18_CageFreevsPastureRaised.png" href="image/DM18_CageFreevsPastureRaised.png" media-type="image/png"/>
+		<item id="DM8_HealthyvsDamagedMembrane.png" href="image/DM8_HealthyvsDamagedMembrane.png" media-type="image/png"/>
+	</manifest>
+	<spine toc="ncx">
+		<itemref idref="cover" linear="no" />
+		<itemref idref="output-1"/>
+		<itemref idref="output-1-1"/>
+		<itemref idref="output-1-2"/>
+		<itemref idref="output-1-3"/>
+		<itemref idref="output-1-4"/>
+		<itemref idref="output-1-5"/>
+		<itemref idref="output-1-6"/>
+		<itemref idref="output-1-7"/>
+		<itemref idref="output-1-8"/>
+		<itemref idref="output-1-9"/>
+		<itemref idref="output-1-10"/>
+		<itemref idref="output-1-11"/>
+		<itemref idref="output-1-12"/>
+		<itemref idref="output-1-13"/>
+		<itemref idref="output-1-14"/>
+		<itemref idref="output-1-15"/>
+		<itemref idref="output-1-16"/>
+		<itemref idref="output-1-17"/>
+		<itemref idref="output-1-18"/>
+		<itemref idref="output-1-19"/>
+		<itemref idref="output-1-20"/>
+		<itemref idref="output-1-21"/>
+		<itemref idref="output-1-22"/>
+		<itemref idref="output-1-23"/>
+		<itemref idref="output-1-24"/>
+		<itemref idref="output-1-25"/>
+	</spine>
+	<guide>
+		<reference type="cover" href="cover.xhtml" title="Cover"/>
+		<reference type="toc" href="output-1-2.xhtml#_idContainer003" title="Table of Contents"/>
+	</guide>
+</package>

@@ -1,0 +1,63 @@
+@namespace epub "http://www.idpf.org/2007/ops";
+body {
+	
+	padding: 1em;
+}
+h2 {
+	text-align: left;
+}
+a {
+	text-decoration: none;
+}
+nav[epub\:type='landmarks'], nav[epub\:type='page-list']
+{
+	display: none;
+	visibility: hidden;
+}
+ol {
+	list-style-type: none;	
+}
+ol > li:first-child {
+	margin-top: 0em;
+}
+nav[epub|type='page-list'] > ol > li{
+	margin-top: 0em;
+	margin-left: 0em;
+}
+nav[epub|type='toc'] > ol > li > ol > li {
+	margin-top: 0.25em;
+	margin-left: 0em;
+}
+nav[epub|type='toc'] > ol > li {
+	margin-top: 1em;
+}
+li.front + li.body {
+	margin-top: 5em;
+}
+li.nav-ct
+{padding-top:1em;}
+li.pt
+{padding-top:1.7em;}
+li.nav-ct1
+{padding-top:0em;}
+
+/* unvisited link */
+.a1 a:link {
+    color: #000000;
+}
+/* visited link */
+.a1 a:visited {
+    color: green;
+}
+/* mouse over link */
+.a1 a:hover {
+    color: blue;
+}
+/* selected link */
+.a1 a:active {
+    color: hotpink;
+}
+
+.a3 a:link {
+    color: blue;
+}

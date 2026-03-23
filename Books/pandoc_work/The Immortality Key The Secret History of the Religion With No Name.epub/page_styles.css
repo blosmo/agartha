@@ -1,0 +1,16 @@
+@page {
+    margin-bottom: 5pt;
+    margin-top: 5pt
+    }
+@font-face {
+    font-family: "Times_New_Roman";
+    font-style: normal;
+    font-weight: normal;
+    src: url(fonts/00001.ttf)
+    }
+@font-face {
+    font-family: "ArialUnicode";
+    font-style: normal;
+    font-weight: normal;
+    src: url(fonts/00002.ttf)
+    }

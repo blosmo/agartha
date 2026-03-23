@@ -1,0 +1,447 @@
+/* rh_static.css */
+
+/* version 1.0.3 */
+
+/* =================== DO NOT EDIT =====================*/
+
+/* --------------- images --------------- */
+img.fill {width: 100%;}
+img.fill_height {height: 100%;}
+
+/* --------------- system font classes ---------------  */
+.serif {font-family: serif;}
+.sans {font-family: sans-serif;}
+.monospace {font-family: monospace;}
+
+/* --------------- system font classes for dropcaps --------------- */
+.serif-dc::first-letter {font-family: serif;}
+.sans-dc::first-letter {font-family: sans-serif;}
+.monospace-dc::first-letter {font-family: monospace;}
+
+/* ---------------- section breaks -------------- */
+hr.transition{
+	display: block;
+	border: none;
+	margin: 0;
+}
+div.transition{
+	margin: 1em 0;
+	text-align: center;
+}
+
+/* --------------- paragraph lists --------------- */
+.custom_list {
+	margin-top: 1em;
+	margin-bottom: 1em;
+}
+.custom_list .custom_list {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+.custom_list > p {
+	text-align: left;
+}
+span.list_ornament {
+	display: inline-block;
+	margin: 0 0.25em 0 0;
+	text-align: right;
+}
+p.list_ul {
+	text-indent: -1.25em;
+	margin-left: 1.25em;
+}
+p.list_ul.center {
+	text-indent: 0;
+	margin-left: 0;
+}
+p.list_ul span.list_ornament {
+	width: 1em;
+}
+p.list0 {
+	text-indent: -2.25em;
+	margin-left: 2.25em;
+}
+p.list0 span.list_ornament {
+	width: 2em;
+}
+p.list0_con {
+	margin-left: 2.25em;
+}
+p.list0_ext {
+	margin-left: 3.25em;
+	margin-right: 1em;
+}
+p.list0_hang {
+	margin-left: 3.25em;
+	text-indent: -1em;
+}
+p.list1 {
+	text-indent: -3.25em;
+	margin-left: 3.25em;
+}
+p.list1 span.list_ornament {
+	width: 3em;
+}
+p.list2 {
+	text-indent: -4.25em;
+	margin-left: 4.25em;
+}
+p.list2 span.list_ornament {
+	width: 4em;
+}
+p.list3 {
+	text-indent: -5.25em;
+	margin-left: 5.25em;
+}
+p.list3 span.list_ornament {
+	width: 5em;
+}
+p.list_nonindent {
+	text-indent: 0;
+}
+p.list_indent {
+	text-indent: 1em;
+}
+p.list0_nonindent {
+	margin-left: 2.25em;
+	text-indent: 0;
+}
+p.list0_indent {
+	margin-left: 2.25em;
+	text-indent: 1em;
+}
+p.list1_nonindent {
+	margin-left: 3.25em;
+	text-indent: 0;
+}
+p.list1_indent {
+	margin-left: 3.25em;
+	text-indent: 1em;
+}
+p.list2_nonindent {
+	margin-left: 4.25em;
+	text-indent: 0;
+}
+p.list2_indent {
+	margin-left: 4.25em;
+	text-indent: 1em;
+}
+p.list3_nonindent {
+	margin-left: 5.25em;
+	text-indent: 0;
+}
+p.list3_indent {
+	margin-left: 5.25em;
+	text-indent: 1em;
+}
+.center > span.list_ornament {
+	text-indent: 0;
+	margin: 0;
+	width: auto;
+	display: inline;
+}
+.center.list0 {
+	margin-left: 0;
+	text-indent: 0;
+}
+
+/* --------------- dropcaps 1.3 line height --------------- */
+p.dropcaps2line::first-letter {
+	font-size: 3.2em;
+	line-height: 0.7;
+	float: left;
+	margin: 0 0.05em 0 0;
+}
+p.dropcaps3line::first-letter {
+	font-size: 5em;
+	line-height: 0.7;
+	float: left;
+	margin: 0 0.05em 0 0;
+}
+
+/* --------------- dropcaps 1.4 line height --------------- */
+p.twolinedropcap::first-letter {
+	font-size: 3.65em;
+	line-height: 0.7;
+	float: left;
+	margin: 0 0.05em 0 0;
+}
+p.threelinedropcap::first-letter {
+	font-size: 5.4em;
+	line-height: 0.73;
+	float: left;
+	margin: 0 0.05em 0 0;
+}
+
+/* --------------- stickupcaps --------------- */
+p.stickupcaps::first-letter {
+	line-height: 0;
+	padding-right: 2px;
+}
+.stickupcaps::first-letter {
+	font-size: 3.0em;
+}
+
+/* --------------- smallcaps --------------- */
+.fv-smallcaps {
+	font-variant: small-caps;
+}
+.fv-allsmallcaps {
+	font-variant: small-caps;
+	text-transform: lowercase;
+}
+.smallcaps {
+	font-size: .7em;
+}
+
+/* --------------- list-like photo/illustration credit styles --------------- */
+p.credit {
+	text-indent: -3.25em;
+	margin-left: 3.25em;
+	text-align: left;
+}
+span.credit_number {
+	display: inline-block;
+	margin: 0 0 0 0;
+	text-align: right;
+}
+/* multiple credit numbers in a row */
+span.credit_number_multi {
+	display: inline-block;
+	text-align: right;
+}
+p.credit span.credit_number,
+p.credit span.credit_number_multi {
+	width: 2.25em;
+}
+span.credit_text {
+	padding-left: 1em;
+}
+
+/* =================== OKAY TO EDIT ====================*/
+
+/* ---------------  fixed box ---------------  */
+.dynamic_box {
+	display: inline-block;
+	text-align:left;
+}
+.fixed-box-center {
+	margin-left: 20%;
+	margin-right: 20%;
+}
+.fixed-box-right {
+	margin-left: 52%;
+}
+.fixed-box-left {
+	margin-right: 52%;
+}
+
+/* --------------- offsets --------------- */
+.offset{
+	margin-top: 1em;
+	margin-bottom: 1em;
+	margin-left: 8%;
+	margin-right: 8%;
+}
+
+/* --------------- page breaks --------------- */
+.page_break_before {
+	page-break-before: always;
+}
+.page_break_after {
+	page-break-after: always;
+}
+.page_break_before_after {
+	page-break-before: always;
+	page-break-after: always;
+}
+
+/* --------------- html lists --------------- */
+ol.list-center, ul.list-center {padding-left: 0;} /* reset for a text-align center list */
+.list-run-in {list-style-position: inside;}
+li.list-decimal {list-style-type: decimal;}
+li.list-decimal p {margin: 0; font-size: 1em;}
+li.list-decimal-leading {list-style-type: decimal-leading-zero;}
+li.list-decimal-leading p {margin: 0; font-size: 1em;}
+li.list-lower-alpha {list-style-type: lower-alpha;}
+li.list-lower-alpha p {margin: 0; font-size: 1em;}
+li.list-upper-alpha {list-style-type: upper-alpha;}
+li.list-upper-alpha p {margin: 0; font-size: 1em;}
+li.list-lower-roman {list-style-type: lower-roman;}
+li.list-lower-roman p {margin: 0; font-size: 1em;}
+li.list-upper-roman {list-style-type: upper-roman;}
+li.list-upper-roman p {margin: 0; font-size: 1em;}
+li.list-disc {list-style-type: disc;}
+li.list-disc p {margin: 0;font-size: 1em;}
+li.list-circle {list-style-type: circle;}
+li.list-circle p {margin: 0; font-size: 1em;}
+li.list-square {list-style-type: square;}
+li.list-square p {margin: 0; font-size: 1em;}
+li.list-none {list-style-type: none;}
+li.list-none p {margin: 0; font-size: 1em;}
+li.list-none p.hanging {margin-left: 2em;} /* added to account for the text-indent applied via the p.hanging tag */
+li.list-margin-left-0 {margin-left: 0;}/* used on li element for nested lists*/
+
+/* --------------- default toc styles --------------- */
+div.toc_fm,
+div.toc_bm {
+	margin: 1.2em 0 1.2em 0;
+}
+.toc_fm,
+.toc_bm {
+	font-style: italic;
+}
+div.toc_part {
+	margin: 1.2em 0 1.2em 3%;
+}
+div.toc_chap,
+div.toc_sub {
+	margin-left: 3%;
+}
+p.toc_chap,
+p.toc_part,
+p.toc_fm,
+p.toc_bm,
+p.toc_sub {
+	text-align: left;
+	text-indent: -6%;
+	margin-left: 6%;
+	margin-bottom: 0.25em;
+}
+p.toc_part {
+	font-size: 1.2em;
+	line-height: 1.3;
+}
+p.toc_fm,
+p.toc_bm,
+p.toc_sub {
+	font-size: 0.9em;
+}
+
+/* --------------- indexes --------------- */
+p.primary {
+	font-size: 1em;
+	text-align: left;
+	margin-left: 5%;
+	text-indent: -5%;
+}
+p.secondary {
+	font-size: 1em;
+	text-align: left;
+	margin-left: 10%;
+	text-indent: -5%;
+}
+p.tertiary {
+	font-size: 1em;
+	text-align: left;
+	margin-left: 15%;
+	text-indent: -5%;
+}
+p.quaternary {
+	font-size: 1em;
+	text-align: left;
+	margin-left: 20%;
+	text-indent: -5%;
+}
+
+/* --------------- footnotes --------------- */
+div.footnotes {
+	margin-top: 2em;
+	border-top: 1px solid;
+}
+div.footnote {
+	margin-top: 0.5em;
+}
+p.footnote {
+	font-size: 0.9em;
+	text-align: left;
+	margin-left: 0.5em;
+	text-indent: -0.5em;
+}
+p.footnote_skip {
+	text-align: right;
+	font-size: 0.7em;
+	font-variant: small-caps;
+}
+.footnote_ref {
+	vertical-align: .25em;
+	line-height: 0;
+	font-size: .8em;
+}
+.superscript {
+	vertical-align: super;
+	font-size: 0.7em;
+	line-height: 0;
+}
+p.footnote.indent {
+	text-indent: 1em;
+}
+p.footnote_con {
+	font-size: 0.9em;
+	text-align: left;
+	margin-left: 0.5em;
+}
+p.footnote_ext {
+	font-size: 0.9em;
+	text-align: left;
+	margin-left: 1.5em;
+	margin-right: 1em;
+}
+p.footnote_hang {
+	font-size: 0.9em;
+	text-align: left;
+	margin-left: 1.5em;
+	text-indent: -1em;
+}
+div.footnote ul li, div.footnote ol li {
+	font-size: 0.9em;
+}
+
+/* --------------- poetry --------------- */
+.stanza {
+	margin-top: 1em;
+}
+p.poetry0 {
+	text-align: left;
+	margin-left: 5%;
+	text-indent: -5%;
+}
+p.poetry1 {
+	text-align: left;
+	margin-left: 10%;
+	text-indent: -5%;
+}
+p.poetry2 {
+	text-align: left;
+	margin-left: 15%;
+	text-indent: -5%;
+}
+p.poetry3 {
+	text-align: left;
+	margin-left: 20%;
+	text-indent: -5%;
+}
+p.poetry4 {
+	text-align: left;
+	margin-left: 25%;
+	text-indent: -5%;
+}
+p.poetry5 {
+	text-align: left;
+	margin-left: 30%;
+	text-indent: -5%;
+}
+p.poetry6 {
+	text-align: left;
+	margin-left: 35%;
+	text-indent: -5%;
+}
+
+/* --------------- sinks --------------- */
+div.sink_25 {
+	margin-top: 25%;
+}
+div.sink_25_header {
+	margin-top: 25%;
+	margin-bottom: 1em;
+}

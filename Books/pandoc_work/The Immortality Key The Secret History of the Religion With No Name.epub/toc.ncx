@@ -1,0 +1,327 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="eng">
+  <head>
+    <meta content="urn:uuid:069dc61f-772a-4639-9545-901ebaee285b" name="dtb:uid"/>
+    <meta content="3" name="dtb:depth"/>
+    <meta content="calibre (4.20.0)" name="dtb:generator"/>
+    <meta content="0" name="dtb:totalPageCount"/>
+    <meta content="0" name="dtb:maxPageNumber"/>
+  </head>
+  <docTitle>
+    <text>The Immortality Key: The Secret History of the Religion With No Name</text>
+  </docTitle>
+  <navMap>
+    <navPoint class="chapter" id="num_1" playOrder="1">
+      <navLabel>
+        <text>Title Page</text>
+      </navLabel>
+      <content src="text/part0001.html"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_2" playOrder="1">
+      <navLabel>
+        <text>Copyright Notice</text>
+      </navLabel>
+      <content src="text/part0003.html#2RHM0-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_3" playOrder="2">
+      <navLabel>
+        <text>Dedication</text>
+      </navLabel>
+      <content src="text/part0004.html#3Q280-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_4" playOrder="3">
+      <navLabel>
+        <text>Epigraph</text>
+      </navLabel>
+      <content src="text/part0005.html#4OIQ0-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_5" playOrder="4">
+      <navLabel>
+        <text>Foreword by Graham Hancock</text>
+      </navLabel>
+      <content src="text/part0006_split_000.html#5N3C0-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_6" playOrder="5">
+      <navLabel>
+        <text>Introduction: A New Reformation</text>
+      </navLabel>
+      <content src="text/part0007.html#6LJU0-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_7" playOrder="2">
+      <navLabel>
+        <text>Part One: Brewing the Psychedelic Beer</text>
+      </navLabel>
+      <content src="text/part0008.html"/>
+      <navPoint class="chapter" id="num_8" playOrder="3">
+        <navLabel>
+          <text>1. Identity Crisis</text>
+        </navLabel>
+        <content src="text/part0009.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_9" playOrder="4">
+        <navLabel>
+          <text>2. Fall from Grace</text>
+        </navLabel>
+        <content src="text/part0010.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_10" playOrder="5">
+        <navLabel>
+          <text>3. Barley Meal and Laurel Leaves</text>
+        </navLabel>
+        <content src="text/part0011.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_11" playOrder="6">
+        <navLabel>
+          <text>4. Secret of Secrets</text>
+        </navLabel>
+        <content src="text/part0012.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_12" playOrder="7">
+        <navLabel>
+          <text>5. The Beatific Vision</text>
+        </navLabel>
+        <content src="text/part0013.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_13" playOrder="8">
+        <navLabel>
+          <text>6. Graveyard Beer</text>
+        </navLabel>
+        <content src="text/part0014.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_14" playOrder="9">
+        <navLabel>
+          <text>7. The Kukeon of Catalonia</text>
+        </navLabel>
+        <content src="text/part0015.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_15" playOrder="14">
+        <navLabel>
+          <text>Epilogue to Part One</text>
+        </navLabel>
+        <content src="text/part0016.html#F8900-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+    </navPoint>
+    <navPoint class="chapter" id="num_16" playOrder="10">
+      <navLabel>
+        <text>Part Two: Mixing the Psychedelic Wine</text>
+      </navLabel>
+      <content src="text/part0017.html"/>
+      <navPoint class="chapter" id="num_17" playOrder="11">
+        <navLabel>
+          <text>8. The Drug of Immortality</text>
+        </navLabel>
+        <content src="text/part0018.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_18" playOrder="12">
+        <navLabel>
+          <text>9. Vineyards of Heaven</text>
+        </navLabel>
+        <content src="text/part0019.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_19" playOrder="13">
+        <navLabel>
+          <text>10. Holy Elixirs in the Holy Land</text>
+        </navLabel>
+        <content src="text/part0020.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_20" playOrder="14">
+        <navLabel>
+          <text>11. Drunk with the Nectar of Eternity</text>
+        </navLabel>
+        <content src="text/part0021.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_21" playOrder="15">
+        <navLabel>
+          <text>12. All This Was Not Just Picnicking</text>
+        </navLabel>
+        <content src="text/part0022.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_22" playOrder="16">
+        <navLabel>
+          <text>13. The Holy Grail</text>
+        </navLabel>
+        <content src="text/part0023.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_23" playOrder="17">
+        <navLabel>
+          <text>14. A Gnostic Eucharist</text>
+        </navLabel>
+        <content src="text/part0024.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_24" playOrder="18">
+        <navLabel>
+          <text>15. Mystery Coast Highway</text>
+        </navLabel>
+        <content src="text/part0025.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_25" playOrder="19">
+        <navLabel>
+          <text>16. The Gospel of Infinity and the Toad Eucharist</text>
+        </navLabel>
+        <content src="text/part0026.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_26" playOrder="20">
+        <navLabel>
+          <text>17. Our Eyes Have Been Opened</text>
+        </navLabel>
+        <content src="text/part0027.html"/>
+      </navPoint>
+    </navPoint>
+    <navPoint class="chapter" id="num_27" playOrder="26">
+      <navLabel>
+        <text>Afterword</text>
+      </navLabel>
+      <content src="text/part0028.html#QMFO0-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_28" playOrder="27">
+      <navLabel>
+        <text>Notes</text>
+      </navLabel>
+      <content src="text/part0029.html#RL0A0-0ec12291797041f0ac570bc3401b9b0d"/>
+      <navPoint class="chapter" id="num_29" playOrder="21">
+        <navLabel>
+          <text>Notes: Introduction</text>
+        </navLabel>
+        <content src="text/part0029.html"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_30" playOrder="29">
+        <navLabel>
+          <text>Notes 1</text>
+        </navLabel>
+        <content src="text/part0030.html#SJGS0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_31" playOrder="30">
+        <navLabel>
+          <text>Notes 2</text>
+        </navLabel>
+        <content src="text/part0031.html#TI1E0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_32" playOrder="31">
+        <navLabel>
+          <text>Notes 3</text>
+        </navLabel>
+        <content src="text/part0032.html#UGI00-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_33" playOrder="32">
+        <navLabel>
+          <text>Notes 4</text>
+        </navLabel>
+        <content src="text/part0033.html#VF2I0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_34" playOrder="33">
+        <navLabel>
+          <text>Notes 5</text>
+        </navLabel>
+        <content src="text/part0034.html#10DJ40-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_35" playOrder="34">
+        <navLabel>
+          <text>Notes 6</text>
+        </navLabel>
+        <content src="text/part0035.html#11C3M0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_36" playOrder="35">
+        <navLabel>
+          <text>Notes 7</text>
+        </navLabel>
+        <content src="text/part0036.html#12AK80-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_37" playOrder="36">
+        <navLabel>
+          <text>Notes: Epilogue to Part One</text>
+        </navLabel>
+        <content src="text/part0037.html#1394Q0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_38" playOrder="37">
+        <navLabel>
+          <text>Notes 8</text>
+        </navLabel>
+        <content src="text/part0038.html#147LC0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_39" playOrder="38">
+        <navLabel>
+          <text>Notes 9</text>
+        </navLabel>
+        <content src="text/part0039.html#1565U0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_40" playOrder="39">
+        <navLabel>
+          <text>Notes 10</text>
+        </navLabel>
+        <content src="text/part0040.html#164MG0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_41" playOrder="40">
+        <navLabel>
+          <text>Notes 11</text>
+        </navLabel>
+        <content src="text/part0041.html#173720-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_42" playOrder="41">
+        <navLabel>
+          <text>Notes 12</text>
+        </navLabel>
+        <content src="text/part0042.html#181NK0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_43" playOrder="42">
+        <navLabel>
+          <text>Notes 13</text>
+        </navLabel>
+        <content src="text/part0043.html#190860-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_44" playOrder="43">
+        <navLabel>
+          <text>Notes 14</text>
+        </navLabel>
+        <content src="text/part0044.html#19UOO0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_45" playOrder="44">
+        <navLabel>
+          <text>Notes 15</text>
+        </navLabel>
+        <content src="text/part0045.html#1AT9A0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_46" playOrder="45">
+        <navLabel>
+          <text>Notes 16</text>
+        </navLabel>
+        <content src="text/part0046.html#1BRPS0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_47" playOrder="46">
+        <navLabel>
+          <text>Notes 17</text>
+        </navLabel>
+        <content src="text/part0047.html#1CQAE0-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+      <navPoint class="chapter" id="num_48" playOrder="47">
+        <navLabel>
+          <text>Notes: Afterword</text>
+        </navLabel>
+        <content src="text/part0048.html#1DOR00-0ec12291797041f0ac570bc3401b9b0d"/>
+      </navPoint>
+    </navPoint>
+    <navPoint class="chapter" id="num_49" playOrder="48">
+      <navLabel>
+        <text>Index</text>
+      </navLabel>
+      <content src="text/part0049.html#1ENBI0-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_50" playOrder="49">
+      <navLabel>
+        <text>About the Author</text>
+      </navLabel>
+      <content src="text/part0050.html#1FLS40-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_51" playOrder="50">
+      <navLabel>
+        <text>Newsletter Sign-up</text>
+      </navLabel>
+      <content src="text/part0051.html#1GKCM0-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+    <navPoint class="chapter" id="num_52" playOrder="51">
+      <navLabel>
+        <text>Copyright</text>
+      </navLabel>
+      <content src="text/part0053.html#1IHDQ0-0ec12291797041f0ac570bc3401b9b0d"/>
+    </navPoint>
+  </navMap>
+</ncx>

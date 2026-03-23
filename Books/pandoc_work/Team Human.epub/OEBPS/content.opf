@@ -1,0 +1,76 @@
+<?oxygen RNGSchema="../../../src/schema/package-30.rnc" type="compact"?>
+<?oxygen SCHSchema="../../../src/schema/package-30.sch"?>
+<package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/" unique-identifier="uid9780393651706" version="3.0">
+<metadata>
+<dc:title>Team Human</dc:title>
+<dc:creator id="creator01">Douglas Rushkoff</dc:creator>
+<meta property="role" refines="#creator01" scheme="marc:relators">edt</meta>
+<dc:publisher>W. W. Norton &amp; Company</dc:publisher>
+<dc:identifier id="uid9780393651706">9780393651706</dc:identifier>
+<dc:rights>Copyright © 2019 by Douglas Rushkoff</dc:rights>
+<meta property="dcterms:modified">2018-11-19T10:33:00Z</meta>
+<meta property="dcterms:source">http://</meta>
+<dc:language>en-US</dc:language>
+<dc:subject>Epub3</dc:subject>
+<meta content="cover_image" name="cover"/>
+<description xmlns="http://purl.org/dc/elements/1.1/">&lt;p&gt;&lt;strong&gt;"A provocative, exciting, and important rallying cry to reassert our human spirit of community and teamwork."&amp;#8212;Walter Isaacson&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;Team Human is a manifesto&amp;#8212;a fiery distillation of preeminent digital theorist Douglas Rushkoff's most urgent thoughts on civilization and human nature. In one hundred lean and incisive statements, he argues that we are essentially social creatures, and that we achieve our greatest aspirations when we work together&amp;#8212;not as individuals. Yet today society is threatened by a vast antihuman infrastructure that undermines our ability to connect. Money, once a means of exchange, is now a means of exploitation; education, conceived as way to elevate the working class, has become another assembly line; and the internet has only further divided us into increasingly atomized and radicalized groups.&lt;/p&gt;&lt;p&gt;Team Human delivers a call to arms. If we are to resist and survive these destructive forces, we must recognize that...</description>
+</metadata>
+<manifest>
+<item href="toc.ncx" id="ncx" media-type="application/x-dtbncx+xml"/>
+<item href="css/stylesheet.css" id="css" media-type="text/css"/>
+<item href="nav.css" id="css1" media-type="text/css"/>
+<item href="nav.xhtml" id="nav" media-type="application/xhtml+xml" properties="nav"/>
+<item href="Cover.xhtml" id="Cover" media-type="application/xhtml+xml"/>
+<item href="Author.xhtml" id="Author" media-type="application/xhtml+xml"/>
+<item href="Title.xhtml" id="Title" media-type="application/xhtml+xml"/>
+<item href="Copyright.xhtml" id="Copyright" media-type="application/xhtml+xml"/>
+<item href="Contents.xhtml" id="Contents" media-type="application/xhtml+xml"/>
+<item href="Ded.xhtml" id="Ded" media-type="application/xhtml+xml"/>
+<item href="Ch01.xhtml" id="Ch01" media-type="application/xhtml+xml"/>
+<item href="Ch02.xhtml" id="Ch02" media-type="application/xhtml+xml"/>
+<item href="Ch03.xhtml" id="Ch03" media-type="application/xhtml+xml"/>
+<item href="Ch04.xhtml" id="Ch04" media-type="application/xhtml+xml"/>
+<item href="Ch05.xhtml" id="Ch05" media-type="application/xhtml+xml"/>
+<item href="Ch06.xhtml" id="Ch06" media-type="application/xhtml+xml"/>
+<item href="Ch07.xhtml" id="Ch07" media-type="application/xhtml+xml"/>
+<item href="Ch08.xhtml" id="Ch08" media-type="application/xhtml+xml"/>
+<item href="Ch09.xhtml" id="Ch09" media-type="application/xhtml+xml"/>
+<item href="Ch10.xhtml" id="Ch10" media-type="application/xhtml+xml"/>
+<item href="Ch11.xhtml" id="Ch11" media-type="application/xhtml+xml"/>
+<item href="Ch12.xhtml" id="Ch12" media-type="application/xhtml+xml"/>
+<item href="Ch13.xhtml" id="Ch13" media-type="application/xhtml+xml"/>
+<item href="Ch14.xhtml" id="Ch14" media-type="application/xhtml+xml"/>
+<item href="Notes.xhtml" id="Notes" media-type="application/xhtml+xml"/>
+<item href="images/Cover.jpg" id="cover_image" media-type="image/jpeg"/>
+<item href="images/logo.jpg" id="logo" media-type="image/jpeg"/>
+</manifest>
+<spine toc="ncx">
+<itemref idref="Cover" linear="yes"/>
+<itemref idref="Title" linear="yes"/>
+<itemref idref="Contents" linear="yes"/>
+<itemref idref="Ded" linear="yes"/>
+<itemref idref="Ch01" linear="yes"/>
+<itemref idref="Ch02" linear="yes"/>
+<itemref idref="Ch03" linear="yes"/>
+<itemref idref="Ch04" linear="yes"/>
+<itemref idref="Ch05" linear="yes"/>
+<itemref idref="Ch06" linear="yes"/>
+<itemref idref="Ch07" linear="yes"/>
+<itemref idref="Ch08" linear="yes"/>
+<itemref idref="Ch09" linear="yes"/>
+<itemref idref="Ch10" linear="yes"/>
+<itemref idref="Ch11" linear="yes"/>
+<itemref idref="Ch12" linear="yes"/>
+<itemref idref="Ch13" linear="yes"/>
+<itemref idref="Ch14" linear="yes"/>
+<itemref idref="Notes" linear="yes"/>
+<itemref idref="Author" linear="yes"/>
+<itemref idref="Copyright" linear="yes"/>
+</spine>
+<guide>
+<reference href="Cover.xhtml" title="Cover" type="cover"/>
+<reference href="Title.xhtml" title="Title Page" type="text"/>
+<reference href="Copyright.xhtml" title="Copyright" type="copyright"/>
+<reference href="Ch01.xhtml" title="Team Human" type="text"/>
+</guide>
+</package>

@@ -1,0 +1,907 @@
+/* Version 1.18.0 */
+
+@font-face {
+    font-family: "League Gothic";
+    font-weight: normal;
+    font-style: normal;
+    src: url(../fonts/leaguegothic-regular.ttf);
+}
+@font-face {
+    font-family: "League Gothic";
+    font-weight: bold;
+    font-style: normal;
+    src: url(../fonts/leaguegothic-regular.ttf);
+}
+@font-face {
+    font-family: FiraSans;
+    font-weight: normal;
+    font-style: normal;
+    src: url(../fonts/FiraSans-Regular.ttf);
+}
+@font-face {
+    font-family: FiraSans;
+    font-weight: normal;
+    font-style: italic;
+    src: url(../fonts/FiraSans-Italic.ttf);
+}
+@font-face {
+    font-family: "FiraSans Medium";
+    font-weight: 500;
+    font-style: normal;
+    src: url(../fonts/FiraSans-Medium.ttf);
+}
+@font-face {
+    font-family: "FiraSans Medium";
+    font-weight: 500;
+    font-style: italic;
+    src: url(../fonts/FiraSans-MediumItalic.ttf);
+}
+@font-face {
+    font-family: "FiraSans Bold";
+    font-weight: bold;
+    font-style: normal;
+    src: url(../fonts/FiraSans-Bold.ttf);
+}
+@font-face {
+    font-family: "FiraSans Bold";
+    font-weight: bold;
+    font-style: italic;
+    src: url(../fonts/FiraSans-BoldItalic.ttf);
+}
+body, div, dl, dt, dd, h1, h2, h3, h4, h5, h6, p, pre, code, blockquote {
+	margin:0;
+	padding:0;
+	border-width:0;
+}
+p, li {
+    hyphens: auto;
+    adobe-hyphenate: auto;
+    -webkit-hyphens: auto;
+/* 
+    -webkit-hyphenate-limit-lines: 2;
+    -webkit-hyphenate-limit-after: 4;
+    -webkit-hyphenate-limit-before: 4;
+ */
+}
+img.Figure-Float-NoCaption_EPUB {
+	border:none;
+}
+div.Figure-Float-WithCaption_EPUB {
+	border:none;
+}
+div.Figure-Inline-WithCaption_EPUB {
+	border:none;
+}
+img.Figure-Inline_EPUB {
+	border:none;
+}
+div.PullQuote_EPUB {
+	margin:2em;
+}
+img {
+	border:none;
+	max-width: 100%;
+/* 
+	width:100%;
+ */
+}
+div.Sidebar_EPUB, div.Sidebar-Inline_EPUB, div.Callout_EPUB {
+	background-color:#eee;
+	border-radius:0.5em;
+	padding:1em;
+	margin:1em;
+}
+div.Table-Float_EPUB {
+	border-style:solid;
+}
+div.Table-Inline_EPUB {
+	border-style:solid;
+}
+div.Basic-Text-Frame {
+	border-style:solid;
+}
+table {
+    font-family: FiraSans, sans-serif;
+    margin: 1em auto;
+    padding: 0;
+    border-collapse: collapse;
+    border: 0;
+    font-size: 85%;
+    text-indent: 0;
+    max-width: 100%;
+}
+table p { text-indent: 0; margin: 0; padding: 0; text-align: left }
+table p + p { margin-top: 1em }
+table td, table th { padding: 8px 10px 6px; border-bottom: 2px solid #FFFFFF }
+table tbody td { 
+    background-color: #EEEEEE;
+    vertical-align: top;
+}
+table tbody th { 
+    background-color: #CCCCCC;
+    font-weight: bold;
+    vertical-align: top;
+}
+table thead td { 
+    background-color: #CCCCCC;
+    font-weight: bold;
+    vertical-align: bottom;
+}
+p.scribe_table-header {
+	font-weight: bold;
+}
+p.meta_scribe_contents-parts {
+	font-family:"League Gothic", sans-serif;
+	font-size:1.333em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:0.938; New Kindle spec discourages use of line-height, commenting out for now */
+	margin-left:15px;
+	margin-top:1em;
+	margin-bottom:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:left;
+	text-transform:uppercase;
+	text-decoration:none;
+}
+p.meta_scribe_contents-unnumbered {
+	font-family:"League Gothic", sans-serif;
+	font-size:1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:0.938; */
+	margin-top:0.5em;
+	margin-left:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:left;
+	text-transform:uppercase;
+}
+p.meta_scribe_contents-unnumbered a {
+	text-decoration:none;
+}
+p.meta_scribe_contents-subtitles {
+	font-family:"League Gothic", sans-serif;
+	font-size:1em;
+	font-style:italic;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:0.938; */
+	margin-left:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:left;
+}
+p.meta_scribe_contents-h1 {
+	font-family:"League Gothic", sans-serif;
+	font-size:1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:0.938; */
+	margin-left:2em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:left;
+}
+p.meta_scribe_contents-h2 {
+	font-family:"League Gothic", sans-serif;
+	font-size:1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:0.938; */
+	margin-left:3em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:left;
+}
+p.meta_scribe_copyright {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:0.75em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.333; */
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+}
+p.meta_scribe_copyright-caps {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:0.75em;
+	font-style:normal;
+	font-variant:small-caps;
+	font-weight:normal;
+/* 	line-height:1.333; */
+	margin-top:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+}
+p.meta_scribe_copyright-italics {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:0.75em;
+	font-style:italic;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.333; */
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+}
+h1.meta_scribe_toc-title {
+	font-family:"League Gothic", sans-serif;
+	font-size:2.333em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.143; */
+	margin-bottom:44px;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+}
+p.scribe_bibliography {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:left;
+	-epub-hyphens:none;
+}
+p.scribe_blockquote {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:1em;
+	margin-left:1.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_body {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_body-first {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_body-first:first-line {
+	font-variant:small-caps;
+}
+p.scribe_body-indent {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:1em;
+	margin-left:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_body-no-space {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_box-body {
+	background-color:#dcddde;
+	font-family:FiraSans, sans-serif;
+	font-size:0.9em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.889; */
+	margin-bottom:1em;
+	margin-left:0.5em;
+	margin-right:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_box-heading {
+	border-top:4px solid black;
+	border-bottom:1px solid black;
+	font-family:"FiraSans Bold", sans-serif;
+	font-size:1.1em;
+	font-style:italic;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.417; */
+	margin-bottom:1em;
+	margin-left:0.5em;
+	margin-right:0.5em;
+	margin-top:1em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+	letter-spacing:0.1em;
+	padding:1em;
+}
+p.scribe_break {
+	text-align:center;
+	margin-top:1em;
+	margin-bottom:0.5em;
+	letter-spacing:0.5em;
+	font-size:1.25em;
+}
+p.scribe_body-center {
+	text-align:center;
+	margin-bottom:1em;
+}
+p.scribe_caption {
+	font-family:FiraSans, sans-serif;
+	font-size:0.75em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.667; */
+	page-break-after:auto;
+	page-break-before:avoid;
+	text-align:center;
+	margin-top:0;
+	margin-bottom:1em;
+}
+p.scribe_chapter-intro {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-style:italic;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+}
+h1.scribe_chapter-number {
+	font-family:"FiraSans Bold", sans-serif;
+	font-size:1.1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.7; */
+	margin-top:20%;
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+	letter-spacing:0.2em;
+}
+h1.scribe_chapter-subtitle {
+	font-family:"FiraSans Bold", sans-serif;
+	font-size:1.2em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:40px;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+	letter-spacing:0.1em;
+}
+h1.scribe_chapter-title {
+	font-family:"League Gothic", sans-serif;
+	font-size:2.333em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.143; */
+	margin-bottom:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+	-epub-hyphens:none;
+}
+h1.scribe_chapter-title-fortoc {
+	font-family:"League Gothic", sans-serif;
+	font-size:2.333em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.143; */
+	margin-bottom:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+	-epub-hyphens:none;
+}
+p.scribe_dedication, p.scribe_dedication-continued {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:0.85em;
+	font-style:italic;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.333; */
+	margin-top:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+}
+p.scribe_dedication {
+	margin-top:20%;
+}
+p.scribe_epigraph {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:1.083em;
+	font-style:italic;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.308; */
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+}
+p.scribe_epigraph-attribution {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:0.75em;
+	font-style:normal;
+	font-variant:small-caps;
+	font-weight:normal;
+/* 	line-height:1.667; */
+	page-break-after:auto;
+	page-break-before:avoid;
+	text-align:center;
+}
+p.scribe_footnote {
+	font-family:FiraSans, sans-serif;
+	font-size:0.7em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.667; */
+	margin-bottom:1em;
+	margin-left:12px;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:left;
+	text-indent:-12px;
+}
+h1.scribe_half-title {
+	font-family:"League Gothic", sans-serif;
+	font-size:1.167em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.5; */
+	margin-top:1em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+}
+h1.meta_scribe_half-title {
+	font-family:"League Gothic", sans-serif;
+	font-size:1.167em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.5; */
+	margin-left:2em;
+	margin-right:2em;
+	margin-top:3em;
+	margin-bottom:2em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+}
+h2.scribe_heading-1 {
+	font-family:"FiraSans Bold", sans-serif;
+	font-size:1.1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.417; */
+	margin-top:1em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:left;
+	text-transform:uppercase;
+}
+h3.scribe_heading-2 {
+	font-family:"FiraSans Medium", sans-serif;
+	font-size:1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:500;
+/* 	line-height:1.545; */
+	margin-top:1em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:left;
+	text-transform:uppercase;
+}
+h4.scribe_heading-3 {
+	font-family:"FiraSans Medium", sans-serif;
+	font-size:0.9em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:500;
+/* 	line-height:1.7; */
+	margin-top:1em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:left;
+	text-transform:uppercase;
+}
+h5.scribe_heading-4 {
+	font-family:"FiraSans Medium", sans-serif;
+	font-size:0.8em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.789; */
+	margin-top:1em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:left;
+}
+h6.scribe_heading-5 {
+	font-family:FiraSans, sans-serif;
+	font-size:0.8em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.789; */
+	margin-top:1em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:left;
+}
+p.scribe_inline {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.2; */
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+}
+p.scribe_inline-logo {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.2; */
+	max-width:25%;
+	margin-top:20%;
+	margin-bottom:1em;
+	margin-left:auto;
+	margin-right:auto;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+}
+li.scribe_list-bullets {
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.7; */
+	list-style-position:outside;
+	margin-bottom:0;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+li.scribe_list-bullets-sub {
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.7; */
+	list-style-position:outside;
+	margin-bottom:0;
+	margin-left:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+li.scribe_list-numbers {
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.7; */
+	list-style-position:outside;
+	list-style-type:decimal;
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+li.scribe_list-numbers-sub {
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.7; */
+	list-style-position:outside;
+	list-style-type:upper-alpha;
+	margin-bottom:1em;
+	margin-left:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+h1.scribe_part-number {
+	font-family:"FiraSans Bold", sans-serif;
+	font-size:1.5em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.214; */
+	margin-top:20%;
+	margin-bottom:2em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+	letter-spacing:0.2em;
+}
+h1.scribe_part-title {
+	font-family:"League Gothic", sans-serif;
+	font-size:3em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1; */
+	margin-bottom:36px;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+}
+p.scribe_quote {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-style:italic;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:0;
+	margin-top:2em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_quote-attribution {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-size:1em;
+	font-style:normal;
+	font-variant:small-caps;
+	font-weight:normal;
+/* 	line-height:1.667; */
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:avoid;
+	text-align:right;
+}
+p.scribe_pullquote {
+	font-family:"League Gothic", sans-serif;
+	font-size:1.5em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.143; */
+	margin-bottom:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+	-epub-hyphens:none;
+}
+p.scribe_pullquote-attribution {
+	font-family:"League Gothic", sans-serif;
+	font-size:1.5em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.143; */
+	margin-bottom:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:right;
+	-epub-hyphens:none;
+	text-transform:uppercase;
+}
+p.scribe_sidebar-body, .scribe_callout-body {
+	font-family:FiraSans, sans-serif;
+	font-size:0.9em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.889; */
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_sidebar-attribution, .scribe_callout-attribution {
+	font-family:FiraSans, sans-serif;
+	font-size:0.9em;
+	font-style:normal;
+	font-variant:small-caps;
+	font-weight:normal;
+/* 	line-height:1.889; */
+	margin-top:0;
+	margin-bottom:1em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:right;
+}
+p.scribe_sidebar-heading, .scribe_callout-heading {
+	font-family:"FiraSans Bold", sans-serif;
+	font-size:1em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.417; */
+	margin-bottom:1em;
+	margin-top:1em;
+	page-break-after:avoid;
+	page-break-before:auto;
+	text-align:center;
+	text-transform:uppercase;
+	letter-spacing:0.1em;
+}
+li.scribe_sidebar-list-bullets, .scribe_callout-list-bullets {
+	font-family:FiraSans, sans-serif;
+	font-size:0.9em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.889; */
+	list-style-position:outside;
+	list-style-type:disc;
+	margin-left:1.5em;
+	margin-right:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+li.scribe_sidebar-list-numbers, .scribe_callout-list-numbers {
+	font-family:FiraSans, sans-serif;
+	font-size:0.9em;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.889; */
+	list-style-position:outside;
+	list-style-type:decimal;
+	margin-left:1.5em;
+	margin-right:0.5em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:justify;
+}
+p.scribe_verse {
+	font-family:Bookerly, iBooks_Iowan_Old_Style, serif;
+	font-style:italic;
+	font-variant:normal;
+	font-weight:normal;
+/* 	line-height:1.545; */
+	margin-bottom:1em;
+	margin-left:2em;
+	page-break-after:auto;
+	page-break-before:auto;
+	text-align:left;
+	text-indent:-1em;
+}
+span.hide {
+	color:#ffffff;
+	font-size:0.008em;
+}
+span.scribe_all-small-caps {
+	font-variant:small-caps;
+}
+span.scribe_bold {
+	font-style:normal;
+	font-weight:bold;
+}
+span.scribe_bold-italic {
+	font-style:italic;
+	font-weight:bold;
+}
+span.scribe_footnote-ref {
+	font-family:"FiraSans Medium", sans-serif;
+	font-size:0.67em;
+	font-style:normal;
+	font-weight:500;
+	vertical-align:super;
+}
+span.scribe_subscript {
+	font-family:"FiraSans Medium", sans-serif;
+	font-size:0.67em;
+	font-style:normal;
+	font-weight:500;
+	vertical-align:sub;
+}
+span.scribe_heading-caps {
+	font-family:"FiraSans Bold", sans-serif;
+	font-style:normal;
+	font-variant:normal;
+	font-weight:bold;
+	text-transform:uppercase;
+	letter-spacing:0.05em;
+}
+span.scribe_italic {
+	font-style:italic;
+	font-weight:normal;
+}
+hr.HorizontalRule-1 {
+	border-top:solid #000000 1px;
+}
+hr.lines {
+	border-top:dotted #000000 1px;
+	margin:2em;
+}
+img.mega {
+	display: block;
+	width: 100px;
+	margin: auto;
+	padding: 0.5em;
+}
+img.logo {
+	display: block;
+	width: 100px;
+	margin-top: 20%;
+	margin: auto;
+	padding: 30px;
+}
+div.copyright {
+	margin-top: 20%;
+	margin: auto;
+	padding: 30px;
+	text-align: center;
+}
+div._idFootnotes {
+	margin-top:1em;
+	padding:1em;
+	width:90%;
+}
+span.scribe_underline {
+    text-decoration: underline;
+}
+span.scribe_strikethrough {
+	text-decoration: line-through;
+}

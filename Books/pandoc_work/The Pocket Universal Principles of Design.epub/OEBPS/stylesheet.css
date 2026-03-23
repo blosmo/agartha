@@ -1,0 +1,54 @@
+@charset "UTF-8";
+@font-face {font-family: PTSans; font-weight: bold; src: url("font_2.ttf")}
+@font-face {font-family: PTSans; src: url("font_1.ttf")}
+@font-face {font-family: RotisSansSerif; font-style: italic; src: url("font_3206.otf")}
+@font-face {font-family: RotisSansSerif; font-weight: bold; src: url("font_3204.otf")}
+@font-face {font-family: RotisSansSerif; src: url("font_3214.otf")}
+.class_16 {font-family: PTSans; font-size: 1.8em; font-weight: bold; line-height: 1; margin-top: 3.6em; text-align: center}
+.class_18 {font-family: PTSans; line-height: 1; margin-top: 1.2em; text-align: center}
+.class_22-0 {width: 55%}
+.class_22-1 {margin-bottom: 0.3em; margin-top: 10em; text-align: center}
+.class_29 {font-family: PTSans; font-size: 1.6em; font-weight: bold; line-height: 1; margin-top: 1.2em}
+.class_31 {line-height: 1; margin-left: 5.625%; margin-top: 0.96em; text-indent: -5.625%}
+.class_33 {line-height: 1; margin-left: 5.625%; margin-top: 0.6em; text-indent: -5.625%}
+.class_182 {line-height: 1; margin-bottom: 0.6em; margin-left: 5.625%; margin-top: 0.6em; text-indent: -5.625%}
+.class_190 {margin-top: 0.8em}
+.class_192 {margin-top: 1em}
+.class_194 {margin-top: 0.1em}
+.class_226 {margin-bottom: 0.1em; margin-top: 0.1em}
+.class_233 {font-family: PTSans; font-size: 1.05em; font-weight: 800; margin-bottom: 0.1em; margin-top: 5em; text-align: center}
+.class_241 {font-size: 1.1em; line-height: 1.15; margin-top: 0.758893em}
+.class_243 {margin-left: 2.5%; margin-top: 0.77em; text-indent: -2.187%}
+.class_245 {margin-left: 2.5%; margin-top: 0.5em; text-indent: -2.187%}
+.class_249 {margin-bottom: 0.1em; margin-left: 12.188%; margin-top: 0.5em; text-indent: -12.187%}
+.class_253-0 {text-align: center}
+.class_253-1 {width: 100%}
+.class_255 {margin-bottom: 0.2em; margin-left: auto; margin-right: auto; margin-top: 1em; width: 98%}
+.class_257 {font-family: RotisSansSerif,sans-serif; font-size: 0.9em; line-height: 1.149; margin-bottom: 1.56658em; margin-top: 0.208877em}
+.class_274 {margin-bottom: 0.2em; margin-left: auto; margin-right: auto; margin-top: 1em; width: 90%}
+.class_435 {margin-bottom: 0.2em; margin-left: auto; margin-right: auto; margin-top: 1em; width: 60%}
+.class_1191 {margin-bottom: 0.2em; margin-left: auto; margin-right: auto; margin-top: 1em; width: 80%}
+.class_1418 {margin-bottom: 0.2em; margin-left: auto; margin-right: auto; margin-top: 1em; width: 70%}
+.class_1429 {margin-left: 5.313%; margin-top: 0.5em; text-indent: -3.125%}
+.class_1859 {margin-bottom: 0.2em; margin-left: auto; margin-right: auto; margin-top: 1em; width: 50%}
+.class_2621 {font-size: 1.1em; line-height: 1.15; margin-bottom: 0.730435em; margin-top: 0.758893em}
+.class_2626 {margin-left: auto; margin-right: auto; width: 98%}
+.class_2628 {float: right; margin-bottom: 0.2em; margin-top: 1em; width: 20%}
+.class_2916 {font-family: PTSans; font-size: 1.6em; font-weight: 800; line-height: 1; margin-top: 1.2em}
+.class_2978 {margin-bottom: 0.1em; margin-top: 1em}
+.class_2986 {margin-bottom: 0.1em; margin-top: 0.8em}
+.class_2994 {font-family: PTSans; font-size: 1.05em; font-weight: bold; line-height: 1; margin-top: 0.914286em}
+.class_2996 {margin-top: 0.315em}
+.class_3000 {font-family: PTSans; font-size: 1.05em; font-weight: bold; line-height: 1; margin-top: 1.2em}
+.class_3009 {font-family: PTSans; font-size: 1.05em; margin-bottom: 0.1em; margin-top: 5em; text-align: center}
+.class_3016 {font-size: 0.9em; margin-top: 1em}
+.class_3021 {font-size: 0.9em; font-weight: 800; margin-top: 1em}
+.class_3023 {font-size: 0.9em; margin-bottom: 0.1em; margin-top: 1em}
+.class_3186 {font-style: italic}
+.class_3188 {font-weight: 800}
+.class_3190 {color: #6d6e71; font-size: 0.9em; font-weight: normal; line-height: 1.111}
+.class_3191 {font-size: 0.9em; line-height: 1.277}
+.class_3194 {font-size: 0.9em}
+.class_3195 {font-size: 0.833333em; line-height: 1.379; vertical-align: sub}
+.class_3197 {font-size: 0.7em; font-weight: normal; letter-spacing: 0.2em; line-height: 1.428}
+.class_3198 {font-size: 1.2em}

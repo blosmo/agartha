@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BKAllocatedSize</key>
+	<integer>9527296</integer>
+	<key>BKDisplayName</key>
+	<string>John Perkins - The New Confessions of an Economic Hit Man (retail).epub</string>
+	<key>BKGenerationCount</key>
+	<integer>2</integer>
+	<key>BKInsertionDate</key>
+	<integer>576905014</integer>
+	<key>artistName</key>
+	<string>John Perkins</string>
+	<key>book-info</key>
+	<dict>
+		<key>cover-image-hash</key>
+		<string>202C17C5BF9CCBCEF89AC3A906335E36</string>
+		<key>cover-image-path</key>
+		<string>ops/images/9781626566743.jpg</string>
+		<key>mime-type</key>
+		<string>application/epub+zip</string>
+		<key>package-file-hash</key>
+		<string>F98D9442F26C5E1E830DAA96E3C2D06A</string>
+		<key>publisher-unique-id</key>
+		<string>9781626566743</string>
+		<key>unique-id</key>
+		<integer>-2498445001034005982</integer>
+		<key>update-level</key>
+		<integer>2</integer>
+	</dict>
+	<key>bookDescription</key>
+	<string>Shocking Bestseller: The original version of this astonishing tell-all book spent 73 weeks on the New York Times bestseller list, has sold more than 1.25 million copies, and has been translated into 32 languages. &lt;BR&gt;New Revelations: Featuring 15 explosive new chapters, this expanded edition of Perkins's classic bestseller brings the story of economic hit men (EHMs) up to date and, chillingly, home to the US. Over 40 percent of the book is new, including chapters identifying today's EHMs and a detailed chronology extensively documenting EHM activity since the first edition was published in 2004.&lt;BR&gt;Former economic hit man John Perkins shares new details about the ways he and others cheated countries around the globe out of trillions of dollars. Then he reveals how the deadly EHM cancer he helped create has spread far more widely and deeply than ever in the US and everywhere else&amp;#8212;to become the dominant system of business, government, and society today. Finally, he gives an...</string>
+	<key>explicit</key>
+	<false/>
+	<key>isPreview</key>
+	<false/>
+	<key>itemName</key>
+	<string>The New Confessions of an Economic Hit Man</string>
+</dict>
+</plist>

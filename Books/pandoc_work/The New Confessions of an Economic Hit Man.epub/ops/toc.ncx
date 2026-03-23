@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="en">
+<head>
+<meta name="dtb:uid" content="9781626566743"/>
+<meta name="dtb:depth" content="1"/>
+<meta name="dtb:totalPageCount" content="0"/>
+<meta name="dtb:maxPageNumber" content="0"/>
+</head>
+<docTitle>
+<text>The New Confessions of an Economic Hit Man</text>
+</docTitle>
+<navMap>
+<navPoint id="navPoint-1" playOrder="1">
+<navLabel>
+<text>Cover Page</text>
+</navLabel>
+<content src="xhtml/cover.html"/>
+</navPoint>
+<navPoint id="navPoint-2" playOrder="2">
+<navLabel>
+<text>Title Page</text>
+</navLabel>
+<content src="xhtml/ch005.html"/>
+</navPoint>
+<navPoint id="navPoint-3" playOrder="3">
+<navLabel>
+<text>Copyright Page</text>
+</navLabel>
+<content src="xhtml/ch006.html"/>
+</navPoint>
+<navPoint id="navPoint-4" playOrder="4">
+<navLabel>
+<text>Contents</text>
+</navLabel>
+<content src="xhtml/ch008.html"/>
+</navPoint>
+<navPoint id="navPoint-5" playOrder="5">
+<navLabel>
+<text>Preface</text>
+</navLabel>
+<content src="xhtml/ch009.html#ch009_1"/>
+</navPoint>
+<navPoint id="navPoint-6" playOrder="6">
+<navLabel>
+<text>INTRODUCTION: The New Confessions</text>
+</navLabel>
+<content src="xhtml/ch010.html#ch010_1"/>
+</navPoint>
+<navPoint id="navPoint-7" playOrder="7">
+<navLabel>
+<text>PART I: 1963&#8211;1971</text>
+</navLabel>
+<content src="xhtml/ch011.html#ch011_1"/>
+<navPoint id="navPoint-8" playOrder="8">
+<navLabel>
+<text>1 Dirty Business</text>
+</navLabel>
+<content src="xhtml/ch012.html#ch012_1"/>
+</navPoint>
+<navPoint id="navPoint-9" playOrder="9">
+<navLabel>
+<text>2 An Economic Hit Man Is Born</text>
+</navLabel>
+<content src="xhtml/ch013.html#ch013_1"/>
+</navPoint>
+<navPoint id="navPoint-10" playOrder="10">
+<navLabel>
+<text>3 &#x201C;In for Life&#x201D;</text>
+</navLabel>
+<content src="xhtml/ch014.html#ch014_1"/>
+</navPoint>
+<navPoint id="navPoint-11" playOrder="11">
+<navLabel>
+<text>4. Indonesia: Lessons for an EHM</text>
+</navLabel>
+<content src="xhtml/ch015.html#ch015_1"/>
+</navPoint>
+<navPoint id="navPoint-12" playOrder="12">
+<navLabel>
+<text>5. Saving a Country from Communism</text>
+</navLabel>
+<content src="xhtml/ch016.html#ch016_1"/>
+</navPoint>
+<navPoint id="navPoint-13" playOrder="13">
+<navLabel>
+<text>6. Selling My Soul</text>
+</navLabel>
+<content src="xhtml/ch017.html#ch017_1"/>
+</navPoint>
+</navPoint>
+<navPoint id="navPoint-14" playOrder="14">
+<navLabel>
+<text>PART II: 1971&#8211;1975</text>
+</navLabel>
+<content src="xhtml/ch018.html#ch018_1"/>
+<navPoint id="navPoint-15" playOrder="15">
+<navLabel>
+<text>7 My Role as Inquisitor</text>
+</navLabel>
+<content src="xhtml/ch019.html#ch019_1"/>
+</navPoint>
+<navPoint id="navPoint-16" playOrder="16">
+<navLabel>
+<text>8. Civilization on Trial</text>
+</navLabel>
+<content src="xhtml/ch020.html#ch020_1"/>
+</navPoint>
+<navPoint id="navPoint-17" playOrder="17">
+<navLabel>
+<text>9. Opportunity of a Lifetime</text>
+</navLabel>
+<content src="xhtml/ch021.html#ch021_1"/>
+</navPoint>
+<navPoint id="navPoint-18" playOrder="18">
+<navLabel>
+<text>10. Panama&#x2019;s President and Hero</text>
+</navLabel>
+<content src="xhtml/ch022.html#ch022_1"/>
+</navPoint>
+<navPoint id="navPoint-19" playOrder="19">
+<navLabel>
+<text>11. Pirates in the Canal Zone</text>
+</navLabel>
+<content src="xhtml/ch023.html#ch023_1"/>
+</navPoint>
+<navPoint id="navPoint-20" playOrder="20">
+<navLabel>
+<text>12. Soldiers and Prostitutes</text>
+</navLabel>
+<content src="xhtml/ch024.html#ch024_1"/>
+</navPoint>
+<navPoint id="navPoint-21" playOrder="21">
+<navLabel>
+<text>13. Conversations with the General</text>
+</navLabel>
+<content src="xhtml/ch025.html#ch025_1"/>
+</navPoint>
+<navPoint id="navPoint-22" playOrder="22">
+<navLabel>
+<text>14. Entering a New and Sinister Period in Economic History</text>
+</navLabel>
+<content src="xhtml/ch026.html#ch026_1"/>
+</navPoint>
+<navPoint id="navPoint-23" playOrder="23">
+<navLabel>
+<text>15 The Saudi Arabian Money-Laundering Affair</text>
+</navLabel>
+<content src="xhtml/ch027.html#ch027_1"/>
+</navPoint>
+<navPoint id="navPoint-24" playOrder="24">
+<navLabel>
+<text>16 Pimping, and Financing Osama bin Laden</text>
+</navLabel>
+<content src="xhtml/ch028.html#ch028_1"/>
+</navPoint>
+</navPoint>
+<navPoint id="navPoint-25" playOrder="25">
+<navLabel>
+<text>PART III: 1975&#8211;1981</text>
+</navLabel>
+<content src="xhtml/ch029.html#ch029_1"/>
+<navPoint id="navPoint-26" playOrder="26">
+<navLabel>
+<text>17 Panama Canal Negotiations and Graham Greene</text>
+</navLabel>
+<content src="xhtml/ch030.html#ch030_1"/>
+</navPoint>
+<navPoint id="navPoint-27" playOrder="27">
+<navLabel>
+<text>18 Iran&#x2019;s King of Kings</text>
+</navLabel>
+<content src="xhtml/ch031.html#ch031_1"/>
+</navPoint>
+<navPoint id="navPoint-28" playOrder="28">
+<navLabel>
+<text>19 Confessions of a Tortured Man</text>
+</navLabel>
+<content src="xhtml/ch032.html#ch032_1"/>
+</navPoint>
+<navPoint id="navPoint-29" playOrder="29">
+<navLabel>
+<text>20 The Fall of a King</text>
+</navLabel>
+<content src="xhtml/ch033.html#ch033_1"/>
+</navPoint>
+<navPoint id="navPoint-30" playOrder="30">
+<navLabel>
+<text>21 Colombia: Keystone of Latin America</text>
+</navLabel>
+<content src="xhtml/ch034.html#ch034_1"/>
+</navPoint>
+<navPoint id="navPoint-31" playOrder="31">
+<navLabel>
+<text>22 American Republic vs. Global Empire</text>
+</navLabel>
+<content src="xhtml/ch035.html#ch035_1"/>
+</navPoint>
+<navPoint id="navPoint-32" playOrder="32">
+<navLabel>
+<text>23 The Deceptive R&#xE9;sum&#xE9;</text>
+</navLabel>
+<content src="xhtml/ch036.html#ch036_1"/>
+</navPoint>
+<navPoint id="navPoint-33" playOrder="33">
+<navLabel>
+<text>24 Ecuador&#x2019;s President Battles Big Oil</text>
+</navLabel>
+<content src="xhtml/ch037.html#ch037_1"/>
+</navPoint>
+<navPoint id="navPoint-34" playOrder="34">
+<navLabel>
+<text>25 I Quit</text>
+</navLabel>
+<content src="xhtml/ch038.html#ch038_1"/>
+</navPoint>
+</navPoint>
+<navPoint id="navPoint-35" playOrder="35">
+<navLabel>
+<text>PART IV: 1981&#8211;2004</text>
+</navLabel>
+<content src="xhtml/ch039.html#ch039_1"/>
+<navPoint id="navPoint-36" playOrder="36">
+<navLabel>
+<text>26 Ecuador&#x2019;s Presidential Death</text>
+</navLabel>
+<content src="xhtml/ch040.html#ch040_1"/>
+</navPoint>
+<navPoint id="navPoint-37" playOrder="37">
+<navLabel>
+<text>27 Panama: Another Presidential Death</text>
+</navLabel>
+<content src="xhtml/ch041.html#ch041_1"/>
+</navPoint>
+<navPoint id="navPoint-38" playOrder="38">
+<navLabel>
+<text>28 My Energy Company, Enron, and George W. Bush</text>
+</navLabel>
+<content src="xhtml/ch042.html#ch042_1"/>
+</navPoint>
+<navPoint id="navPoint-39" playOrder="39">
+<navLabel>
+<text>29 I Take a Bribe</text>
+</navLabel>
+<content src="xhtml/ch043.html#ch043_1"/>
+</navPoint>
+<navPoint id="navPoint-40" playOrder="40">
+<navLabel>
+<text>30 The United States Invades Panama</text>
+</navLabel>
+<content src="xhtml/ch044.html#ch044_1"/>
+</navPoint>
+<navPoint id="navPoint-41" playOrder="41">
+<navLabel>
+<text>31 An EHM Failure in Iraq</text>
+</navLabel>
+<content src="xhtml/ch045.html#ch045_1"/>
+</navPoint>
+<navPoint id="navPoint-42" playOrder="42">
+<navLabel>
+<text>32 September 11 and Its Aftermath for Me, Personally</text>
+</navLabel>
+<content src="xhtml/ch046.html#ch046_1"/>
+</navPoint>
+<navPoint id="navPoint-43" playOrder="43">
+<navLabel>
+<text>33 Venezuela: Saved by Saddam</text>
+</navLabel>
+<content src="xhtml/ch047.html#ch047_1"/>
+</navPoint>
+</navPoint>
+<navPoint id="navPoint-44" playOrder="44">
+<navLabel>
+<text>PART V: 2004&#8211;TODAY</text>
+</navLabel>
+<content src="xhtml/ch048.html#ch048_1"/>
+<navPoint id="navPoint-45" playOrder="45">
+<navLabel>
+<text>34 Conspiracy: Was I Poisoned?</text>
+</navLabel>
+<content src="xhtml/ch049.html#ch049_1"/>
+</navPoint>
+<navPoint id="navPoint-46" playOrder="46">
+<navLabel>
+<text>35 A Jackal Speaks: The Seychelles Conspiracy</text>
+</navLabel>
+<content src="xhtml/ch050.html#ch050_1"/>
+</navPoint>
+<navPoint id="navPoint-47" playOrder="47">
+<navLabel>
+<text>36 Ecuador Rebels</text>
+</navLabel>
+<content src="xhtml/ch051.html#ch051_1"/>
+</navPoint>
+<navPoint id="navPoint-48" playOrder="48">
+<navLabel>
+<text>37 Honduras: The CIA Strikes</text>
+</navLabel>
+<content src="xhtml/ch052.html#ch052_1"/>
+</navPoint>
+<navPoint id="navPoint-49" playOrder="49">
+<navLabel>
+<text>38 Your Friendly Banker as EHM</text>
+</navLabel>
+<content src="xhtml/ch053.html#ch053_1"/>
+</navPoint>
+<navPoint id="navPoint-50" playOrder="50">
+<navLabel>
+<text>39 Vietnam: Lessons in a Prison</text>
+</navLabel>
+<content src="xhtml/ch054.html#ch054_1"/>
+</navPoint>
+<navPoint id="navPoint-51" playOrder="51">
+<navLabel>
+<text>40 Istanbul: Tools of Modern Empire</text>
+</navLabel>
+<content src="xhtml/ch055.html#ch055_1"/>
+</navPoint>
+<navPoint id="navPoint-52" playOrder="52">
+<navLabel>
+<text>41 A Coup against Fundaci&#xF3;n Pachamama</text>
+</navLabel>
+<content src="xhtml/ch056.html#ch056_1"/>
+</navPoint>
+<navPoint id="navPoint-53" playOrder="53">
+<navLabel>
+<text>42 Another EHM Banking Scandal</text>
+</navLabel>
+<content src="xhtml/ch057.html#ch057_1"/>
+</navPoint>
+<navPoint id="navPoint-54" playOrder="54">
+<navLabel>
+<text>43 Who Are Today&#x2019;s Economic Hit Men?</text>
+</navLabel>
+<content src="xhtml/ch058.html#ch058_1"/>
+</navPoint>
+<navPoint id="navPoint-55" playOrder="55">
+<navLabel>
+<text>44 Who Are Today&#x2019;s Jackals?</text>
+</navLabel>
+<content src="xhtml/ch059.html#ch059_1"/>
+</navPoint>
+<navPoint id="navPoint-56" playOrder="56">
+<navLabel>
+<text>45 Lessons for China</text>
+</navLabel>
+<content src="xhtml/ch060.html#ch060_1"/>
+</navPoint>
+<navPoint id="navPoint-57" playOrder="57">
+<navLabel>
+<text>46 What You Can Do</text>
+</navLabel>
+<content src="xhtml/ch061.html#ch061_1"/>
+</navPoint>
+<navPoint id="navPoint-58" playOrder="58">
+<navLabel>
+<text>47 Things to Do</text>
+</navLabel>
+<content src="xhtml/ch062.html#ch062_1"/>
+</navPoint>
+</navPoint>
+<navPoint id="navPoint-59" playOrder="59">
+<navLabel>
+<text>Documentation of Economic Hit Man Activity, 2004&#8211;2015</text>
+</navLabel>
+<content src="xhtml/ch063.html#ch063_1"/>
+</navPoint>
+<navPoint id="navPoint-60" playOrder="60">
+<navLabel>
+<text>John Perkins Personal History</text>
+</navLabel>
+<content src="xhtml/ch064.html#ch064_1"/>
+</navPoint>
+<navPoint id="navPoint-61" playOrder="61">
+<navLabel>
+<text>Notes</text>
+</navLabel>
+<content src="xhtml/ch065.html#ch065_1"/>
+</navPoint>
+<navPoint id="navPoint-62" playOrder="62">
+<navLabel>
+<text>Acknowledgments</text>
+</navLabel>
+<content src="xhtml/ch066.html#ch066_1"/>
+</navPoint>
+<navPoint id="navPoint-63" playOrder="63">
+<navLabel>
+<text>Index</text>
+</navLabel>
+<content src="xhtml/ch067.html#ch067_1"/>
+</navPoint>
+<navPoint id="navPoint-64" playOrder="64">
+<navLabel>
+<text>About the Author</text>
+</navLabel>
+<content src="xhtml/ch068.html#ch068_1"/>
+</navPoint>
+</navMap>
+</ncx> 
