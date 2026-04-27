@@ -1,0 +1,29 @@
+{
+  "name": "agartha",
+  "private": true,
+  "version": "0.1.0",
+  "description": "First playable Agartha demo loop: authoritative cellular world, viewer, and scripted agents.",
+  "type": "module",
+  "workspaces": [
+    "apps/web",
+    "packages/protocol"
+  ],
+  "scripts": {
+    "dev": "npm --workspace apps/web run dev",
+    "build": "npm --workspace packages/protocol run build && npm --workspace apps/web run build && npm run build:scripts",
+    "build:scripts": "tsc --noEmit -p tsconfig.scripts.json",
+    "test": "npm --workspace packages/protocol run test && npm --workspace apps/web run test && npm run test:scripts",
+    "test:scripts": "vitest run --dir scripts",
+    "test:rust": "cargo test --workspace",
+    "test:all": "npm run test && npm run test:rust"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}

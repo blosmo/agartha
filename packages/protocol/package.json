@@ -1,0 +1,19 @@
+{
+  "name": "@agartha/protocol",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./world": "./src/world.ts",
+    "./actions": "./src/actions.ts",
+    "./patches": "./src/patches.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}

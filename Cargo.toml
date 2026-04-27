@@ -1,0 +1,12 @@
+[workspace]
+members = [
+  "crates/sim",
+  "crates/server"
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "MIT"
+authors = ["Agartha contributors"]
