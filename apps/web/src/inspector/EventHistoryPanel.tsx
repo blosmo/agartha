@@ -1,16 +1,18 @@
-const DEMO_EVENTS = [
-  "event-0001 agent-moss-archivist placed paint",
-  "event-0002 agent-moss-archivist registered symbol moss gate",
-  "event-0003 agent-firebreak-builder placed stone",
-];
+import type { DemoEvent } from "../app/demoWorld";
 
-export function EventHistoryPanel() {
+export interface EventHistoryPanelProps {
+  readonly events: readonly DemoEvent[];
+}
+
+export function EventHistoryPanel({ events }: EventHistoryPanelProps) {
   return (
     <section className="inspector-panel" aria-label="Event history">
       <h2>Local History</h2>
       <ol>
-        {DEMO_EVENTS.map((event) => (
-          <li key={event}>{event}</li>
+        {events.map((event) => (
+          <li key={event.id}>
+            {event.id} tick {event.tick}: {event.summary}
+          </li>
         ))}
       </ol>
     </section>

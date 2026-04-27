@@ -1,26 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { MATERIAL, toWorldCoord, type MaterialId } from "@agartha/protocol/world";
+import { type MaterialId, type WorldCoord } from "@agartha/protocol/world";
 
 import { ChunkTextureCache } from "./chunkTextureCache";
 import { materialColor } from "./materialPalette";
-
-const DEMO_CELLS = [
-  sample(64, 64, MATERIAL.Water),
-  sample(65, 64, MATERIAL.Plant),
-  sample(66, 64, MATERIAL.Paint),
-  sample(67, 64, MATERIAL.Stone),
-  sample(70, 64, MATERIAL.Fire),
-];
+import { absoluteCoord, type DemoCell } from "../app/demoWorld";
 
 const demoCache = new ChunkTextureCache();
-demoCache.applySnapshot({
-  worldId: "origin",
-  chunk: { x: 0, y: 0 },
-  version: 1,
-  cells: DEMO_CELLS,
-});
 
-export function BoardCanvas() {
+export interface BoardCanvasProps {
+  readonly cells: readonly DemoCell[];
+  readonly selectedMaterial: MaterialId;
+  readonly onPaintCell: (coord: WorldCoord, material: MaterialId) => void;
+  readonly onSelectCell: (coord: WorldCoord) => void;
+}
+
+export function BoardCanvas({ cells, selectedMaterial, onPaintCell, onSelectCell }: BoardCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const dragStart = useRef<{ pointerId: number; x: number; y: number; panX: number; panY: number } | null>(
     null,
@@ -51,7 +45,7 @@ export function BoardCanvas() {
       pixiApp = app;
       host.appendChild(app.canvas);
 
-      drawDemoPixels(app.canvas, 8);
+      drawDemoPixels(app.canvas, cells, 8);
     }
 
     void mountPixi();
@@ -60,7 +54,16 @@ export function BoardCanvas() {
       cancelled = true;
       pixiApp?.destroy(true);
     };
-  }, []);
+  }, [cells]);
+
+  useEffect(() => {
+    demoCache.applySnapshot({
+      worldId: "origin",
+      chunk: { x: 0, y: 0 },
+      version: 1,
+      cells,
+    });
+  }, [cells]);
 
   return (
     <div
@@ -68,7 +71,10 @@ export function BoardCanvas() {
       ref={hostRef}
       data-testid="board-canvas"
       onPointerDown={(event) => {
-        event.currentTarget.setPointerCapture(event.pointerId);
+        if ((event.target as HTMLElement).dataset.cellId) {
+          return;
+        }
+        event.currentTarget.setPointerCapture?.(event.pointerId);
         dragStart.current = {
           pointerId: event.pointerId,
           x: event.clientX,
@@ -86,7 +92,28 @@ export function BoardCanvas() {
           y: drag.panY + event.clientY - drag.y,
         }));
       }}
-      onPointerUp={() => {
+      onPointerUp={(event) => {
+        const drag = dragStart.current;
+        if (drag && hostRef.current) {
+          const moved = Math.abs(event.clientX - drag.x) + Math.abs(event.clientY - drag.y);
+          if (moved < 4) {
+            const rect = hostRef.current.getBoundingClientRect();
+            const x = Math.floor((event.clientX - rect.left - camera.x) / camera.zoom);
+            const y = Math.floor((event.clientY - rect.top - camera.y) / camera.zoom);
+            const coord = {
+              chunk: {
+                x: Math.floor(x / 128),
+                y: Math.floor(y / 128),
+              },
+              cell: {
+                x: ((x % 128) + 128) % 128,
+                y: ((y % 128) + 128) % 128,
+              },
+            };
+            onSelectCell(coord);
+            onPaintCell(coord, selectedMaterial);
+          }
+        }
         dragStart.current = null;
       }}
       onWheel={(event) => {
@@ -99,55 +126,47 @@ export function BoardCanvas() {
     >
       <div
         className="board-canvas__fallback"
-        aria-hidden="true"
+        data-testid="board-cells"
         style={{ transform: `translate(${camera.x}px, ${camera.y}px)` }}
       >
-        {DEMO_CELLS.map((cell) => (
+        {cells.map((cell) => {
+          const absolute = absoluteCoord(cell.coord);
+          return (
           <span
-            key={`${cell.coord.cell.x}:${cell.coord.cell.y}`}
+            data-cell-id={cell.id}
+            key={cell.id}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelectCell(cell.coord);
+              onPaintCell(cell.coord, selectedMaterial);
+            }}
             style={{
               backgroundColor: rgba(materialColor(cell.material)),
               height: camera.zoom,
-              left: cell.coord.cell.x * camera.zoom,
-              top: cell.coord.cell.y * camera.zoom,
+              left: absolute.x * camera.zoom,
+              top: absolute.y * camera.zoom,
               width: camera.zoom,
             }}
           />
-        ))}
+          );
+        })}
       </div>
     </div>
   );
-}
-
-function sample(x: number, y: number, material: MaterialId) {
-  return {
-    coord: toWorldCoord(x, y),
-    material,
-    state: 0,
-    variant: 0,
-    flags: 0,
-  };
 }
 
 function rgba(color: [number, number, number, number]) {
   return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
 }
 
-function drawDemoPixels(canvas: HTMLCanvasElement, scale: number) {
+function drawDemoPixels(canvas: HTMLCanvasElement, cells: readonly DemoCell[], scale: number) {
   const context = canvas.getContext("2d");
   if (!context) return;
 
-  const cells = [
-    sample(32, 32, MATERIAL.Water),
-    sample(33, 32, MATERIAL.Plant),
-    sample(34, 32, MATERIAL.Paint),
-    sample(35, 32, MATERIAL.Stone),
-    sample(36, 32, MATERIAL.Fire),
-  ];
-
   for (const cell of cells) {
     const color = materialColor(cell.material);
+    const absolute = absoluteCoord(cell.coord);
     context.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] / 255})`;
-    context.fillRect(cell.coord.cell.x * scale, cell.coord.cell.y * scale, scale, scale);
+    context.fillRect(absolute.x * scale, absolute.y * scale, scale, scale);
   }
 }
