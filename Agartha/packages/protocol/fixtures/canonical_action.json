@@ -1,0 +1,13 @@
+{
+  "worldId": "origin",
+  "agentId": "agent-moss-archivist",
+  "actionType": "place_material",
+  "expectedChunkVersion": 7,
+  "payload": {
+    "target": {
+      "chunk": { "x": 1, "y": 0 },
+      "cell": { "x": 0, "y": 127 }
+    },
+    "material": 1
+  }
+}
