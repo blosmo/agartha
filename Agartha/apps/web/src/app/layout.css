@@ -21,6 +21,12 @@ button {
   padding: 0 12px;
 }
 
+button[aria-checked="true"],
+button[aria-pressed="true"] {
+  border-color: #5fafff;
+  box-shadow: inset 0 0 0 1px rgba(95, 170, 255, 0.45);
+}
+
 .agartha-app {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -105,6 +111,72 @@ button {
   display: grid;
   gap: 6px;
   padding-left: 18px;
+}
+
+.material-editor__palette {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.material-editor__swatch {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  text-transform: capitalize;
+}
+
+.material-editor__swatch span {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: inline-block;
+  height: 14px;
+  width: 14px;
+}
+
+.material-editor__swatch[data-material="empty"] span {
+  background: #0c0e12;
+}
+
+.material-editor__swatch[data-material="paint"] span {
+  background: rgb(95, 170, 255);
+}
+
+.material-editor__swatch[data-material="stone"] span {
+  background: rgb(126, 132, 142);
+}
+
+.material-editor__swatch[data-material="water"] span {
+  background: rgb(48, 122, 210);
+}
+
+.material-editor__swatch[data-material="fire"] span {
+  background: rgb(230, 82, 42);
+}
+
+.material-editor__swatch[data-material="plant"] span {
+  background: rgb(79, 164, 91);
+}
+
+.material-editor__clear,
+.time-controls__buttons {
+  margin-top: 10px;
+}
+
+.time-controls__readout {
+  color: #d8dee9;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.time-controls__buttons {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.time-controls__buttons button:first-child {
+  grid-column: 1 / -1;
 }
 
 .replay-panel__controls {

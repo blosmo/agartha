@@ -1,13 +1,12 @@
-import { MATERIAL, MATERIAL_NAME, toWorldCoord, type MaterialId } from "@agartha/protocol/world";
+import { MATERIAL, MATERIAL_NAME, type MaterialId, type WorldCoord } from "@agartha/protocol/world";
 
 export interface CellInspectorProps {
+  readonly coord: WorldCoord;
   readonly material?: MaterialId;
   readonly state?: number;
 }
 
-export function CellInspector({ material = MATERIAL.Paint, state = 0 }: CellInspectorProps) {
-  const coord = toWorldCoord(65, 65);
-
+export function CellInspector({ coord, material = MATERIAL.Paint, state = 0 }: CellInspectorProps) {
   return (
     <section className="inspector-panel" aria-label="Cell inspector">
       <h2>Cell Inspector</h2>
