@@ -4,7 +4,10 @@ import { MATERIAL, MATERIAL_NAME, type MaterialId, type WorldCoord } from "@agar
 
 import {
   cellKey,
+  DEFAULT_TERRAIN_SEED,
   INITIAL_DEMO_CELLS,
+  TERRAIN_SEEDS,
+  generateTerrain,
   stepDemoWorld,
   upsertCell,
   type DemoCell,
@@ -12,6 +15,7 @@ import {
 } from "./demoWorld";
 import { BoardCanvas } from "../board/BoardCanvas";
 import { MaterialEditorPanel } from "../controls/MaterialEditorPanel";
+import { TerrainSeedPanel } from "../controls/TerrainSeedPanel";
 import { TimeControls } from "../controls/TimeControls";
 import { CellInspector } from "../inspector/CellInspector";
 import { EventHistoryPanel } from "../inspector/EventHistoryPanel";
@@ -20,6 +24,7 @@ import "./layout.css";
 
 export function App() {
   const [cells, setCells] = useState<DemoCell[]>(INITIAL_DEMO_CELLS);
+  const [terrainSeedId, setTerrainSeedId] = useState(DEFAULT_TERRAIN_SEED.id);
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialId>(MATERIAL.Paint);
   const [selectedCoord, setSelectedCoord] = useState<WorldCoord>(INITIAL_DEMO_CELLS[0].coord);
   const [tick, setTick] = useState(0);
@@ -70,11 +75,24 @@ export function App() {
   }
 
   function resetDemo() {
-    setCells(INITIAL_DEMO_CELLS);
+    const seed = TERRAIN_SEEDS.find((terrainSeed) => terrainSeed.id === terrainSeedId) ?? DEFAULT_TERRAIN_SEED;
+    const seededCells = generateTerrain(seed);
+    setCells(seededCells);
     setTick(0);
     setIsPlaying(false);
-    setSelectedCoord(INITIAL_DEMO_CELLS[0].coord);
-    setEvents([{ id: "demo-0001", tick: 0, summary: "Reset demo cells" }]);
+    setSelectedCoord(seededCells[0].coord);
+    setEvents([{ id: "demo-0001", tick: 0, summary: `Reset ${seed.label} terrain` }]);
+  }
+
+  function selectTerrainSeed(seedId: string) {
+    const seed = TERRAIN_SEEDS.find((terrainSeed) => terrainSeed.id === seedId) ?? DEFAULT_TERRAIN_SEED;
+    const seededCells = generateTerrain(seed);
+    setTerrainSeedId(seed.id);
+    setCells(seededCells);
+    setTick(0);
+    setIsPlaying(false);
+    setSelectedCoord(seededCells[0].coord);
+    setEvents([{ id: "demo-0001", tick: 0, summary: `Loaded ${seed.label} terrain seed ${seed.seed}` }]);
   }
 
   return (
@@ -88,6 +106,11 @@ export function App() {
         />
       </section>
       <aside className="agartha-side-panel" aria-label="World inspector">
+        <TerrainSeedPanel
+          onSelectSeed={selectTerrainSeed}
+          seeds={TERRAIN_SEEDS}
+          selectedSeedId={terrainSeedId}
+        />
         <MaterialEditorPanel
           onClear={resetDemo}
           onSelectMaterial={setSelectedMaterial}
