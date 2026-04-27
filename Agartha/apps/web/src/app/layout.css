@@ -119,6 +119,22 @@ button[aria-pressed="true"] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.terrain-seed-panel__options {
+  display: grid;
+  gap: 6px;
+}
+
+.terrain-seed-panel__options button {
+  text-align: left;
+}
+
+.terrain-seed-panel p {
+  color: #aab3c1;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 10px;
+}
+
 .material-editor__swatch {
   align-items: center;
   display: flex;
