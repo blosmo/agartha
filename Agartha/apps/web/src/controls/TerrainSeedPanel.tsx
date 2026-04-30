@@ -10,7 +10,7 @@ export function TerrainSeedPanel({ seeds, selectedSeedId, onSelectSeed }: Terrai
   const selectedSeed = seeds.find((seed) => seed.id === selectedSeedId) ?? seeds[0];
 
   return (
-    <section className="inspector-panel terrain-seed-panel" aria-label="Terrain seeds">
+    <section className="inspector-panel terrain-seed-panel gradient-border gradient-border-to-br" aria-label="Terrain seeds">
       <h2>Terrain Seeds</h2>
       <div className="terrain-seed-panel__options" role="radiogroup" aria-label="Terrain seed">
         {seeds.map((seed) => (

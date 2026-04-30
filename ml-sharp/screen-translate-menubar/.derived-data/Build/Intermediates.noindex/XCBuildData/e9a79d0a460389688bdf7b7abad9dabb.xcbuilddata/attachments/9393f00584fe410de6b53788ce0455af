@@ -1,0 +1,59 @@
+{
+  "" : {
+    "diagnostics" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslate-primary.dia",
+    "emit-module-dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslate-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslate-primary-emit-module.dia",
+    "pch" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslate-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslate-primary.swiftdeps"
+  },
+  "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/Sources/MenuRootView.swift" : {
+    "const-values" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/MenuRootView.swiftconstvalues",
+    "dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/MenuRootView.d",
+    "diagnostics" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/MenuRootView.dia",
+    "index-unit-output-path" : "/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/MenuRootView.o",
+    "llvm-bc" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/MenuRootView.bc",
+    "object" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/MenuRootView.o",
+    "swift-dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/MenuRootView.swiftdeps",
+    "swiftmodule" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/MenuRootView~partial.swiftmodule"
+  },
+  "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/Sources/ScreenTranslateApp.swift" : {
+    "const-values" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslateApp.swiftconstvalues",
+    "dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslateApp.d",
+    "diagnostics" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslateApp.dia",
+    "index-unit-output-path" : "/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslateApp.o",
+    "llvm-bc" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslateApp.bc",
+    "object" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslateApp.o",
+    "swift-dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslateApp.swiftdeps",
+    "swiftmodule" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenTranslateApp~partial.swiftmodule"
+  },
+  "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/Sources/ScreenshotCaptureClient.swift" : {
+    "const-values" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotCaptureClient.swiftconstvalues",
+    "dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotCaptureClient.d",
+    "diagnostics" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotCaptureClient.dia",
+    "index-unit-output-path" : "/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotCaptureClient.o",
+    "llvm-bc" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotCaptureClient.bc",
+    "object" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotCaptureClient.o",
+    "swift-dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotCaptureClient.swiftdeps",
+    "swiftmodule" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotCaptureClient~partial.swiftmodule"
+  },
+  "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/Sources/ScreenshotTranslationStore.swift" : {
+    "const-values" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotTranslationStore.swiftconstvalues",
+    "dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotTranslationStore.d",
+    "diagnostics" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotTranslationStore.dia",
+    "index-unit-output-path" : "/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotTranslationStore.o",
+    "llvm-bc" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotTranslationStore.bc",
+    "object" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotTranslationStore.o",
+    "swift-dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotTranslationStore.swiftdeps",
+    "swiftmodule" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/ScreenshotTranslationStore~partial.swiftmodule"
+  },
+  "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/Sources/TextRecognitionClient.swift" : {
+    "const-values" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/TextRecognitionClient.swiftconstvalues",
+    "dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/TextRecognitionClient.d",
+    "diagnostics" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/TextRecognitionClient.dia",
+    "index-unit-output-path" : "/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/TextRecognitionClient.o",
+    "llvm-bc" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/TextRecognitionClient.bc",
+    "object" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/TextRecognitionClient.o",
+    "swift-dependencies" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/TextRecognitionClient.swiftdeps",
+    "swiftmodule" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/ScreenTranslate.build/Debug/ScreenTranslate.build/Objects-normal/arm64/TextRecognitionClient~partial.swiftmodule"
+  }
+}

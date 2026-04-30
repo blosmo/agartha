@@ -1,0 +1,63 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "5f37acacf4bfd59c64c9969cc915d9bb6b51c3cbb1fe1029e2d85aa780be58a2"
+    }
+  ],
+  "containerPath" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/ScreenTranslate.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "activeArchitecture" : "arm64",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : false,
+      "platform" : "macosx",
+      "sdk" : "macosx26.2",
+      "sdkVariant" : "macos",
+      "supportedArchitectures" : [
+        "arm64e",
+        "arm64",
+        "x86_64"
+      ],
+      "targetArchitecture" : "arm64"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Products",
+      "derivedDataPath" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data",
+      "indexDataStoreFolderPath" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/cosmoscharf/Developer/Web/ml-sharp/screen-translate-menubar/.derived-data/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Debug",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "YES"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}
