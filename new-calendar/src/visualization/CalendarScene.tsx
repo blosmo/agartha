@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { makeGregorianSeasonSegments } from "../lib/gregorianSeasons";
 import type { OverlayMode } from "../lib/newCalendar";
 import {
   GOLDEN_QUADRANT_RATIO,
@@ -21,6 +22,9 @@ interface CalendarSceneProps {
   selectedIndex: number;
   overlayMode: OverlayMode;
   krystalStage: number;
+  cycleStartYear: number;
+  showGregorianOverlay: boolean;
+  simulatedDaysPerSecond: number;
   onSelectIndex: (index: number) => void;
   onHoverIndex: (index: number | null) => void;
 }
@@ -29,6 +33,8 @@ interface SelectionMarkerHandles {
   selected: THREE.Mesh;
   halo: THREE.Mesh;
   target: THREE.Vector3;
+  targetIndex: number;
+  spinAngle: number;
 }
 
 interface SceneHandles {
@@ -37,21 +43,29 @@ interface SceneHandles {
   selection: SelectionMarkerHandles;
 }
 
+const CAMERA_POLAR_ANGLE = Math.atan2(9.4, 7.2);
+const EARTH_AXIAL_TILT_RADIANS = THREE.MathUtils.degToRad(23.44);
+const EARTH_SIDEREAL_ROTATIONS_PER_SOLAR_DAY = 1.00273790935;
+const EARTH_ROTATION_OFFSET_RADIANS = -Math.PI / 2;
+
 export function CalendarScene({
   selectedIndex,
   overlayMode,
   krystalStage,
+  cycleStartYear,
+  showGregorianOverlay,
+  simulatedDaysPerSecond,
   onSelectIndex,
   onHoverIndex,
 }: CalendarSceneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const callbacksRef = useRef({ onSelectIndex, onHoverIndex });
+  const simulationRef = useRef({ simulatedDaysPerSecond });
   const sceneHandlesRef = useRef<SceneHandles | null>(null);
-  const overlayModeRef = useRef(overlayMode);
   const [webglFailed, setWebglFailed] = useState(false);
 
   callbacksRef.current = { onSelectIndex, onHoverIndex };
-  overlayModeRef.current = overlayMode;
+  simulationRef.current = { simulatedDaysPerSecond };
 
   useEffect(() => {
     const container = containerRef.current;
@@ -83,7 +97,10 @@ export function CalendarScene({
     controls.dampingFactor = 0.08;
     controls.minDistance = 4.6;
     controls.maxDistance = 16;
-    controls.maxPolarAngle = Math.PI * 0.78;
+    controls.enablePan = false;
+    controls.screenSpacePanning = false;
+    controls.minPolarAngle = CAMERA_POLAR_ANGLE;
+    controls.maxPolarAngle = CAMERA_POLAR_ANGLE;
     controls.target.set(0, 0, 0);
 
     scene.add(new THREE.AmbientLight(0xf8f0de, 1.8));
@@ -110,6 +127,8 @@ export function CalendarScene({
     const pointer = new THREE.Vector2();
     const clock = new THREE.Clock();
     let frameId = 0;
+    let hoverFrameId = 0;
+    let pendingHoverPoint: { clientX: number; clientY: number } | null = null;
     let disposed = false;
 
     function resize() {
@@ -122,29 +141,43 @@ export function CalendarScene({
       renderer.setSize(width, height, false);
     }
 
-    function pointerFromEvent(event: PointerEvent) {
+    function pointerFromClientPoint(clientX: number, clientY: number) {
       const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     }
 
-    function findDay(event: PointerEvent): number | null {
-      pointerFromEvent(event);
+    function findDay(clientX: number, clientY: number): number | null {
+      pointerFromClientPoint(clientX, clientY);
       raycaster.setFromCamera(pointer, camera);
       const hit = raycaster.intersectObject(dayMesh, false)[0];
       return typeof hit?.instanceId === "number" ? clampCalendarIndex(hit.instanceId) : null;
     }
 
     function handlePointerMove(event: PointerEvent) {
-      callbacksRef.current.onHoverIndex(findDay(event));
+      pendingHoverPoint = { clientX: event.clientX, clientY: event.clientY };
+      if (hoverFrameId) return;
+
+      hoverFrameId = window.requestAnimationFrame(() => {
+        hoverFrameId = 0;
+        if (!pendingHoverPoint) return;
+        const { clientX, clientY } = pendingHoverPoint;
+        pendingHoverPoint = null;
+        callbacksRef.current.onHoverIndex(findDay(clientX, clientY));
+      });
     }
 
     function handlePointerLeave() {
+      if (hoverFrameId) {
+        window.cancelAnimationFrame(hoverFrameId);
+        hoverFrameId = 0;
+      }
+      pendingHoverPoint = null;
       callbacksRef.current.onHoverIndex(null);
     }
 
     function handlePointerDown(event: PointerEvent) {
-      const index = findDay(event);
+      const index = findDay(event.clientX, event.clientY);
       if (index !== null) callbacksRef.current.onSelectIndex(index);
     }
 
@@ -152,10 +185,16 @@ export function CalendarScene({
       if (disposed) return;
       const delta = Math.min(clock.getDelta(), 0.05);
       const selectionAlpha = 1 - Math.exp(-delta * 8);
+      const simulatedDaysThisFrame = simulationRef.current.simulatedDaysPerSecond * delta;
       selection.selected.position.lerp(selection.target, selectionAlpha);
       selection.halo.position.lerp(selection.target, selectionAlpha);
+      selection.spinAngle =
+        simulatedDaysThisFrame > 0
+          ? selection.spinAngle +
+            simulatedDaysThisFrame * EARTH_SIDEREAL_ROTATIONS_PER_SOLAR_DAY * Math.PI * 2
+          : earthRotationForIndex(selection.targetIndex);
+      selection.selected.rotation.set(EARTH_AXIAL_TILT_RADIANS, selection.spinAngle, 0);
       selection.halo.rotation.z += delta * 0.9;
-      root.rotation.y += delta * (overlayModeRef.current === "calendar" ? 0.05 : 0.085);
       controls.update();
       renderer.render(scene, camera);
       frameId = window.requestAnimationFrame(animate);
@@ -173,6 +212,7 @@ export function CalendarScene({
     return () => {
       disposed = true;
       window.cancelAnimationFrame(frameId);
+      if (hoverFrameId) window.cancelAnimationFrame(hoverFrameId);
       resizeObserver.disconnect();
       renderer.domElement.removeEventListener("pointermove", handlePointerMove);
       renderer.domElement.removeEventListener("pointerleave", handlePointerLeave);
@@ -189,6 +229,11 @@ export function CalendarScene({
     const selection = sceneHandlesRef.current?.selection;
     if (!selection) return;
     selection.target.copy(selectionMarkerPosition(selectedIndex));
+    selection.targetIndex = selectedIndex;
+    if (simulationRef.current.simulatedDaysPerSecond === 0) {
+      selection.spinAngle = earthRotationForIndex(selectedIndex);
+      selection.selected.rotation.set(EARTH_AXIAL_TILT_RADIANS, selection.spinAngle, 0);
+    }
   }, [selectedIndex]);
 
   useEffect(() => {
@@ -201,8 +246,11 @@ export function CalendarScene({
     const overlayGroup = new THREE.Group();
     handles.root.add(overlayGroup);
     addKrystalOverlay(overlayGroup, overlayMode, krystalStage);
+    if (showGregorianOverlay) {
+      addGregorianOverlay(overlayGroup, cycleStartYear);
+    }
     handles.overlayGroup = overlayGroup;
-  }, [overlayMode, krystalStage]);
+  }, [overlayMode, krystalStage, cycleStartYear, showGregorianOverlay]);
 
   return (
     <div className="scene-wrap" aria-label="3D New Calendar visualization">
@@ -265,13 +313,27 @@ function addDayMarkers(root: THREE.Group): THREE.InstancedMesh {
 }
 
 function addCalendarGuides(root: THREE.Group) {
-  const centerGeometry = new THREE.SphereGeometry(0.1, 24, 24);
-  const centerMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    emissive: 0x88fff0,
-    emissiveIntensity: 1.3,
+  const sunGeometry = new THREE.SphereGeometry(0.24, 48, 48);
+  const sunMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffcf5a,
   });
-  root.add(new THREE.Mesh(centerGeometry, centerMaterial));
+  const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+  root.add(sun);
+
+  const coronaGeometry = new THREE.SphereGeometry(0.42, 48, 48);
+  const coronaMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffb13b,
+    transparent: true,
+    opacity: 0.18,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const corona = new THREE.Mesh(coronaGeometry, coronaMaterial);
+  root.add(corona);
+
+  const sunLight = new THREE.PointLight(0xffd27a, 18, 18, 1.2);
+  sunLight.position.set(0, 0.08, 0);
+  root.add(sunLight);
 
   for (let index = 0; index < 365; index += 36) {
     const angle = angleForIndex(index);
@@ -296,15 +358,19 @@ function selectionMarkerPosition(selectedIndex: number): THREE.Vector3 {
 
 function addSelectionMarkers(root: THREE.Group, selectedIndex: number): SelectionMarkerHandles {
   const target = selectionMarkerPosition(selectedIndex);
-  const selectedGeometry = new THREE.SphereGeometry(0.16, 32, 32);
+  const spinAngle = earthRotationForIndex(selectedIndex);
+  const selectedGeometry = new THREE.SphereGeometry(0.2, 48, 48);
   const selectedMaterial = new THREE.MeshStandardMaterial({
+    map: createEarthTexture(),
     color: 0xffffff,
-    emissive: 0xfff0aa,
-    emissiveIntensity: 2,
-    roughness: 0.2,
+    emissive: 0x08264a,
+    emissiveIntensity: 0.16,
+    roughness: 0.58,
+    metalness: 0.02,
   });
   const selected = new THREE.Mesh(selectedGeometry, selectedMaterial);
   selected.position.copy(target);
+  selected.rotation.set(EARTH_AXIAL_TILT_RADIANS, spinAngle, 0);
   root.add(selected);
 
   const haloGeometry = new THREE.TorusGeometry(0.28, 0.012, 8, 48);
@@ -318,7 +384,121 @@ function addSelectionMarkers(root: THREE.Group, selectedIndex: number): Selectio
   halo.rotation.x = Math.PI / 2;
   root.add(halo);
 
-  return { selected, halo, target };
+  return { selected, halo, target, targetIndex: selectedIndex, spinAngle };
+}
+
+function earthRotationForIndex(index: number): number {
+  return (
+    EARTH_ROTATION_OFFSET_RADIANS +
+    index * EARTH_SIDEREAL_ROTATIONS_PER_SOLAR_DAY * Math.PI * 2
+  );
+}
+
+function createEarthTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) return new THREE.CanvasTexture(canvas);
+
+  const ocean = context.createLinearGradient(0, 0, 0, canvas.height);
+  ocean.addColorStop(0, "#1b78d0");
+  ocean.addColorStop(0.5, "#0f4f9a");
+  ocean.addColorStop(1, "#092e67");
+  context.fillStyle = ocean;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.fillStyle = "#46a36d";
+  drawLand(context, [
+    [26, 34],
+    [48, 20],
+    [70, 33],
+    [63, 54],
+    [37, 59],
+  ]);
+  drawLand(context, [
+    [83, 71],
+    [103, 58],
+    [117, 79],
+    [105, 105],
+    [87, 96],
+  ]);
+  drawLand(context, [
+    [143, 30],
+    [172, 18],
+    [199, 36],
+    [188, 58],
+    [154, 54],
+  ]);
+  drawLand(context, [
+    [188, 72],
+    [221, 66],
+    [239, 84],
+    [224, 103],
+    [195, 98],
+  ]);
+
+  context.fillStyle = "rgba(255, 255, 255, 0.34)";
+  for (let i = 0; i < 9; i += 1) {
+    const x = 16 + i * 27;
+    context.beginPath();
+    context.ellipse(x, 28 + (i % 3) * 26, 18, 4, -0.2, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+function drawLand(context: CanvasRenderingContext2D, points: number[][]) {
+  context.beginPath();
+  points.forEach(([x, y], index) => {
+    if (index === 0) {
+      context.moveTo(x, y);
+      return;
+    }
+    context.lineTo(x, y);
+  });
+  context.closePath();
+  context.fill();
+}
+
+function addGregorianOverlay(root: THREE.Group, cycleStartYear: number) {
+  const outerRadius = 5.02;
+  const segments = makeGregorianSeasonSegments(cycleStartYear);
+
+  for (const segment of segments) {
+    const points = [];
+    for (let index = segment.startIndex; index <= segment.endIndex; index += 1) {
+      const point = pointForIndex(index, outerRadius);
+      points.push(new THREE.Vector3(point.x, 0.1, point.z));
+    }
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color: segment.color,
+      transparent: true,
+      opacity: 0.62,
+    });
+    root.add(new THREE.Line(geometry, material));
+  }
+
+  for (const segment of segments) {
+    const angle = angleForIndex(segment.startIndex);
+    const tickPoints = [
+      new THREE.Vector3(Math.cos(angle) * 4.72, 0.12, Math.sin(angle) * 4.72),
+      new THREE.Vector3(Math.cos(angle) * 5.24, 0.12, Math.sin(angle) * 5.24),
+    ];
+    const geometry = new THREE.BufferGeometry().setFromPoints(tickPoints);
+    const material = new THREE.LineBasicMaterial({
+      color: segment.color,
+      transparent: true,
+      opacity: 0.72,
+    });
+    root.add(new THREE.Line(geometry, material));
+  }
 }
 
 function addKrystalOverlay(root: THREE.Group, overlayMode: OverlayMode, maxStage: number) {
@@ -391,9 +571,18 @@ function disposeObject(object: THREE.Object3D) {
     if (mesh.geometry) mesh.geometry.dispose();
     const material = mesh.material;
     if (Array.isArray(material)) {
-      material.forEach((item) => item.dispose());
+      material.forEach(disposeMaterial);
     } else if (material) {
-      material.dispose();
+      disposeMaterial(material);
     }
   });
+}
+
+function disposeMaterial(material: THREE.Material) {
+  for (const value of Object.values(material)) {
+    if (value instanceof THREE.Texture) {
+      value.dispose();
+    }
+  }
+  material.dispose();
 }

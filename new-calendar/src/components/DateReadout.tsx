@@ -1,19 +1,27 @@
+import { useRef } from "react";
+import { FullscreenButton } from "./FullscreenButton";
 import type { NewCalendarDate } from "../lib/newCalendar";
-import { roundRatio } from "../lib/krystalSpiral";
 
 interface DateReadoutProps {
   calendarDate: NewCalendarDate;
-  krystalStage: number;
 }
 
-export function DateReadout({ calendarDate, krystalStage }: DateReadoutProps) {
+export function DateReadout({ calendarDate }: DateReadoutProps) {
+  const panelRef = useRef<HTMLElement | null>(null);
   const normalDate = !calendarDate.isReflectionDay;
 
   return (
-    <section className="date-readout" aria-label="Selected calendar position">
-      <div>
-        <p className="eyeline">Selected position</p>
-        <h1>{calendarDate.isReflectionDay ? calendarDate.monthName : calendarDate.season}</h1>
+    <section
+      ref={panelRef}
+      className="date-readout bento-fullscreenable"
+      aria-label="Selected calendar position"
+    >
+      <div className="panel-title-row">
+        <div>
+          <p className="eyeline">Selected position</p>
+          <h1>{calendarDate.isReflectionDay ? calendarDate.monthName : calendarDate.season}</h1>
+        </div>
+        <FullscreenButton label="Full screen selected position" targetRef={panelRef} />
       </div>
 
       <dl className="readout-grid">
@@ -37,11 +45,6 @@ export function DateReadout({ calendarDate, krystalStage }: DateReadoutProps) {
           <dd>{calendarDate.gregorianLabel}</dd>
         </div>
       </dl>
-
-      <div className="krystal-meter">
-        <span>Krystal stage {krystalStage}</span>
-        <strong>x{roundRatio(Math.SQRT2 ** krystalStage)}</strong>
-      </div>
     </section>
   );
 }
