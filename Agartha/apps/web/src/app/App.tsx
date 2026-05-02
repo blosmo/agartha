@@ -26,7 +26,9 @@ import {
   type PaintSwatch,
 } from "./demoWorld";
 import { BoardCanvas, type CellSelection } from "../board/BoardCanvas";
+import { useConvexWorldSnapshot, type ConvexWorldSnapshot } from "../api/convexWorldClient";
 import { fetchServerWorldSnapshot, readServerWorldConfig } from "../api/worldClient";
+import { AgarthaConvexProvider, readConvexUrl } from "./ConvexProvider";
 import { AgentCliBar } from "../controls/AgentCommandPanel";
 import { MaterialEditorPanel, ToolDock } from "../controls/MaterialEditorPanel";
 import { ObjectLibraryPanel } from "../controls/ObjectLibraryPanel";
@@ -43,10 +45,13 @@ type WorldSourceState = {
   readonly chunkVersions?: Record<string, number>;
   readonly connection: "local" | "connecting" | "connected" | "error" | "missing_token";
   readonly message: string;
-  readonly mode: "local_demo" | "server_backed";
+  readonly mode: "local_demo" | "server_backed" | "convex_backed";
 };
 
 const SERVER_WORLD_CONFIG = readServerWorldConfig(import.meta.env);
+const CONVEX_URL = readConvexUrl(import.meta.env);
+const BACKEND_MODE = typeof import.meta.env.VITE_AGARTHA_BACKEND === "string" ? import.meta.env.VITE_AGARTHA_BACKEND : undefined;
+const EXPLICIT_CONVEX_MODE = BACKEND_MODE === "convex";
 
 const AGENT_COMMANDS = [
   "masterpiece phoenix x y [scale]",
@@ -60,7 +65,7 @@ const AGENT_COMMANDS = [
   "object stamp name x y [repeat stepX stepY]",
 ];
 
-export function App() {
+export function App({ convexSnapshot }: { readonly convexSnapshot?: ConvexWorldSnapshot } = {}) {
   const [uiMode, setUiMode] = useState<UIMode>("human");
   const [cells, setCells] = useState<DemoCell[]>(INITIAL_DEMO_CELLS);
   const [terrainSeedId, setTerrainSeedId] = useState(DEFAULT_TERRAIN_SEED.id);
@@ -77,7 +82,20 @@ export function App() {
     { id: "demo-0001", tick: 0, summary: "Seeded origin materials" },
   ]);
   const [worldSource, setWorldSource] = useState<WorldSourceState>(
-    SERVER_WORLD_CONFIG
+    EXPLICIT_CONVEX_MODE && !CONVEX_URL
+      ? {
+          connection: "error",
+          message: "Convex-backed mode needs VITE_CONVEX_URL",
+          mode: "convex_backed",
+        }
+      : CONVEX_URL
+        ? {
+            apiUrl: CONVEX_URL,
+            connection: "connecting",
+            message: "Connecting to Convex authoritative state",
+            mode: "convex_backed",
+          }
+        : SERVER_WORLD_CONFIG
       ? {
           apiUrl: SERVER_WORLD_CONFIG.baseUrl,
           connection: SERVER_WORLD_CONFIG.token ? "connecting" : "missing_token",
@@ -86,11 +104,11 @@ export function App() {
             : "Server-backed Canvas mode needs VITE_AGARTHA_READ_TOKEN",
           mode: "server_backed",
         }
-      : {
-          connection: "local",
-          message: "Rendering browser-local demo state",
-          mode: "local_demo",
-        },
+        : {
+            connection: "local",
+            message: "Rendering browser-local demo state",
+            mode: "local_demo",
+          },
   );
   const selectedCell = useMemo(
     () => cells.find((cell) => cell.id === cellKey(selectedCoord)),
@@ -103,7 +121,7 @@ export function App() {
   );
 
   useEffect(() => {
-    if (!SERVER_WORLD_CONFIG) return;
+    if (CONVEX_URL || !SERVER_WORLD_CONFIG) return;
 
     let cancelled = false;
     let timer: number | undefined;
@@ -156,8 +174,32 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!CONVEX_URL || !convexSnapshot) return;
+    setCells([...convexSnapshot.cells]);
+    setUndoStack([]);
+    setRedoStack([]);
+    setIsPlaying(false);
+    setTick(convexSnapshot.events[0]?.tick ?? 0);
+    setEvents(
+      convexSnapshot.events.length > 0
+        ? [...convexSnapshot.events]
+        : [{ id: "convex-0000", tick: 0, summary: "Connected to empty Convex authoritative world" }],
+    );
+    setSelectedCoord((current) =>
+      convexSnapshot.cells.some((cell) => cell.id === cellKey(current)) ? current : convexSnapshot.cells[0]?.coord ?? current,
+    );
+    setWorldSource({
+      apiUrl: CONVEX_URL,
+      chunkVersions: convexSnapshot.chunkVersions,
+      connection: "connected",
+      message: "Rendering Convex authoritative state",
+      mode: "convex_backed",
+    });
+  }, [convexSnapshot]);
+
+  useEffect(() => {
     if (!isPlaying) return;
-    if (SERVER_WORLD_CONFIG) return;
+    if (SERVER_WORLD_CONFIG || CONVEX_URL) return;
     const timer = window.setInterval(() => {
       advanceTime();
     }, 650);
@@ -307,7 +349,7 @@ export function App() {
     setPaintSwatches((current) =>
       current.map((swatch) => (swatch.id === id ? { ...swatch, color } : swatch)),
     );
-    if (SERVER_WORLD_CONFIG) return;
+    if (SERVER_WORLD_CONFIG || CONVEX_URL) return;
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
@@ -338,7 +380,7 @@ export function App() {
       paintVariant: nextId,
       ...MATERIAL_TOOL_DEFAULTS[MATERIAL.Paint],
     }));
-    if (SERVER_WORLD_CONFIG) return;
+    if (SERVER_WORLD_CONFIG || CONVEX_URL) return;
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
@@ -350,8 +392,8 @@ export function App() {
   }
 
   function runAgentCommand(command: string) {
-    if (blockServerBackedMutation("In-app agent commands are disabled in server-backed mode. Use the agartha CLI.")) {
-      return "In-app agent commands are disabled in server-backed mode. Use the agartha CLI.";
+    if (blockServerBackedMutation("In-app agent commands are disabled in authoritative mode. Use the agartha CLI.")) {
+      return "In-app agent commands are disabled in authoritative mode. Use the agartha CLI.";
     }
 
     const result = executeAgentCommand(command, cells, toolSettings, objectTemplates);
@@ -489,10 +531,10 @@ export function App() {
   function updateSelection(nextSelection: CellSelection) {
     setSelection(nextSelection);
     setSelectedCoord(nextSelection.origin);
-    if (SERVER_WORLD_CONFIG) {
+    if (SERVER_WORLD_CONFIG || CONVEX_URL) {
       setWorldSource((current) => ({
         ...current,
-        message: `Selected ${nextSelection.width}x${nextSelection.height} cells in server-backed view`,
+      message: `Selected ${nextSelection.width}x${nextSelection.height} cells in authoritative view`,
       }));
       return;
     }
@@ -532,7 +574,7 @@ export function App() {
   }
 
   function blockServerBackedMutation(message: string) {
-    if (!SERVER_WORLD_CONFIG) return false;
+    if (!SERVER_WORLD_CONFIG && !CONVEX_URL) return false;
     setWorldSource((current) => ({
       ...current,
       message,
@@ -787,7 +829,7 @@ function AgentStateBridge({
       chunkVersions: worldSource.chunkVersions ?? null,
       connection: worldSource.connection,
       mode: worldSource.mode,
-      mutationAuthority: worldSource.mode === "server_backed" ? "server_api" : "browser_local_demo",
+      mutationAuthority: worldSource.mode === "server_backed" ? "server_api" : worldSource.mode === "convex_backed" ? "convex_api" : "browser_local_demo",
       status: worldSource.message,
     },
     tool,
@@ -1393,7 +1435,20 @@ if (root) {
   window.agarthaRoot ??= createRoot(root);
   window.agarthaRoot.render(
     <React.StrictMode>
-      <App />
+      <RootApp />
     </React.StrictMode>,
   );
+}
+
+function RootApp() {
+  return (
+    <AgarthaConvexProvider url={CONVEX_URL}>
+      <ConvexBackedApp />
+    </AgarthaConvexProvider>
+  );
+}
+
+function ConvexBackedApp() {
+  const convexSnapshot = CONVEX_URL ? useConvexWorldSnapshot() : undefined;
+  return <App convexSnapshot={convexSnapshot} />;
 }

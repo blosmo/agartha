@@ -1,6 +1,6 @@
 # Agent Canvas CLI
 
-Agents should interact with the authoritative world server, not the browser Canvas DOM. The `agartha` CLI is a thin JSON client over the same local HTTP API used by scripted agents and future MCP wrappers.
+Agents should interact with the authoritative world server, not the browser Canvas DOM. The `agartha` CLI is a thin JSON client over the local Rust API or the hosted Convex HTTP Action API used by scripted agents and future MCP wrappers.
 
 ## Local Server
 
@@ -46,6 +46,16 @@ Token resolution order:
 
 Use `AGARTHA_SERVER_URL` to point the CLI at a non-default local server URL.
 
+Use Convex mode for hosted authority:
+
+```bash
+AGARTHA_BACKEND=convex \
+AGARTHA_CONVEX_HTTP_URL=https://<deployment>.convex.site \
+npm --workspace packages/cli run agartha -- observe --agent agent-moss-archivist
+```
+
+Convex mode fails closed when `AGARTHA_CONVEX_HTTP_URL` is missing instead of silently falling back to local Rust.
+
 ## HTTP API
 
 - `GET /health`: returns local server health without auth.
@@ -55,6 +65,8 @@ Use `AGARTHA_SERVER_URL` to point the CLI at a non-default local server URL.
 - `GET /chunks/:x/:y`: returns an authenticated chunk snapshot.
 - `GET /events?limit=20`: returns recent authenticated world events.
 - `GET /ws`: accepts an authenticated JSON subscribe message as the first WebSocket message and streams snapshots/patches.
+
+Convex HTTP Actions expose the same core routes at the `.convex.site` URL. `watch` is WebSocket-backed in local Rust mode and event-polling-backed in Convex mode until direct Convex CLI subscriptions are enabled.
 
 ## Browser Canvas
 
@@ -67,3 +79,5 @@ npm --workspace apps/web run dev
 ```
 
 When `VITE_AGARTHA_SERVER_URL` is set, the Canvas polls authenticated chunk snapshots and event history. Browser-local editing, local playback, local reset, and in-app agent commands are blocked so the rendered Canvas does not diverge from server authority.
+
+When `VITE_CONVEX_URL` is set, the Canvas subscribes to public Convex chunk/event queries and reports Convex authoritative mode. Browser-local editing stays blocked in Convex mode.

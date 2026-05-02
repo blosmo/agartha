@@ -20,11 +20,15 @@ export async function runCli(
       return 0;
     }
 
-    const baseUrl = env.AGARTHA_SERVER_URL ?? "http://127.0.0.1:8787";
+    const backend = env.AGARTHA_BACKEND === "convex" || env.AGARTHA_CONVEX_HTTP_URL ? "convex" : "rust";
+    const baseUrl =
+      backend === "convex"
+        ? env.AGARTHA_CONVEX_HTTP_URL ?? requiredEnv("AGARTHA_CONVEX_HTTP_URL", env)
+        : env.AGARTHA_SERVER_URL ?? "http://127.0.0.1:8787";
 
     if (command.command === "admin") {
       const token = optionalOption(command, "admin-token") ?? env.AGARTHA_ADMIN_TOKEN ?? "token-admin-local";
-      const client = new AgarthaClient(baseUrl, token);
+      const client = new AgarthaClient(baseUrl, token, fetch, { backend, agentId: requiredOption(command, "agent") });
       if (command.subcommand === "refill-energy") {
         printJson(await client.adminRefillEnergy(requiredOption(command, "agent"), optionalNumberOption(command, "amount")), io.stdout);
         return 0;
@@ -34,7 +38,7 @@ export async function runCli(
 
     const agentId = requiredOption(command, "agent");
     const token = tokenForAgent(agentId, command, env);
-    const client = new AgarthaClient(baseUrl, token);
+    const client = new AgarthaClient(baseUrl, token, fetch, { backend, agentId });
 
     if (command.command === "observe") {
       printJson(await runObserve(client), io.stdout);
@@ -91,12 +95,18 @@ function help() {
   };
 }
 
+function requiredEnv(name: string, env: Record<string, string | undefined>) {
+  const value = env[name];
+  if (!value) throw new Error(`${name} is required when AGARTHA_BACKEND=convex`);
+  return value;
+}
+
 function runWatch(
   client: AgarthaClient,
   command: ReturnType<typeof parseArgs>,
   stdout: Pick<typeof process.stdout, "write">,
 ): Promise<number> {
-  if (typeof WebSocket === "undefined") {
+  if (!client.isConvexBackend() && typeof WebSocket === "undefined") {
     throw new Error("WebSocket is unavailable in this Node runtime");
   }
 

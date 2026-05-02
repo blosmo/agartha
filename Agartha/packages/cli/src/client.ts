@@ -35,10 +35,16 @@ export class AgarthaClient {
     private readonly baseUrl: string,
     private readonly token: string,
     private readonly fetcher: typeof fetch = fetch,
+    private readonly options: { readonly backend?: "rust" | "convex"; readonly agentId?: string } = {},
   ) {}
 
   observe() {
-    return this.request<AgentPerception>("/observe", { method: "GET" });
+    const query = this.options.backend === "convex" && this.options.agentId ? `?agentId=${encodeURIComponent(this.options.agentId)}` : "";
+    return this.request<AgentPerception>(`/observe${query}`, { method: "GET" });
+  }
+
+  isConvexBackend() {
+    return this.options.backend === "convex";
   }
 
   quote(envelope: ActionEnvelope) {
@@ -73,6 +79,7 @@ export class AgarthaClient {
       readonly onClose: () => void;
     },
   ): WebSocket {
+    if (this.options.backend === "convex") return this.pollWatch(handlers) as unknown as WebSocket;
     const socket = new WebSocket(this.websocketUrl("/ws"));
     socket.addEventListener("open", () => {
       socket.send(JSON.stringify({ chunk: request.chunk, radiusChunks: request.radiusChunks, token: this.token }));
@@ -121,6 +128,36 @@ export class AgarthaClient {
     const url = new URL(path, this.baseUrl);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     return url.toString();
+  }
+
+  private pollWatch(handlers: {
+    readonly onMessage: (message: unknown) => void;
+    readonly onError: (error: Error) => void;
+    readonly onClose: () => void;
+  }) {
+    let closed = false;
+    let seen = "";
+    const poll = async () => {
+      try {
+        const events = await this.events(20);
+        const latest = JSON.stringify(events);
+        if (latest !== seen) {
+          seen = latest;
+          handlers.onMessage({ type: "events", events });
+        }
+      } catch (error) {
+        handlers.onError(error instanceof Error ? error : new Error("Convex watch polling failed"));
+      }
+      if (!closed) timer = setTimeout(poll, 1200);
+    };
+    let timer = setTimeout(poll, 0);
+    return {
+      close: () => {
+        closed = true;
+        clearTimeout(timer);
+        handlers.onClose();
+      },
+    };
   }
 }
 

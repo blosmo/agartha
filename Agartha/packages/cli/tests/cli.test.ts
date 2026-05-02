@@ -29,6 +29,47 @@ describe("agartha CLI", () => {
     expect(JSON.parse(io.stdoutText())).toMatchObject({ agentId: "agent-moss-archivist" });
   });
 
+  it("targets Convex HTTP Actions when configured", async () => {
+    const calls: Request[] = [];
+    globalThis.fetch = async (input, init) => {
+      calls.push(new Request(input, init));
+      return jsonResponse({
+        agentId: "agent-moss-archivist",
+        availableActions: ["place_material"],
+        memorySummary: "",
+        nearbySymbols: [],
+        position: { chunk: { x: 0, y: 0 }, cell: { x: 64, y: 64 } },
+        recentEvents: [],
+        visibleCells: [],
+        worldEnergy: { cap: 50, current: 40, nextRegenerationTick: 2, regeneratesEveryTicks: 2 },
+        worldId: "origin",
+      });
+    };
+    const io = captureIo();
+
+    const code = await runCli(
+      ["observe", "--agent", "agent-moss-archivist"],
+      { AGARTHA_BACKEND: "convex", AGARTHA_CONVEX_HTTP_URL: "https://demo.convex.site" },
+      io,
+    );
+
+    expect(code).toBe(0);
+    expect(calls[0].url).toBe("https://demo.convex.site/observe?agentId=agent-moss-archivist");
+    expect(calls[0].headers.get("authorization")).toBe("Bearer token-moss");
+  });
+
+  it("fails closed when Convex mode is selected without a Convex HTTP URL", async () => {
+    const io = captureIo();
+
+    const code = await runCli(["observe", "--agent", "agent-moss-archivist"], { AGARTHA_BACKEND: "convex" }, io);
+
+    expect(code).toBe(2);
+    expect(JSON.parse(io.stderrText())).toMatchObject({
+      ok: false,
+      reason: "cli_error",
+    });
+  });
+
   it("posts place-material actions with absolute coordinate conversion", async () => {
     let body: unknown;
     globalThis.fetch = async (_input, init) => {
@@ -160,6 +201,30 @@ describe("agartha CLI", () => {
 
       expect(await run).toBe(0);
       expect(JSON.parse(io.stdoutText())).toEqual({ type: "snapshot", snapshot: { version: 2 } });
+    } finally {
+      globalThis.WebSocket = originalWebSocket;
+    }
+  });
+
+  it("watches Convex mode through the polling fallback without WebSocket", async () => {
+    const originalWebSocket = globalThis.WebSocket;
+    // @ts-expect-error test simulates Node runtimes without WebSocket.
+    globalThis.WebSocket = undefined;
+    globalThis.fetch = async () => jsonResponse([{ id: "event-1", summary: "painted" }]);
+    const io = captureIo();
+
+    try {
+      const code = await runCli(
+        ["watch", "--agent", "agent-moss-archivist", "--chunk", "0:0", "--once"],
+        { AGARTHA_BACKEND: "convex", AGARTHA_CONVEX_HTTP_URL: "https://demo.convex.site" },
+        io,
+      );
+
+      expect(code).toBe(0);
+      expect(JSON.parse(io.stdoutText())).toEqual({
+        type: "events",
+        events: [{ id: "event-1", summary: "painted" }],
+      });
     } finally {
       globalThis.WebSocket = originalWebSocket;
     }
