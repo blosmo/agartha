@@ -8,6 +8,7 @@ import {
   MATERIAL_TOOL_DEFAULTS,
   absoluteCoord,
   applyMaterialTool,
+  applyMaterialStroke,
   captureCellObject,
   cellKey,
   DEFAULT_TERRAIN_SEED,
@@ -25,6 +26,7 @@ import {
   type PaintSwatch,
 } from "./demoWorld";
 import { BoardCanvas, type CellSelection } from "../board/BoardCanvas";
+import { fetchServerWorldSnapshot, readServerWorldConfig } from "../api/worldClient";
 import { AgentCliBar } from "../controls/AgentCommandPanel";
 import { MaterialEditorPanel, ToolDock } from "../controls/MaterialEditorPanel";
 import { ObjectLibraryPanel } from "../controls/ObjectLibraryPanel";
@@ -36,6 +38,15 @@ import { ReplayControls } from "../replay/ReplayControls";
 import "./layout.css";
 
 type UIMode = "human" | "agent";
+type WorldSourceState = {
+  readonly apiUrl?: string;
+  readonly chunkVersions?: Record<string, number>;
+  readonly connection: "local" | "connecting" | "connected" | "error" | "missing_token";
+  readonly message: string;
+  readonly mode: "local_demo" | "server_backed";
+};
+
+const SERVER_WORLD_CONFIG = readServerWorldConfig(import.meta.env);
 
 const AGENT_COMMANDS = [
   "masterpiece phoenix x y [scale]",
@@ -65,6 +76,22 @@ export function App() {
   const [events, setEvents] = useState<DemoEvent[]>([
     { id: "demo-0001", tick: 0, summary: "Seeded origin materials" },
   ]);
+  const [worldSource, setWorldSource] = useState<WorldSourceState>(
+    SERVER_WORLD_CONFIG
+      ? {
+          apiUrl: SERVER_WORLD_CONFIG.baseUrl,
+          connection: SERVER_WORLD_CONFIG.token ? "connecting" : "missing_token",
+          message: SERVER_WORLD_CONFIG.token
+            ? "Connecting to authoritative server state"
+            : "Server-backed Canvas mode needs VITE_AGARTHA_READ_TOKEN",
+          mode: "server_backed",
+        }
+      : {
+          connection: "local",
+          message: "Rendering browser-local demo state",
+          mode: "local_demo",
+        },
+  );
   const selectedCell = useMemo(
     () => cells.find((cell) => cell.id === cellKey(selectedCoord)),
     [cells, selectedCoord],
@@ -76,7 +103,61 @@ export function App() {
   );
 
   useEffect(() => {
+    if (!SERVER_WORLD_CONFIG) return;
+
+    let cancelled = false;
+    let timer: number | undefined;
+
+    async function refreshServerWorld() {
+      try {
+        const snapshot = await fetchServerWorldSnapshot(SERVER_WORLD_CONFIG!);
+        if (cancelled) return;
+
+        setCells(snapshot.cells);
+        setUndoStack([]);
+        setRedoStack([]);
+        setIsPlaying(false);
+        setTick(snapshot.events[0]?.tick ?? 0);
+        setEvents(
+          snapshot.events.length > 0
+            ? snapshot.events
+            : [{ id: "server-0000", tick: 0, summary: "Connected to authoritative server state" }],
+        );
+        setSelectedCoord((current) =>
+          snapshot.cells.some((cell) => cell.id === cellKey(current)) ? current : snapshot.cells[0]?.coord ?? current,
+        );
+        setWorldSource({
+          apiUrl: SERVER_WORLD_CONFIG!.baseUrl,
+          chunkVersions: snapshot.chunkVersions,
+          connection: "connected",
+          message: `Rendering authoritative server state from ${SERVER_WORLD_CONFIG!.baseUrl}`,
+          mode: "server_backed",
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setWorldSource({
+          apiUrl: SERVER_WORLD_CONFIG!.baseUrl,
+          connection: error instanceof Error && "reason" in error && error.reason === "missing_token" ? "missing_token" : "error",
+          message: error instanceof Error ? error.message : "Unable to load authoritative server state",
+          mode: "server_backed",
+        });
+      }
+    }
+
+    void refreshServerWorld();
+    timer = window.setInterval(() => {
+      void refreshServerWorld();
+    }, 1200);
+
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isPlaying) return;
+    if (SERVER_WORLD_CONFIG) return;
     const timer = window.setInterval(() => {
       advanceTime();
     }, 650);
@@ -95,6 +176,8 @@ export function App() {
       setSelectedCoord(coord);
       return;
     }
+
+    if (blockServerBackedMutation("Browser tool edits are disabled in server-backed mode. Use agartha CLI/API.")) return;
 
     if (toolSettings.mode === "stamp") {
       const template = objectTemplates.find((candidate) => candidate.id === toolSettings.objectId) ?? objectTemplates[0];
@@ -142,33 +225,28 @@ export function App() {
 
   function applyStroke(coords: readonly WorldCoord[]) {
     if (coords.length === 0) return;
+    if (blockServerBackedMutation("Browser paint strokes are disabled in server-backed mode. Use agartha CLI/API.")) return;
 
-    let nextCells = cells;
-    let affected = 0;
-    for (const coord of coords) {
-      const result = applyMaterialTool(nextCells, coord, toolSettings);
-      nextCells = result.cells;
-      affected += result.affected;
-    }
-
+    const result = applyMaterialStroke(cells, coords, toolSettings);
     const finalCoord = coords[coords.length - 1];
     setSelectedCoord(finalCoord);
-    if (affected > 0) {
+    if (result.affected > 0) {
       setUndoStack((current) => [cells, ...current].slice(0, 24));
       setRedoStack([]);
-      setCells(nextCells);
     }
+    setCells(result.cells);
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
         tick,
-        summary: `${toolLabel(toolSettings.mode)} stroke: ${editSummary(affected, finalCoord, toolSettings.mode === "eraser" ? MATERIAL.Empty : toolSettings.material)}`,
+        summary: `${toolLabel(toolSettings.mode)} stroke: ${editSummary(result.affected, finalCoord, result.material)}`,
       },
       ...eventList,
     ]);
   }
 
   function commitCells(nextCells: DemoCell[], summary: string, coord?: WorldCoord, previousCells = cells) {
+    if (blockServerBackedMutation("Browser cell commits are disabled in server-backed mode. Use agartha CLI/API.")) return;
     setUndoStack((current) => [previousCells, ...current].slice(0, 24));
     setRedoStack([]);
     setCells(nextCells);
@@ -184,6 +262,7 @@ export function App() {
   }
 
   function undoEdit() {
+    if (blockServerBackedMutation("Undo is disabled in server-backed mode because state is owned by the server.")) return;
     const previousCells = undoStack[0];
     if (!previousCells) return;
 
@@ -202,6 +281,7 @@ export function App() {
   }
 
   function redoEdit() {
+    if (blockServerBackedMutation("Redo is disabled in server-backed mode because state is owned by the server.")) return;
     const nextCells = redoStack[0];
     if (!nextCells) return;
 
@@ -227,6 +307,7 @@ export function App() {
     setPaintSwatches((current) =>
       current.map((swatch) => (swatch.id === id ? { ...swatch, color } : swatch)),
     );
+    if (SERVER_WORLD_CONFIG) return;
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
@@ -257,6 +338,7 @@ export function App() {
       paintVariant: nextId,
       ...MATERIAL_TOOL_DEFAULTS[MATERIAL.Paint],
     }));
+    if (SERVER_WORLD_CONFIG) return;
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
@@ -268,6 +350,10 @@ export function App() {
   }
 
   function runAgentCommand(command: string) {
+    if (blockServerBackedMutation("In-app agent commands are disabled in server-backed mode. Use the agartha CLI.")) {
+      return "In-app agent commands are disabled in server-backed mode. Use the agartha CLI.";
+    }
+
     const result = executeAgentCommand(command, cells, toolSettings, objectTemplates);
 
     if (result.kind === "error") {
@@ -329,6 +415,7 @@ export function App() {
   });
 
   function advanceTime() {
+    if (blockServerBackedMutation("Local time stepping is disabled in server-backed mode.")) return;
     setCells((current) => stepDemoWorld(current));
     setTick((currentTick) => {
       const nextTick = currentTick + 1;
@@ -345,6 +432,7 @@ export function App() {
   }
 
   function resetDemo() {
+    if (blockServerBackedMutation("Local reset is disabled in server-backed mode.")) return;
     const seed = TERRAIN_SEEDS.find((terrainSeed) => terrainSeed.id === terrainSeedId) ?? DEFAULT_TERRAIN_SEED;
     const seededCells = generateTerrain(seed);
     setCells(seededCells);
@@ -356,7 +444,24 @@ export function App() {
     setEvents([{ id: "demo-0001", tick: 0, summary: `Reset ${seed.label} terrain` }]);
   }
 
+  function clearAllCells() {
+    if (blockServerBackedMutation("Local clear all is disabled in server-backed mode.")) return;
+    setUndoStack((current) => [cells, ...current].slice(0, 24));
+    setRedoStack([]);
+    setCells([]);
+    setIsPlaying(false);
+    setEvents((eventList) => [
+      {
+        id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
+        tick,
+        summary: "Cleared all canvas cells",
+      },
+      ...eventList,
+    ]);
+  }
+
   function captureObject(label: string) {
+    if (blockServerBackedMutation("Object capture is disabled in server-backed mode.")) return "Object capture is disabled in server-backed mode.";
     const captureSelection = selection ?? { height: 1, origin: selectedCoord, width: 1 };
     const template = captureCellObject(cells, label, captureSelection.origin, captureSelection.width, captureSelection.height);
     setObjectTemplates((current) => upsertTemplate(current, template));
@@ -384,6 +489,13 @@ export function App() {
   function updateSelection(nextSelection: CellSelection) {
     setSelection(nextSelection);
     setSelectedCoord(nextSelection.origin);
+    if (SERVER_WORLD_CONFIG) {
+      setWorldSource((current) => ({
+        ...current,
+        message: `Selected ${nextSelection.width}x${nextSelection.height} cells in server-backed view`,
+      }));
+      return;
+    }
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
@@ -395,6 +507,7 @@ export function App() {
   }
 
   function selectTerrainSeed(seedId: string) {
+    if (blockServerBackedMutation("Terrain seed switching is disabled in server-backed mode.")) return;
     const seed = TERRAIN_SEEDS.find((terrainSeed) => terrainSeed.id === seedId) ?? DEFAULT_TERRAIN_SEED;
     const seededCells = generateTerrain(seed);
     setTerrainSeedId(seed.id);
@@ -405,6 +518,26 @@ export function App() {
     setIsPlaying(false);
     setSelectedCoord(seededCells[0].coord);
     setEvents([{ id: "demo-0001", tick: 0, summary: `Loaded ${seed.label} terrain seed ${seed.seed}` }]);
+  }
+
+  function resetTime() {
+    if (blockServerBackedMutation("Local time reset is disabled in server-backed mode.")) return;
+    setTick(0);
+    setIsPlaying(false);
+  }
+
+  function togglePlayback() {
+    if (blockServerBackedMutation("Local playback is disabled in server-backed mode.")) return;
+    setIsPlaying((current) => !current);
+  }
+
+  function blockServerBackedMutation(message: string) {
+    if (!SERVER_WORLD_CONFIG) return false;
+    setWorldSource((current) => ({
+      ...current,
+      message,
+    }));
+    return true;
   }
 
   return (
@@ -427,9 +560,13 @@ export function App() {
         selectedMaterial={materialLabel(selectedCell?.material ?? MATERIAL.Empty)}
         selection={selection}
         tool={toolSettings.mode}
+        worldSource={worldSource}
       />
       <div className="sr-only" data-agent-id="latest-event-status" role="status" aria-live="polite">
         {latestEvent ? latestEvent.summary : "Ready"}
+      </div>
+      <div className="sr-only" data-agent-id="canvas-source-status" role="status" aria-live="polite">
+        {worldSource.message}
       </div>
       <section className="agartha-board-shell" aria-label="Agartha board" data-agent-region="board">
         <ModeSwitch mode={uiMode} onChangeMode={setUiMode} />
@@ -497,6 +634,7 @@ export function App() {
                 canUndo={undoStack.length > 0}
                 onCreatePaintSwatch={createPaintSwatch}
                 onClear={resetDemo}
+                onClearAllCells={clearAllCells}
                 onRedo={redoEdit}
                 onUndo={undoEdit}
                 onUpdatePaintSwatch={updatePaintSwatch}
@@ -515,12 +653,14 @@ export function App() {
             canUndo={undoStack.length > 0}
             onCreatePaintSwatch={createPaintSwatch}
             onClear={resetDemo}
+            onClearAllCells={clearAllCells}
             onRedo={redoEdit}
             onUndo={undoEdit}
             onUpdatePaintSwatch={updatePaintSwatch}
             onUpdateSettings={updateToolSettings}
             paintSwatches={paintSwatches}
             settings={toolSettings}
+            showClearAllCells
           />
           <ObjectLibraryPanel
             onCapture={captureObject}
@@ -544,11 +684,10 @@ export function App() {
           <TimeControls
             isPlaying={isPlaying}
             onResetTime={() => {
-              setTick(0);
-              setIsPlaying(false);
+              resetTime();
             }}
             onStep={advanceTime}
-            onTogglePlay={() => setIsPlaying((current) => !current)}
+            onTogglePlay={togglePlayback}
             tick={tick}
           />
         </div>
@@ -569,12 +708,11 @@ export function App() {
             />
             <TimeControls
               isPlaying={isPlaying}
-              onResetTime={() => {
-                setTick(0);
-                setIsPlaying(false);
+            onResetTime={() => {
+                resetTime();
               }}
               onStep={advanceTime}
-              onTogglePlay={() => setIsPlaying((current) => !current)}
+              onTogglePlay={togglePlayback}
               tick={tick}
             />
           </div>
@@ -613,6 +751,7 @@ function AgentStateBridge({
   selectedMaterial,
   selection,
   tool,
+  worldSource,
 }: {
   readonly cells: number;
   readonly commands: readonly string[];
@@ -623,6 +762,7 @@ function AgentStateBridge({
   readonly selectedMaterial: string;
   readonly selection?: CellSelection;
   readonly tool: string;
+  readonly worldSource: WorldSourceState;
 }) {
   const state = {
     app: "agartha-first-demo",
@@ -642,6 +782,14 @@ function AgentStateBridge({
       material: selectedMaterial,
     },
     selection: selection ? { height: selection.height, origin: cellKey(selection.origin), width: selection.width } : null,
+    source: {
+      apiUrl: worldSource.apiUrl ?? null,
+      chunkVersions: worldSource.chunkVersions ?? null,
+      connection: worldSource.connection,
+      mode: worldSource.mode,
+      mutationAuthority: worldSource.mode === "server_backed" ? "server_api" : "browser_local_demo",
+      status: worldSource.message,
+    },
     tool,
     visibleCells: cells,
   };

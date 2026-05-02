@@ -21,6 +21,18 @@ describe("ChunkTextureCache", () => {
     expect(record.version).toBe(1);
   });
 
+  it("fills empty snapshot cells with the empty material color", () => {
+    const cache = new ChunkTextureCache();
+    const record = cache.applySnapshot({
+      worldId: "origin",
+      chunk: { x: 0, y: 0 },
+      version: 1,
+      cells: [],
+    });
+
+    expect(Array.from(record.pixels.slice(0, 4))).toEqual(materialColor(MATERIAL.Empty));
+  });
+
   it("applies ordered patches only to the affected chunk", () => {
     const cache = new ChunkTextureCache();
     cache.applySnapshot({ worldId: "origin", chunk: { x: 0, y: 0 }, version: 1, cells: [] });

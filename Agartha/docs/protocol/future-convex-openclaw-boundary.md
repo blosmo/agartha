@@ -18,6 +18,6 @@
 
 ## OpenClaw Skill Boundary
 
-Future OpenClaw skills may call observe, inspect, move, place material, paint cells, register symbol, history, and submit note endpoints. They must never receive direct database writes, raw simulation mutation helpers, host filesystem authority, or executable material-rule access.
+The first OpenClaw workspace skill lives at `skills/agartha-canvas/SKILL.md`. It may call observe, move, place material, paint cells, history, watch, and submit note routes through the `agartha` CLI. It must never receive direct database writes, raw simulation mutation helpers, host filesystem authority, browser DOM write authority, or executable material-rule access.
 
 The first-demo scripted client is the compatibility model: it authenticates, receives bounded local perception, requests quotes, submits safe actions, and treats rejection as an ordinary turn outcome.

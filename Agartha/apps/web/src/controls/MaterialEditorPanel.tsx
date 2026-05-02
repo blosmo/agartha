@@ -74,6 +74,8 @@ export interface MaterialEditorPanelProps {
   readonly onUpdatePaintSwatch: (id: number, color: string) => void;
   readonly onUpdateSettings: (settings: MaterialToolSettings) => void;
   readonly onClear: () => void;
+  readonly onClearAllCells?: () => void;
+  readonly showClearAllCells?: boolean;
 }
 
 export interface ToolDockProps {
@@ -264,6 +266,8 @@ export function MaterialEditorPanel({
   onUpdatePaintSwatch,
   onUpdateSettings,
   onClear,
+  onClearAllCells,
+  showClearAllCells = false,
 }: MaterialEditorPanelProps) {
   const isEraser = settings.mode === "eraser";
   const isObjectTool = settings.mode === "stamp" || settings.mode === "cursor" || settings.mode === "marquee";
@@ -471,6 +475,11 @@ export function MaterialEditorPanel({
       <button className="material-editor__clear" onClick={onClear} type="button">
         Reset demo cells
       </button>
+      {showClearAllCells && onClearAllCells ? (
+        <button className="material-editor__clear" data-variant="clear-all" onClick={onClearAllCells} type="button">
+          Clear all cells
+        </button>
+      ) : null}
       <div className="material-editor__history-controls">
         <button aria-label="Undo edit" disabled={!canUndo} onClick={onUndo} type="button">
           <ArrowCounterClockwise aria-hidden="true" size={15} />

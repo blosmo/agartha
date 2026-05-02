@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod agents;
+pub mod api;
 pub mod auth;
 pub mod events;
 pub mod memory;

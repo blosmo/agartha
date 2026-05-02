@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import { MATERIAL } from "@agartha/protocol/world";
 
 import {
+  DEMO_CANVAS_CELLS,
   DEFAULT_TOOL_SETTINGS,
   TERRAIN_SEEDS,
+  absoluteCoord,
+  applyMaterialStroke,
   applyMaterialTool,
   demoCell,
   generateTerrain,
@@ -28,6 +31,19 @@ describe("generateTerrain", () => {
     expect(materials.has(MATERIAL.Plant)).toBe(true);
     expect(materials.has(MATERIAL.Stone)).toBe(true);
     expect(materials.has(MATERIAL.Fire)).toBe(true);
+  });
+
+  it("spreads dense preset material across the full canvas", () => {
+    for (const seed of TERRAIN_SEEDS) {
+      const cells = generateTerrain(seed);
+      const absoluteCells = cells.map((cell) => absoluteCoord(cell.coord));
+
+      expect(cells.length).toBeGreaterThan(12_000);
+      expect(Math.min(...absoluteCells.map((cell) => cell.x))).toBeLessThanOrEqual(3);
+      expect(Math.max(...absoluteCells.map((cell) => cell.x))).toBeGreaterThanOrEqual(DEMO_CANVAS_CELLS - 4);
+      expect(Math.min(...absoluteCells.map((cell) => cell.y))).toBeLessThanOrEqual(3);
+      expect(Math.max(...absoluteCells.map((cell) => cell.y))).toBeGreaterThanOrEqual(DEMO_CANVAS_CELLS - 4);
+    }
   });
 });
 
@@ -120,5 +136,40 @@ describe("applyMaterialTool", () => {
 
     expect(result.affected).toBe(1);
     expect(result.cells).toHaveLength(0);
+  });
+});
+
+describe("applyMaterialStroke", () => {
+  it("batches brush stroke targets without rebuilding per coordinate", () => {
+    const first = demoCell(64, 64, MATERIAL.Paint).coord;
+    const second = demoCell(65, 64, MATERIAL.Paint).coord;
+    const batched = applyMaterialStroke([], [first, second], {
+      ...DEFAULT_TOOL_SETTINGS,
+      mode: "brush",
+      material: MATERIAL.Plant,
+      brushSize: 4,
+      hardness: 100,
+      opacity: 100,
+    });
+
+    const sequential = applyMaterialTool(applyMaterialTool([], first, {
+      ...DEFAULT_TOOL_SETTINGS,
+      mode: "brush",
+      material: MATERIAL.Plant,
+      brushSize: 4,
+      hardness: 100,
+      opacity: 100,
+    }).cells, second, {
+      ...DEFAULT_TOOL_SETTINGS,
+      mode: "brush",
+      material: MATERIAL.Plant,
+      brushSize: 4,
+      hardness: 100,
+      opacity: 100,
+    });
+
+    expect(batched.cells).toEqual(sequential.cells);
+    expect(batched.material).toBe(sequential.material);
+    expect(batched.affected).toBeGreaterThan(sequential.affected);
   });
 });

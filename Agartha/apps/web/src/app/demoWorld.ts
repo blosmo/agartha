@@ -115,19 +115,19 @@ export const TERRAIN_SEEDS: TerrainSeed[] = [
   {
     id: "stream-garden",
     label: "Stream Garden",
-    description: "Water channels, plant clusters, and a few agent markers.",
+    description: "A full-board wetland with braided streams, dense growth, and bright build pockets.",
     seed: 1843,
   },
   {
     id: "ember-break",
     label: "Ember Break",
-    description: "Stone ridges and fire pockets cutting through dry growth.",
+    description: "A fractured firebreak with ridges, ember fields, and protected garden corridors.",
     seed: 9021,
   },
   {
     id: "stone-delta",
     label: "Stone Delta",
-    description: "Dense rock islands split by branching water paths.",
+    description: "A rocky delta of islands, branching water, and mineral color seams.",
     seed: 4777,
   },
 ];
@@ -142,56 +142,59 @@ export function generateTerrain(terrainSeed: TerrainSeed): DemoCell[] {
   const cells = new Map<string, DemoCell>();
 
   function set(x: number, y: number, material: MaterialId, state = 0, variant = 0) {
+    if (!isWithinDemoCanvas(x, y)) return;
+    if (material === MATERIAL.Empty) {
+      cells.delete(cellKey(toWorldCoord(x, y)));
+      return;
+    }
     const cell = demoCell(x, y, material, state, variant);
     cells.set(cell.id, cell);
   }
 
-  const centerX = DEMO_CANVAS_CELLS / 2 + Math.floor(random() * 20) - 10;
-  const centerY = DEMO_CANVAS_CELLS / 2 + Math.floor(random() * 18) - 9;
+  const centerX = Math.floor(DEMO_CANVAS_CELLS / 2);
+  const centerY = Math.floor(DEMO_CANVAS_CELLS / 2);
+  const sampleStep = terrainSeed.id === "stream-garden" ? 2 : 3;
 
-  for (let x = 88; x <= 184; x += 1) {
-    const wave = Math.round(Math.sin((x + terrainSeed.seed) * 0.19) * 4);
-    const riverY = centerY + wave + Math.floor(random() * 3) - 1;
-    set(x, riverY, MATERIAL.Water);
-    if (random() > 0.62) set(x, riverY + 1, MATERIAL.Water);
-    if (random() > 0.74) set(x, riverY - 1, MATERIAL.Plant);
+  for (let y = 3; y < DEMO_CANVAS_CELLS - 3; y += sampleStep) {
+    for (let x = 3; x < DEMO_CANVAS_CELLS - 3; x += sampleStep) {
+      const material = terrainMaterialAt(terrainSeed.id, x, y, terrainSeed.seed);
+      const jitter = coordinateNoise(x, y, terrainSeed.seed + 97);
+      const variant = material === MATERIAL.Paint ? coordinateHash(toWorldCoord(x, y), terrainSeed.seed) % DEFAULT_PAINT_SWATCHES.length : 0;
+
+      set(x, y, material, material === MATERIAL.Fire ? Math.floor(jitter * 2) : 0, variant);
+      if (jitter > 0.68) set(x + 1, y, material, material === MATERIAL.Fire ? 1 : 0, variant);
+      if (jitter > 0.78) set(x, y + 1, material, material === MATERIAL.Fire ? 1 : 0, variant);
+      if (jitter > 0.9) set(x + 1, y + 1, material, material === MATERIAL.Fire ? 1 : 0, variant);
+    }
   }
 
-  for (let index = 0; index < 220; index += 1) {
-    const x = centerX + Math.floor(random() * 116) - 58;
-    const y = centerY + Math.floor(random() * 88) - 44;
-    const roll = random();
+  carvePath(set, 20, 40, 232, 210, 5, MATERIAL.Empty, terrainSeed.seed);
+  carvePath(set, 26, 210, 228, 48, 4, MATERIAL.Empty, terrainSeed.seed + 17);
+  carvePath(set, 0, centerY - 5, DEMO_CANVAS_CELLS - 1, centerY + 9, 3, MATERIAL.Paint, terrainSeed.seed + 29, 2);
 
-    if (roll < 0.46) {
-      set(x, y, MATERIAL.Plant);
-    } else if (roll < 0.68) {
-      set(x, y, MATERIAL.Stone);
-    } else if (roll < 0.83) {
-      set(x, y, MATERIAL.Paint, 0, Math.floor(random() * DEFAULT_PAINT_SWATCHES.length));
-    } else if (roll < 0.93) {
-      set(x, y, MATERIAL.Water);
-    } else {
-      set(x, y, MATERIAL.Fire, Math.floor(random() * 2));
-    }
+  if (terrainSeed.id === "stream-garden") {
+    carvePath(set, 0, 84, DEMO_CANVAS_CELLS - 1, 118, 5, MATERIAL.Water, terrainSeed.seed + 41);
+    carvePath(set, 58, 0, 188, DEMO_CANVAS_CELLS - 1, 4, MATERIAL.Water, terrainSeed.seed + 53);
+    scatterGroves(set, random, 28, MATERIAL.Plant, 5, 11);
   }
 
   if (terrainSeed.id === "ember-break") {
-    for (let offset = -36; offset <= 36; offset += 1) {
-      set(centerX + offset, centerY + Math.round(offset * 0.35), MATERIAL.Stone);
-      if (offset % 12 === 0) set(centerX + offset, centerY - 8, MATERIAL.Fire);
-    }
+    carvePath(set, 8, 76, 240, 136, 6, MATERIAL.Stone, terrainSeed.seed + 61);
+    carvePath(set, 24, 160, 238, 104, 5, MATERIAL.Stone, terrainSeed.seed + 73);
+    scatterGroves(set, random, 22, MATERIAL.Fire, 3, 8);
+    scatterGroves(set, random, 16, MATERIAL.Plant, 4, 7);
   }
 
   if (terrainSeed.id === "stone-delta") {
-    for (let offset = -40; offset <= 40; offset += 2) {
-      set(centerX + offset, centerY + 20 + Math.round(Math.sin(offset) * 4), MATERIAL.Stone);
-      set(centerX + offset, centerY - 20 + Math.round(Math.cos(offset) * 4), MATERIAL.Stone);
-    }
+    carvePath(set, 0, 70, DEMO_CANVAS_CELLS - 1, 104, 5, MATERIAL.Water, terrainSeed.seed + 89);
+    carvePath(set, 0, 142, DEMO_CANVAS_CELLS - 1, 170, 5, MATERIAL.Water, terrainSeed.seed + 101);
+    scatterGroves(set, random, 30, MATERIAL.Stone, 5, 12);
+    scatterGroves(set, random, 18, MATERIAL.Paint, 3, 7);
   }
 
-  set(centerX, centerY, MATERIAL.Paint, 0, 0);
-  set(centerX + 1, centerY, MATERIAL.Stone);
-  set(centerX + 2, centerY, MATERIAL.Plant);
+  addLandmark(set, centerX - 8, centerY - 8, MATERIAL.Paint, 0);
+  addLandmark(set, centerX + 18, centerY + 12, MATERIAL.Stone, 0);
+  addLandmark(set, centerX - 34, centerY + 20, MATERIAL.Plant, 0);
 
   return Array.from(cells.values()).sort(compareCells);
 }
@@ -378,6 +381,54 @@ export function applyMaterialTool(
   };
 }
 
+export function applyMaterialStroke(
+  cells: readonly DemoCell[],
+  coords: readonly WorldCoord[],
+  settings: MaterialToolSettings,
+): MaterialToolResult {
+  const material = settings.mode === "eraser" ? MATERIAL.Empty : settings.material;
+  const next = new Map(cells.map((cell) => [cell.id, cell]));
+  const visitedTargets = new Set<string>();
+  let affected = 0;
+
+  for (const coord of coords) {
+    const targets = toolTargets(next, coord, settings);
+    targets.forEach((target, index) => {
+      if (!shouldApplyTarget(target, coord, settings, index)) return;
+
+      const key = cellKey(target);
+      if (visitedTargets.has(key)) return;
+      visitedTargets.add(key);
+
+      const current = next.get(key);
+      if (material === MATERIAL.Empty) {
+        if (!current) return;
+        next.delete(key);
+        affected += 1;
+        return;
+      }
+
+      const nextVariant = material === MATERIAL.Paint ? settings.paintVariant : coordinateHash(target, 11) % 4;
+      if (current?.material === material && current.state === 0 && current.variant === nextVariant) return;
+      next.set(key, {
+        id: key,
+        coord: target,
+        material,
+        state: material === MATERIAL.Fire ? coordinateHash(target, 5) % 2 : 0,
+        variant: nextVariant,
+        flags: 0,
+      });
+      affected += 1;
+    });
+  }
+
+  return {
+    affected,
+    cells: Array.from(next.values()).sort(compareCells),
+    material,
+  };
+}
+
 export function stepDemoWorld(cells: readonly DemoCell[]): DemoCell[] {
   const next = new Map(cells.map((cell) => [cell.id, cell]));
   const occupied = new Set(next.keys());
@@ -556,6 +607,105 @@ function isWithinDemoCanvas(x: number, y: number) {
   return x >= 0 && y >= 0 && x < DEMO_CANVAS_CELLS && y < DEMO_CANVAS_CELLS;
 }
 
+function terrainMaterialAt(seedId: TerrainSeed["id"], x: number, y: number, seed: number): MaterialId {
+  const nx = x / DEMO_CANVAS_CELLS;
+  const ny = y / DEMO_CANVAS_CELLS;
+  const ridge =
+    Math.sin((nx * 4.8 + ny * 2.1) * Math.PI + seed * 0.01) +
+    Math.cos((ny * 5.6 - nx * 1.7) * Math.PI + seed * 0.013);
+  const grain = coordinateNoise(x, y, seed);
+  const fine = coordinateNoise(x * 3, y * 3, seed + 31);
+
+  if (seedId === "stream-garden") {
+    if (ridge > 1.08 || Math.abs(Math.sin((nx * 5.2 + ny * 8.4) * Math.PI)) < 0.08) return MATERIAL.Water;
+    if (grain > 0.84) return MATERIAL.Paint;
+    if (grain < 0.13) return MATERIAL.Stone;
+    return fine > 0.3 ? MATERIAL.Plant : MATERIAL.Water;
+  }
+
+  if (seedId === "ember-break") {
+    if (ridge > 0.86) return MATERIAL.Stone;
+    if (grain > 0.82 || (fine > 0.73 && ridge < -0.34)) return MATERIAL.Fire;
+    if (grain < 0.18) return MATERIAL.Plant;
+    return fine > 0.58 ? MATERIAL.Paint : MATERIAL.Stone;
+  }
+
+  if (ridge > 0.76 || grain < 0.24) return MATERIAL.Stone;
+  if (Math.abs(Math.sin((nx * 3.7 - ny * 6.2) * Math.PI)) < 0.075) return MATERIAL.Water;
+  if (grain > 0.86) return MATERIAL.Paint;
+  return fine > 0.62 ? MATERIAL.Plant : MATERIAL.Stone;
+}
+
+function carvePath(
+  set: (x: number, y: number, material: MaterialId, state?: number, variant?: number) => void,
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  radius: number,
+  material: MaterialId,
+  seed: number,
+  variant = 0,
+) {
+  const steps = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
+  for (let step = 0; step <= steps; step += 1) {
+    const progress = step / steps;
+    const x = Math.round(startX + (endX - startX) * progress);
+    const y =
+      Math.round(startY + (endY - startY) * progress) +
+      Math.round(Math.sin(progress * Math.PI * 6 + seed * 0.02) * radius * 0.7);
+
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        if (dx * dx + dy * dy > radius * radius) continue;
+        if (coordinateNoise(x + dx, y + dy, seed + step) < 0.1) continue;
+        set(x + dx, y + dy, material, material === MATERIAL.Fire ? 1 : 0, variant);
+      }
+    }
+  }
+}
+
+function scatterGroves(
+  set: (x: number, y: number, material: MaterialId, state?: number, variant?: number) => void,
+  random: () => number,
+  count: number,
+  material: MaterialId,
+  minRadius: number,
+  maxRadius: number,
+) {
+  for (let grove = 0; grove < count; grove += 1) {
+    const centerX = 8 + Math.floor(random() * (DEMO_CANVAS_CELLS - 16));
+    const centerY = 8 + Math.floor(random() * (DEMO_CANVAS_CELLS - 16));
+    const radius = minRadius + Math.floor(random() * (maxRadius - minRadius + 1));
+    const variant = material === MATERIAL.Paint ? Math.floor(random() * DEFAULT_PAINT_SWATCHES.length) : 0;
+
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        const distance = Math.hypot(dx, dy);
+        if (distance > radius || random() < distance / (radius * 1.35)) continue;
+        set(centerX + dx, centerY + dy, material, material === MATERIAL.Fire ? Math.floor(random() * 2) : 0, variant);
+      }
+    }
+  }
+}
+
+function addLandmark(
+  set: (x: number, y: number, material: MaterialId, state?: number, variant?: number) => void,
+  x: number,
+  y: number,
+  material: MaterialId,
+  variant: number,
+) {
+  for (let offset = -6; offset <= 6; offset += 1) {
+    set(x + offset, y, MATERIAL.Paint, 0, variant);
+    set(x, y + offset, material, 0, variant);
+  }
+  set(x - 1, y - 1, MATERIAL.Fire, 0);
+  set(x + 1, y - 1, MATERIAL.Water);
+  set(x - 1, y + 1, MATERIAL.Plant);
+  set(x + 1, y + 1, MATERIAL.Stone);
+}
+
 function shouldApplyTarget(
   target: WorldCoord,
   origin: WorldCoord,
@@ -602,6 +752,11 @@ function coordinateHash(coord: WorldCoord, salt: number) {
   const { x, y } = absoluteCoord(coord);
   const value = Math.imul(x + 374761393 + salt * 97, 668265263) ^ Math.imul(y + 2246822519, 3266489917);
   return Math.abs(value % 101);
+}
+
+function coordinateNoise(x: number, y: number, seed: number) {
+  const value = Math.imul(x + 374761393 + seed * 97, 668265263) ^ Math.imul(y + 2246822519 + seed * 31, 3266489917);
+  return (Math.abs(value) % 1000) / 1000;
 }
 
 function seededRandom(seed: number) {

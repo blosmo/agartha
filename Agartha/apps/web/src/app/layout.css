@@ -306,12 +306,45 @@ button:disabled {
   width: 30px;
 }
 
-.board-canvas__fallback {
+.board-canvas__background-layer,
+.board-canvas__texture-layer {
   contain: layout style;
   inset: 0;
   position: absolute;
   transform-origin: 0 0;
   will-change: transform;
+}
+
+.board-canvas__background-layer {
+  z-index: 0;
+}
+
+.board-canvas__texture-layer {
+  pointer-events: none;
+  z-index: 2;
+}
+
+.board-canvas__gpu-host {
+  contain: strict;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.board-canvas__gpu-surface {
+  display: block;
+  height: 100%;
+  image-rendering: pixelated;
+  width: 100%;
+}
+
+.board-canvas__chunk {
+  image-rendering: pixelated;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
 }
 
 .board-canvas__extent {
@@ -329,46 +362,6 @@ button:disabled {
   pointer-events: none;
   position: absolute;
   top: 0;
-}
-
-.board-canvas__fallback span {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  position: absolute;
-  z-index: 1;
-}
-
-.board-canvas__fallback span[aria-selected="true"] {
-  border-color: rgba(255, 255, 255, 0.92);
-  box-shadow:
-    0 0 0 1px rgba(12, 15, 20, 0.8),
-    0 0 16px rgba(255, 255, 255, 0.22);
-}
-
-.board-canvas__fallback span[data-material="paint"] {
-  box-shadow: 0 0 10px rgba(95, 170, 255, 0.32);
-}
-
-.board-canvas__fallback span[data-material="stone"] {
-  border-color: rgba(222, 226, 232, 0.22);
-  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.14);
-}
-
-.board-canvas__fallback span[data-material="water"] {
-  animation: agartha-water-shimmer 2.8s ease-in-out infinite;
-  border-color: rgba(145, 196, 255, 0.45);
-  box-shadow: 0 0 12px rgba(54, 139, 238, 0.45);
-}
-
-.board-canvas__fallback span[data-material="fire"] {
-  animation: agartha-fire-pulse 1.1s ease-in-out infinite;
-  border-color: rgba(255, 188, 98, 0.6);
-  box-shadow: 0 0 14px rgba(255, 98, 40, 0.65);
-}
-
-.board-canvas__fallback span[data-material="plant"] {
-  animation: agartha-plant-breathe 3.6s ease-in-out infinite;
-  border-color: rgba(147, 220, 143, 0.36);
-  box-shadow: 0 0 10px rgba(75, 180, 91, 0.3);
 }
 
 .board-canvas__selection {

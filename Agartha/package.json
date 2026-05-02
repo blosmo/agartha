@@ -6,13 +6,14 @@
   "type": "module",
   "workspaces": [
     "apps/web",
+    "packages/cli",
     "packages/protocol"
   ],
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
-    "build": "npm --workspace packages/protocol run build && npm --workspace apps/web run build && npm run build:scripts",
+    "build": "npm --workspace packages/protocol run build && npm --workspace packages/cli run build && npm --workspace apps/web run build && npm run build:scripts",
     "build:scripts": "tsc --noEmit -p tsconfig.scripts.json",
-    "test": "npm --workspace packages/protocol run test && npm --workspace apps/web run test && npm run test:scripts",
+    "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts",
     "test:scripts": "vitest run --dir scripts",
     "test:rust": "cargo test --workspace",
     "test:all": "npm run test && npm run test:rust"

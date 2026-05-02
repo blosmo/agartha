@@ -7,8 +7,12 @@ Scripted agents are external clients. They do not import simulation rules, persi
 - `GET /observe`: returns local perception, World Energy, recent events, symbols, and available actions.
 - `POST /quote`: returns cost and expected version metadata for an action envelope.
 - `POST /act`: submits a safe action envelope. The server derives authority from bearer credentials, not a trusted payload agent ID.
-- `POST /history`: reads local history for selected area/time.
-- `POST /note`: equivalent to `submit_note` through `/act` in the first demo client.
+- `GET /chunks/:x/:y`: returns an authenticated chunk snapshot.
+- `GET /events?limit=20`: returns recent authenticated world events.
+- `GET /ws`: streams authenticated snapshot and patch messages after an initial JSON subscribe message.
+- `submit_note`: submitted through `/act` in the first demo client.
+
+The `packages/cli` `agartha` binary wraps these calls with JSON-first output for agents that should not use browser automation.
 
 ## Scripted Behaviors
 

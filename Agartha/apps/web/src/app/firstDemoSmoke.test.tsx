@@ -47,13 +47,20 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByLabelText("Active material")).toHaveTextContent("Moss");
     expect(screen.getByLabelText("Active material properties")).toHaveTextContent("Flow57");
     expect(screen.getAllByText("Saved material Moss", { exact: false }).length).toBeGreaterThan(0);
+    const board = screen.getByTestId("board-canvas");
+    const boardCells = screen.getByTestId("board-cells");
+    const chunkCanvases = boardCells.querySelectorAll('canvas[data-agent-id^="chunk-"]');
+    expect(boardCells).toHaveAttribute("data-agent-region", "board-cells");
+    expect(boardCells).toHaveAttribute("data-renderer", "chunk-canvas");
+    expect(chunkCanvases.length).toBe(4);
+    expect(boardCells.querySelectorAll('[role="gridcell"][data-agent-id^="cell-"]').length).toBe(0);
+    expect(screen.getByTestId("board-semantic")).toHaveTextContent("Selected cell");
     fireEvent.click(screen.getByRole("radio", { name: "Cursor" }));
     expect(screen.getByRole("radio", { name: "Cursor" })).toHaveAttribute("aria-checked", "true");
-    const cursorSelectCells = screen.getByTestId("board-cells").querySelectorAll("span");
-    const cursorCellCount = cursorSelectCells.length;
-    fireEvent.click(cursorSelectCells[0]);
+    const cursorChunkCount = chunkCanvases.length;
+    applyBoardPointer(board);
     expect(screen.getByTestId("board-selection")).toBeInTheDocument();
-    expect(screen.getByTestId("board-cells").querySelectorAll("span").length).toEqual(cursorCellCount);
+    expect(screen.getByTestId("board-cells").querySelectorAll('canvas[data-agent-id^="chunk-"]').length).toEqual(cursorChunkCount);
     expect(screen.getByRole("radio", { name: "Marquee" })).toHaveAttribute("title", "Marquee (8)");
 
     expect(screen.queryByLabelText("Agent command input")).not.toBeInTheDocument();
@@ -88,20 +95,24 @@ describe("first demo viewer smoke", () => {
     expect(screen.getAllByText("Agent command: stamped 3 house objects", { exact: false }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("radio", { name: "Human" }));
     expect(screen.getByRole("radio", { name: "Pencil" })).toBeInTheDocument();
+    const cellsBeforeClearAll = screen.getByTestId("board-cells").getAttribute("data-active-cells");
+    expect(Number(cellsBeforeClearAll)).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Clear all cells" }));
+    expect(screen.getByTestId("board-cells")).toHaveAttribute("data-active-cells", "0");
+    expect(document.querySelector('[data-agent-id="latest-event-status"]')).toHaveTextContent("Cleared all canvas cells");
+    expect(screen.getByRole("button", { name: "Undo edit" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Undo edit" }));
+    expect(Number(screen.getByTestId("board-cells").getAttribute("data-active-cells"))).toBeGreaterThan(0);
 
-    const board = screen.getByTestId("board-canvas");
-    const boardCells = screen.getByTestId("board-cells");
-    expect(boardCells).toHaveAttribute("data-agent-region", "board-cells");
-    expect(boardCells.querySelectorAll('[role="gridcell"][data-agent-id^="cell-"]').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("radio", { name: "Cursor" }));
     fireEvent.keyDown(board, { key: "ArrowRight" });
     expect(screen.getByTestId("board-selection")).toBeInTheDocument();
     const initialTransform = boardCells.style.transform;
     fireEvent.wheel(board, { deltaX: 24, deltaY: 18 });
     expect(boardCells.style.transform).not.toEqual(initialTransform);
-    const initialCellSize = screen.getByTestId("board-cells").querySelector("span")?.style.width;
+    const initialChunkSize = screen.getByTestId("board-cells").querySelector<HTMLCanvasElement>("canvas")?.style.width;
     fireEvent.wheel(board, { ctrlKey: true, deltaY: -40 });
-    expect(screen.getByTestId("board-cells").querySelector("span")?.style.width).not.toEqual(initialCellSize);
+    expect(screen.getByTestId("board-cells").querySelector<HTMLCanvasElement>("canvas")?.style.width).not.toEqual(initialChunkSize);
     fireEvent.click(screen.getByRole("radio", { name: "Pencil" }));
     const transformBeforePaintDrag = boardCells.style.transform;
     fireEvent.pointerDown(board, { clientX: 420, clientY: 420, pointerId: 1 });
@@ -111,11 +122,11 @@ describe("first demo viewer smoke", () => {
     expect(document.querySelector('[data-agent-id="latest-event-status"]')).toHaveTextContent("Paint stroke:");
 
     expect(screen.getByRole("radio", { name: "Stream Garden" })).toHaveAttribute("aria-checked", "true");
-    const initialCells = screen.getByTestId("board-cells").querySelectorAll("span").length;
+    const initialCells = screen.getByTestId("board-cells").getAttribute("data-active-cells");
     fireEvent.click(screen.getByRole("radio", { name: "Ember Break" }));
     expect(screen.getByRole("radio", { name: "Ember Break" })).toHaveAttribute("aria-checked", "true");
     expect(document.querySelector('[data-agent-id="latest-event-status"]')).toHaveTextContent("Loaded Ember Break terrain seed 9021");
-    expect(screen.getByTestId("board-cells").querySelectorAll("span").length).not.toEqual(initialCells);
+    expect(screen.getByTestId("board-cells").getAttribute("data-active-cells")).not.toEqual(initialCells);
 
     fireEvent.click(screen.getByRole("radio", { name: "Brush" }));
     fireEvent.click(screen.getByRole("radio", { name: "Plant material" }));
@@ -126,10 +137,8 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByRole("radio", { name: "Plant material" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByLabelText("Active material")).toHaveTextContent("Plant");
 
-    const cells = screen.getByTestId("board-cells").querySelectorAll("span");
-    expect(cells.length).toBeGreaterThan(0);
-    fireEvent.click(cells[0]);
-    expect(screen.getAllByText("Brush tool:", { exact: false }).length).toBeGreaterThan(0);
+    applyBoardPointer(board, 456, 420);
+    expect(screen.getAllByText("Brush stroke:", { exact: false }).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("radio", { name: "Shape" }));
     expect(screen.getByRole("radio", { name: "Shape" })).toHaveAttribute("aria-checked", "true");
@@ -137,12 +146,12 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByRole("radio", { name: "Rectangle" })).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByRole("radio", { name: "Circle" }));
     expect(screen.getByRole("radio", { name: "Circle" })).toHaveAttribute("aria-checked", "true");
-    fireEvent.click(screen.getByTestId("board-cells").querySelectorAll("span")[0]);
+    applyBoardPointer(board, 472, 420);
     expect(screen.getAllByText("Shape tool:", { exact: false }).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("radio", { name: "Eraser" }));
-    fireEvent.click(screen.getByTestId("board-cells").querySelectorAll("span")[0]);
-    expect(screen.getAllByText("Eraser tool:", { exact: false }).length).toBeGreaterThan(0);
+    applyBoardPointer(board, 472, 420);
+    expect(screen.getAllByText("Eraser stroke:", { exact: false }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Undo edit" })).toBeEnabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Undo edit" }));
@@ -163,3 +172,8 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByText("Live view")).toBeInTheDocument();
   }, 60000);
 });
+
+function applyBoardPointer(board: HTMLElement, clientX = 420, clientY = 420) {
+  fireEvent.pointerDown(board, { clientX, clientY, pointerId: 1 });
+  fireEvent.pointerUp(board, { clientX, clientY, pointerId: 1 });
+}
