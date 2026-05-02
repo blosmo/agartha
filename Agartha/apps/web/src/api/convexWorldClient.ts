@@ -1,5 +1,5 @@
-import { anyApi } from "convex/server";
 import { useQuery } from "convex/react";
+import { makeFunctionReference } from "convex/server";
 import type { ChunkCoord } from "@agartha/protocol/world";
 
 import { absoluteCoord, type DemoCell, type DemoEvent } from "../app/demoWorld";
@@ -28,9 +28,18 @@ export interface ConvexWorldSnapshot {
   readonly chunkVersions: Record<string, number>;
 }
 
+const visibleChunksQuery = makeFunctionReference<
+  "query",
+  { worldId: string; chunks: { x: number; y: number }[] },
+  readonly ConvexChunkSnapshot[]
+>("chunks:visible");
+const recentEventsQuery = makeFunctionReference<"query", { worldId: string; limit: number }, readonly ConvexEventDto[]>(
+  "events:recent",
+);
+
 export function useConvexWorldSnapshot(chunks: readonly ChunkCoord[] = DEFAULT_SERVER_CHUNKS): ConvexWorldSnapshot | undefined {
-  const snapshots = useQuery(anyApi.chunks.visible, { worldId: "origin", chunks }) as readonly ConvexChunkSnapshot[] | undefined;
-  const events = useQuery(anyApi.events.recent, { worldId: "origin", limit: 20 }) as readonly ConvexEventDto[] | undefined;
+  const snapshots = useQuery(visibleChunksQuery, { worldId: "origin", chunks: chunks.map((chunk) => ({ ...chunk })) });
+  const events = useQuery(recentEventsQuery, { worldId: "origin", limit: 20 });
   if (!snapshots || !events) return undefined;
   return convexSnapshotToDemoWorld(snapshots, events);
 }
