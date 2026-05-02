@@ -98,6 +98,7 @@ export function App({
   const [tick, setTick] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [events, setEvents] = useState<DemoEvent[]>(INITIAL_APP_EVENTS);
+  const [pendingConvexCells, setPendingConvexCells] = useState<DemoCell[]>([]);
   const [worldSource, setWorldSource] = useState<WorldSourceState>(
     EXPLICIT_CONVEX_MODE && !CONVEX_URL
       ? {
@@ -192,7 +193,9 @@ export function App({
 
   useEffect(() => {
     if (!CONVEX_URL || !convexSnapshot) return;
-    setCells([...convexSnapshot.cells]);
+    const unresolvedPendingCells = pendingConvexCells.filter((cell) => !snapshotHasCell(convexSnapshot.cells, cell));
+    if (unresolvedPendingCells.length !== pendingConvexCells.length) setPendingConvexCells(unresolvedPendingCells);
+    setCells(mergeCells(convexSnapshot.cells, unresolvedPendingCells));
     setUndoStack([]);
     setRedoStack([]);
     setIsPlaying(false);
@@ -212,7 +215,7 @@ export function App({
       message: "Rendering Convex authoritative state",
       mode: "convex_backed",
     });
-  }, [convexSnapshot]);
+  }, [convexSnapshot, pendingConvexCells]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -266,6 +269,7 @@ export function App({
 
     const result = applyMaterialTool(cells, coord, toolSettings);
     if (CONVEX_URL) {
+      setCells(result.cells);
       void submitConvexMaterialEdit(result.cells, coord, "tool");
       return;
     }
@@ -293,6 +297,7 @@ export function App({
     const result = applyMaterialStroke(cells, coords, toolSettings);
     const finalCoord = coords[coords.length - 1];
     if (CONVEX_URL) {
+      setCells(result.cells);
       void submitConvexMaterialEdit(result.cells, finalCoord, "stroke");
       return;
     }
@@ -359,6 +364,7 @@ export function App({
     }
 
     let envelope: ActionEnvelope;
+    const optimisticCells = nextCells.filter((cell) => targets.some((target) => cell.id === cellKey(target)));
     if (targets.length === 1) {
       envelope = placeMaterialEnvelope(
         CONVEX_WRITE_CONFIG,
@@ -375,6 +381,7 @@ export function App({
       return;
     }
 
+    setPendingConvexCells((current) => mergeCells(current, optimisticCells));
     setWorldSource((current) => ({
       ...current,
       message: `Submitting ${toolLabel(toolSettings.mode)} ${gesture} to Convex`,
@@ -388,7 +395,11 @@ export function App({
           ? `${result.summary}; waiting for Convex realtime state`
           : `Convex action rejected: ${result.reason ?? result.summary}`,
       }));
+      if (!result.accepted) {
+        setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => optimistic.id === cell.id)));
+      }
     } catch (error) {
+      setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => optimistic.id === cell.id)));
       setWorldSource((current) => ({
         ...current,
         connection: "error",
@@ -712,7 +723,6 @@ export function App({
           onApplyTool={applyTool}
           onMarqueeSelect={updateSelection}
           onSelectCell={setSelectedCoord}
-          previewStrokes={!CONVEX_URL}
           paintSwatches={paintSwatches}
           selectedCoord={selectedCoord}
           selection={selection}
@@ -1010,6 +1020,23 @@ function changedCoords(previousCells: readonly DemoCell[], nextCells: readonly D
       );
     })
     .map((cell) => cell.coord);
+}
+
+function mergeCells(baseCells: readonly DemoCell[], overlayCells: readonly DemoCell[]): DemoCell[] {
+  const merged = new Map(baseCells.map((cell) => [cell.id, cell]));
+  for (const cell of overlayCells) merged.set(cell.id, cell);
+  return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function snapshotHasCell(snapshotCells: readonly DemoCell[], pendingCell: DemoCell) {
+  return snapshotCells.some(
+    (cell) =>
+      cell.id === pendingCell.id &&
+      cell.material === pendingCell.material &&
+      cell.state === pendingCell.state &&
+      cell.variant === pendingCell.variant &&
+      cell.flags === pendingCell.flags,
+  );
 }
 
 function paintLabel(id: number) {
