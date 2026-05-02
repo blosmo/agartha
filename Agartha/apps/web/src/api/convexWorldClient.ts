@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import type { ActionEnvelope, ActionResult, PaintCellsPayload, PlaceMaterialPayload } from "@agartha/protocol/actions";
-import { chunkKey } from "@agartha/protocol/actions";
 import type { ChunkCoord, MaterialId, WorldCoord } from "@agartha/protocol/world";
 
 import { absoluteCoord, type DemoCell, type DemoEvent } from "../app/demoWorld";
@@ -82,12 +81,10 @@ export function placeMaterialEnvelope(
   target: WorldCoord,
   material: Exclude<MaterialId, 0>,
   variant = 0,
-  chunkVersions?: Readonly<Record<string, number>>,
 ): ActionEnvelope<PlaceMaterialPayload> {
   return {
     actionType: "place_material",
     agentId: config.agentId,
-    expectedChunkVersions: chunkVersions ? expectedChunkVersionsFor([target], chunkVersions) : undefined,
     payload: { material, target, variant },
     worldId: config.worldId,
   };
@@ -97,24 +94,13 @@ export function paintCellsEnvelope(
   config: ConvexWriteConfig,
   cells: readonly WorldCoord[],
   variant: number,
-  chunkVersions?: Readonly<Record<string, number>>,
 ): ActionEnvelope<PaintCellsPayload> {
   return {
     actionType: "paint_cells",
     agentId: config.agentId,
-    expectedChunkVersions: chunkVersions ? expectedChunkVersionsFor(cells, chunkVersions) : undefined,
     payload: { cells, variant },
     worldId: config.worldId,
   };
-}
-
-export function expectedChunkVersionsFor(
-  coords: readonly WorldCoord[],
-  chunkVersions: Readonly<Record<string, number>>,
-): Record<string, number> {
-  return Object.fromEntries(
-    Array.from(new Set(coords.map((coord) => chunkKey(coord.chunk)))).map((key) => [key, chunkVersions[key] ?? 0]),
-  );
 }
 
 export function convexSnapshotToDemoWorld(

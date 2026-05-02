@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   convexSnapshotToDemoWorld,
-  expectedChunkVersionsFor,
   paintCellsEnvelope,
   placeMaterialEnvelope,
   readConvexWriteConfig,
@@ -41,23 +40,11 @@ describe("convex world client mapping", () => {
 
     expect(config).toEqual({ agentId: "agent-browser", token: "token-browser", worldId: "origin" });
     expect(
-      expectedChunkVersionsFor(
-        [
-          { chunk: { x: 0, y: 0 }, cell: { x: 2, y: 3 } },
-          { chunk: { x: 1, y: 0 }, cell: { x: 0, y: 3 } },
-          { chunk: { x: 0, y: 0 }, cell: { x: 5, y: 3 } },
-        ],
-        { "0:0": 4 },
-      ),
-    ).toEqual({ "0:0": 4, "1:0": 0 });
-
-    expect(
       placeMaterialEnvelope(
         config!,
         { chunk: { x: 0, y: 0 }, cell: { x: 2, y: 3 } },
         1,
         3,
-        { "0:0": 4 },
       ),
     ).toMatchObject({
       actionType: "place_material",
@@ -72,12 +59,10 @@ describe("convex world client mapping", () => {
           { chunk: { x: 1, y: 0 }, cell: { x: 0, y: 3 } },
         ],
         2,
-        { "0:0": 4, "1:0": 1 },
       ),
     ).toMatchObject({
       actionType: "paint_cells",
       agentId: "agent-browser",
-      expectedChunkVersions: { "0:0": 4, "1:0": 1 },
       payload: { variant: 2 },
       worldId: "origin",
     });
