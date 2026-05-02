@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { convexSnapshotToDemoWorld, expectedChunkVersionsFor, paintCellsEnvelope, readConvexWriteConfig } from "./convexWorldClient";
+import {
+  convexSnapshotToDemoWorld,
+  expectedChunkVersionsFor,
+  paintCellsEnvelope,
+  placeMaterialEnvelope,
+  readConvexWriteConfig,
+} from "./convexWorldClient";
 
 describe("convex world client mapping", () => {
   it("maps Convex chunk snapshots and events into demo-world state", () => {
@@ -44,6 +50,19 @@ describe("convex world client mapping", () => {
         { "0:0": 4 },
       ),
     ).toEqual({ "0:0": 4, "1:0": 0 });
+
+    expect(
+      placeMaterialEnvelope(
+        config!,
+        { chunk: { x: 0, y: 0 }, cell: { x: 2, y: 3 } },
+        1,
+        3,
+        { "0:0": 4 },
+      ),
+    ).toMatchObject({
+      actionType: "place_material",
+      payload: { material: 1, variant: 3 },
+    });
 
     expect(
       paintCellsEnvelope(

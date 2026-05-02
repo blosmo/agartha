@@ -168,8 +168,9 @@ async function placeMaterial(ctx: any, envelope: any, agent: any, cost: number, 
   const target = envelope.payload.target as WorldCoord;
   assertInRange(agent.position, target);
   const material = Number(envelope.payload.material) || MATERIAL.Paint;
+  const variant = Number.isInteger(envelope.payload.variant) ? Number(envelope.payload.variant) : 0;
   const chunk = await getOrCreateChunk(ctx, envelope.worldId, target.chunk, now);
-  const cells = mergeSparseCells(chunk.cells, [{ coord: target, material }]);
+  const cells = mergeSparseCells(chunk.cells, [{ coord: target, material, variant }]);
   await ctx.db.patch(chunk._id, { cells, version: chunk.version + 1, updatedAt: now });
   await ctx.db.patch(agent._id, { energy: energy - cost, energyUpdatedAt: now, updatedAt: now });
   const id = eventId(now, "place");
@@ -179,6 +180,7 @@ async function placeMaterial(ctx: any, envelope: any, agent: any, cost: number, 
 
 async function paintCells(ctx: any, envelope: any, agent: any, cost: number, energy: number, now: number) {
   const targets = envelope.payload.cells as WorldCoord[];
+  const variant = Number.isInteger(envelope.payload.variant) ? Number(envelope.payload.variant) : 0;
   for (const target of targets) assertInRange(agent.position, target);
   const byChunk = new Map<string, WorldCoord[]>();
   for (const target of targets) byChunk.set(chunkKey(target.chunk), [...(byChunk.get(chunkKey(target.chunk)) ?? []), target]);
@@ -186,7 +188,7 @@ async function paintCells(ctx: any, envelope: any, agent: any, cost: number, ene
     const chunk = await getOrCreateChunk(ctx, envelope.worldId, coords[0].chunk, now);
     const cells = mergeSparseCells(
       chunk.cells,
-      coords.map((coord) => ({ coord, material: MATERIAL.Paint })),
+      coords.map((coord) => ({ coord, material: MATERIAL.Paint, variant })),
     );
     await ctx.db.patch(chunk._id, { cells, version: chunk.version + 1, updatedAt: now });
     void key;

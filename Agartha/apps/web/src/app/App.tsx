@@ -370,6 +370,7 @@ export function App({
         CONVEX_WRITE_CONFIG,
         targets[0],
         toolSettings.material as Exclude<MaterialId, typeof MATERIAL.Empty>,
+        toolSettings.material === MATERIAL.Paint ? toolSettings.paintVariant : 0,
       );
     } else if (toolSettings.material === MATERIAL.Paint) {
       envelope = paintCellsEnvelope(CONVEX_WRITE_CONFIG, targets, toolSettings.paintVariant);

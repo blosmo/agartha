@@ -81,13 +81,14 @@ export function placeMaterialEnvelope(
   config: ConvexWriteConfig,
   target: WorldCoord,
   material: Exclude<MaterialId, 0>,
+  variant = 0,
   chunkVersions?: Readonly<Record<string, number>>,
 ): ActionEnvelope<PlaceMaterialPayload> {
   return {
     actionType: "place_material",
     agentId: config.agentId,
     expectedChunkVersions: chunkVersions ? expectedChunkVersionsFor([target], chunkVersions) : undefined,
-    payload: { material, target },
+    payload: { material, target, variant },
     worldId: config.worldId,
   };
 }
