@@ -364,10 +364,9 @@ export function App({
         CONVEX_WRITE_CONFIG,
         targets[0],
         toolSettings.material as Exclude<MaterialId, typeof MATERIAL.Empty>,
-        worldSource.chunkVersions ?? {},
       );
     } else if (toolSettings.material === MATERIAL.Paint) {
-      envelope = paintCellsEnvelope(CONVEX_WRITE_CONFIG, targets, toolSettings.paintVariant, worldSource.chunkVersions ?? {});
+      envelope = paintCellsEnvelope(CONVEX_WRITE_CONFIG, targets, toolSettings.paintVariant);
     } else {
       setWorldSource((current) => ({
         ...current,
@@ -713,6 +712,7 @@ export function App({
           onApplyTool={applyTool}
           onMarqueeSelect={updateSelection}
           onSelectCell={setSelectedCoord}
+          previewStrokes={!CONVEX_URL}
           paintSwatches={paintSwatches}
           selectedCoord={selectedCoord}
           selection={selection}

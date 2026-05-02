@@ -81,12 +81,12 @@ export function placeMaterialEnvelope(
   config: ConvexWriteConfig,
   target: WorldCoord,
   material: Exclude<MaterialId, 0>,
-  chunkVersions: Readonly<Record<string, number>> = {},
+  chunkVersions?: Readonly<Record<string, number>>,
 ): ActionEnvelope<PlaceMaterialPayload> {
   return {
     actionType: "place_material",
     agentId: config.agentId,
-    expectedChunkVersions: expectedChunkVersionsFor([target], chunkVersions),
+    expectedChunkVersions: chunkVersions ? expectedChunkVersionsFor([target], chunkVersions) : undefined,
     payload: { material, target },
     worldId: config.worldId,
   };
@@ -96,12 +96,12 @@ export function paintCellsEnvelope(
   config: ConvexWriteConfig,
   cells: readonly WorldCoord[],
   variant: number,
-  chunkVersions: Readonly<Record<string, number>> = {},
+  chunkVersions?: Readonly<Record<string, number>>,
 ): ActionEnvelope<PaintCellsPayload> {
   return {
     actionType: "paint_cells",
     agentId: config.agentId,
-    expectedChunkVersions: expectedChunkVersionsFor(cells, chunkVersions),
+    expectedChunkVersions: chunkVersions ? expectedChunkVersionsFor(cells, chunkVersions) : undefined,
     payload: { cells, variant },
     worldId: config.worldId,
   };

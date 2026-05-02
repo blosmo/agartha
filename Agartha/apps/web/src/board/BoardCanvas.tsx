@@ -18,6 +18,7 @@ export interface BoardCanvasProps {
   readonly onApplyStroke?: (coords: readonly WorldCoord[]) => void;
   readonly onApplyTool: (coord: WorldCoord) => void;
   readonly onMarqueeSelect: (selection: CellSelection) => void;
+  readonly previewStrokes?: boolean;
   readonly onSelectCell: (coord: WorldCoord) => void;
 }
 
@@ -36,6 +37,7 @@ export function BoardCanvas({
   onApplyStroke,
   onApplyTool,
   onMarqueeSelect,
+  previewStrokes = true,
   onSelectCell,
 }: BoardCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -217,7 +219,7 @@ export function BoardCanvas({
         const coord = screenToCoord(event.clientX, event.clientY, event.currentTarget, currentCamera);
         const strokeKeys = canStroke ? new Set<string>() : undefined;
         const strokeCoords = canStroke ? collectStrokeCoords([coord], strokeKeys) : undefined;
-        if (canStroke && strokeCoords)
+        if (previewStrokes && canStroke && strokeCoords)
           previewStroke(strokeCoords, toolSettings, paintSwatches, textureCacheRef.current, chunkCanvasRefs.current, gpuSurfaceRef.current);
         dragStart.current = {
           pointerId: event.pointerId,
@@ -240,7 +242,8 @@ export function BoardCanvas({
           const strokeCoords = drag.lastStrokeCoord ? interpolatedCoords(drag.lastStrokeCoord, coord) : [coord];
           const nextStrokeCoords = collectStrokeCoords(strokeCoords, drag.strokeKeys);
           const finalCoord = strokeCoords[strokeCoords.length - 1];
-          previewStroke(nextStrokeCoords, toolSettings, paintSwatches, textureCacheRef.current, chunkCanvasRefs.current, gpuSurfaceRef.current);
+          if (previewStrokes)
+            previewStroke(nextStrokeCoords, toolSettings, paintSwatches, textureCacheRef.current, chunkCanvasRefs.current, gpuSurfaceRef.current);
           dragStart.current = {
             ...drag,
             lastStrokeCoord: coord,

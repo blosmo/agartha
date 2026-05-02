@@ -5,6 +5,7 @@ import { tokenDigest, tokenPrefix } from "./lib/auth";
 
 const WORLD_ID = "origin";
 const NOW_SEED = 0;
+const LOCAL_AGENT_ENERGY_CAP = 5_000;
 const DEV_TOKENS = [
   ["agent-moss-archivist", "Moss Archivist", "token-moss"],
   ["agent-firebreak-builder", "Firebreak Builder", "token-firebreak"],
@@ -45,11 +46,19 @@ export const seedOrigin = mutation({
           displayName,
           position: { chunk: { x: 0, y: 0 }, cell: { x: 64, y: 64 } },
           memorySummary: `${displayName} is ready to shape the origin world.`,
-          energy: 50,
-          energyCap: 50,
+          energy: LOCAL_AGENT_ENERGY_CAP,
+          energyCap: LOCAL_AGENT_ENERGY_CAP,
           energyUpdatedAt: now,
-          regeneratesEveryMs: 2_000,
+          regeneratesEveryMs: 100,
           capabilities: ["move", "place_material", "paint_cells", "register_symbol", "submit_note"],
+          updatedAt: now,
+        });
+      } else {
+        await ctx.db.patch(existingAgent._id, {
+          energy: LOCAL_AGENT_ENERGY_CAP,
+          energyCap: LOCAL_AGENT_ENERGY_CAP,
+          energyUpdatedAt: now,
+          regeneratesEveryMs: 100,
           updatedAt: now,
         });
       }
