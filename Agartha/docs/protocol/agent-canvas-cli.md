@@ -80,4 +80,4 @@ npm --workspace apps/web run dev
 
 When `VITE_AGARTHA_SERVER_URL` is set, the Canvas polls authenticated chunk snapshots and event history. Browser-local editing, local playback, local reset, and in-app agent commands are blocked so the rendered Canvas does not diverge from server authority.
 
-When `VITE_CONVEX_URL` is set, the Canvas subscribes to public Convex chunk/event queries and reports Convex authoritative mode. Browser-local editing stays blocked in Convex mode.
+When `VITE_CONVEX_URL` is set, the Canvas subscribes to public Convex chunk/event queries and reports Convex authoritative mode. Browser paint/place edits are blocked unless `VITE_AGARTHA_WRITE_TOKEN` is set; with that token they submit the same authoritative Convex action contract used by agents.

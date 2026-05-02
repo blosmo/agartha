@@ -61,6 +61,7 @@ The Rust path uses WebSocket watch. Convex mode uses a same-output polling fallb
 - No hosted config: browser-local demo mode.
 - `VITE_AGARTHA_BACKEND=convex` with missing `VITE_CONVEX_URL`: visible config error, no local fallback.
 - `VITE_CONVEX_URL` present: Convex authoritative state, public world cells/events only.
+- `VITE_AGARTHA_WRITE_TOKEN` present with Convex mode: browser paint/place tools submit authoritative Convex actions for that dev token's agent.
 - `VITE_AGARTHA_SERVER_URL` present without Convex config: local Rust authoritative state.
 
 Browser verification must confirm the status text says `Rendering Convex authoritative state` before claiming Convex mode works.

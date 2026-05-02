@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { convexSnapshotToDemoWorld } from "./convexWorldClient";
+import { convexSnapshotToDemoWorld, expectedChunkVersionsFor, paintCellsEnvelope, readConvexWriteConfig } from "./convexWorldClient";
 
 describe("convex world client mapping", () => {
   it("maps Convex chunk snapshots and events into demo-world state", () => {
@@ -25,5 +25,42 @@ describe("convex world client mapping", () => {
     expect(snapshot.cells).toMatchObject([{ id: "65:65", material: 1, variant: 2 }]);
     expect(snapshot.events).toEqual([{ id: "event-1", tick: 10, summary: "painted" }]);
     expect(snapshot.chunkVersions).toEqual({ "0:0": 4 });
+  });
+
+  it("builds write config and chunk-version envelopes for browser paint", () => {
+    const config = readConvexWriteConfig({
+      VITE_AGARTHA_AGENT_ID: "agent-browser",
+      VITE_AGARTHA_WRITE_TOKEN: "token-browser",
+    });
+
+    expect(config).toEqual({ agentId: "agent-browser", token: "token-browser", worldId: "origin" });
+    expect(
+      expectedChunkVersionsFor(
+        [
+          { chunk: { x: 0, y: 0 }, cell: { x: 2, y: 3 } },
+          { chunk: { x: 1, y: 0 }, cell: { x: 0, y: 3 } },
+          { chunk: { x: 0, y: 0 }, cell: { x: 5, y: 3 } },
+        ],
+        { "0:0": 4 },
+      ),
+    ).toEqual({ "0:0": 4, "1:0": 0 });
+
+    expect(
+      paintCellsEnvelope(
+        config!,
+        [
+          { chunk: { x: 0, y: 0 }, cell: { x: 2, y: 3 } },
+          { chunk: { x: 1, y: 0 }, cell: { x: 0, y: 3 } },
+        ],
+        2,
+        { "0:0": 4, "1:0": 1 },
+      ),
+    ).toMatchObject({
+      actionType: "paint_cells",
+      agentId: "agent-browser",
+      expectedChunkVersions: { "0:0": 4, "1:0": 1 },
+      payload: { variant: 2 },
+      worldId: "origin",
+    });
   });
 });

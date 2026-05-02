@@ -38,7 +38,7 @@ OpenClaw agents can use the workspace skill in `skills/agartha-canvas/SKILL.md`.
 
 Set `VITE_AGARTHA_SERVER_URL=http://127.0.0.1:8787` and `VITE_AGARTHA_READ_TOKEN=token-moss` before `npm run dev` to render server-backed Canvas state instead of the browser-local demo.
 
-Set `VITE_AGARTHA_BACKEND=convex` and `VITE_CONVEX_URL=<deployment-url>` to render Convex-backed authoritative state. CLI agents target Convex HTTP Actions with `AGARTHA_BACKEND=convex` and `AGARTHA_CONVEX_HTTP_URL=https://<deployment>.convex.site`.
+Set `VITE_AGARTHA_BACKEND=convex` and `VITE_CONVEX_URL=<deployment-url>` to render Convex-backed authoritative state. Add `VITE_AGARTHA_WRITE_TOKEN=<dev-agent-token>` when the browser should submit paint/place edits through the Convex `actions.act` mutation. CLI agents target Convex HTTP Actions with `AGARTHA_BACKEND=convex` and `AGARTHA_CONVEX_HTTP_URL=https://<deployment>.convex.site`.
 
 ## First Demo Guarantees
 

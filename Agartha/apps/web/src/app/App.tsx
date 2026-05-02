@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { ActionEnvelope, ActionResult } from "@agartha/protocol/actions";
 import { MATERIAL, MATERIAL_NAME, toWorldCoord, type MaterialId, type WorldCoord } from "@agartha/protocol/world";
 
 import {
@@ -26,7 +27,14 @@ import {
   type PaintSwatch,
 } from "./demoWorld";
 import { BoardCanvas, type CellSelection } from "../board/BoardCanvas";
-import { useConvexWorldSnapshot, type ConvexWorldSnapshot } from "../api/convexWorldClient";
+import {
+  paintCellsEnvelope,
+  placeMaterialEnvelope,
+  readConvexWriteConfig,
+  useConvexAct,
+  useConvexWorldSnapshot,
+  type ConvexWorldSnapshot,
+} from "../api/convexWorldClient";
 import { fetchServerWorldSnapshot, readServerWorldConfig } from "../api/worldClient";
 import { AgarthaConvexProvider, readConvexUrl } from "./ConvexProvider";
 import { AgentCliBar } from "../controls/AgentCommandPanel";
@@ -52,6 +60,7 @@ const SERVER_WORLD_CONFIG = readServerWorldConfig(import.meta.env);
 const CONVEX_URL = readConvexUrl(import.meta.env);
 const BACKEND_MODE = typeof import.meta.env.VITE_AGARTHA_BACKEND === "string" ? import.meta.env.VITE_AGARTHA_BACKEND : undefined;
 const EXPLICIT_CONVEX_MODE = BACKEND_MODE === "convex";
+const CONVEX_WRITE_CONFIG = readConvexWriteConfig(import.meta.env);
 
 const AGENT_COMMANDS = [
   "masterpiece phoenix x y [scale]",
@@ -65,7 +74,12 @@ const AGENT_COMMANDS = [
   "object stamp name x y [repeat stepX stepY]",
 ];
 
-export function App({ convexSnapshot }: { readonly convexSnapshot?: ConvexWorldSnapshot } = {}) {
+type ConvexActMutation = ReturnType<typeof useConvexAct>;
+
+export function App({
+  convexAct,
+  convexSnapshot,
+}: { readonly convexAct?: ConvexActMutation; readonly convexSnapshot?: ConvexWorldSnapshot } = {}) {
   const [uiMode, setUiMode] = useState<UIMode>("human");
   const [cells, setCells] = useState<DemoCell[]>(INITIAL_DEMO_CELLS);
   const [terrainSeedId, setTerrainSeedId] = useState(DEFAULT_TERRAIN_SEED.id);
@@ -219,9 +233,8 @@ export function App({ convexSnapshot }: { readonly convexSnapshot?: ConvexWorldS
       return;
     }
 
-    if (blockServerBackedMutation("Browser tool edits are disabled in server-backed mode. Use agartha CLI/API.")) return;
-
     if (toolSettings.mode === "stamp") {
+      if (blockServerBackedMutation("Stamp edits are disabled in server-backed mode. Use agartha CLI/API.")) return;
       const template = objectTemplates.find((candidate) => candidate.id === toolSettings.objectId) ?? objectTemplates[0];
       if (!template) {
         setEvents((eventList) => [
@@ -249,6 +262,12 @@ export function App({ convexSnapshot }: { readonly convexSnapshot?: ConvexWorldS
     }
 
     const result = applyMaterialTool(cells, coord, toolSettings);
+    if (CONVEX_URL) {
+      void submitConvexMaterialEdit(result.cells, coord, "tool");
+      return;
+    }
+    if (blockServerBackedMutation("Browser tool edits are disabled in server-backed mode. Use agartha CLI/API.")) return;
+
     setSelectedCoord(coord);
     if (result.affected > 0) {
       setUndoStack((current) => [cells, ...current].slice(0, 24));
@@ -267,10 +286,15 @@ export function App({ convexSnapshot }: { readonly convexSnapshot?: ConvexWorldS
 
   function applyStroke(coords: readonly WorldCoord[]) {
     if (coords.length === 0) return;
-    if (blockServerBackedMutation("Browser paint strokes are disabled in server-backed mode. Use agartha CLI/API.")) return;
 
     const result = applyMaterialStroke(cells, coords, toolSettings);
     const finalCoord = coords[coords.length - 1];
+    if (CONVEX_URL) {
+      void submitConvexMaterialEdit(result.cells, finalCoord, "stroke");
+      return;
+    }
+    if (blockServerBackedMutation("Browser paint strokes are disabled in server-backed mode. Use agartha CLI/API.")) return;
+
     setSelectedCoord(finalCoord);
     if (result.affected > 0) {
       setUndoStack((current) => [cells, ...current].slice(0, 24));
@@ -301,6 +325,74 @@ export function App({ convexSnapshot }: { readonly convexSnapshot?: ConvexWorldS
       },
       ...eventList,
     ]);
+  }
+
+  async function submitConvexMaterialEdit(nextCells: readonly DemoCell[], coord: WorldCoord, gesture: "tool" | "stroke") {
+    setSelectedCoord(coord);
+
+    if (!convexAct || !CONVEX_WRITE_CONFIG) {
+      setWorldSource((current) => ({
+        ...current,
+        message: "Convex painting needs VITE_AGARTHA_WRITE_TOKEN in the local web app environment.",
+      }));
+      return;
+    }
+
+    if (toolSettings.mode === "eraser" || toolSettings.material === MATERIAL.Empty) {
+      setWorldSource((current) => ({
+        ...current,
+        message: "Convex erasing is not supported yet; authoritative browser edits can add material only.",
+      }));
+      return;
+    }
+
+    const targets = changedCoords(cells, nextCells);
+    if (targets.length === 0) {
+      setWorldSource((current) => ({
+        ...current,
+        message: `${toolLabel(toolSettings.mode)} ${gesture}: no material changes to submit`,
+      }));
+      return;
+    }
+
+    let envelope: ActionEnvelope;
+    if (targets.length === 1) {
+      envelope = placeMaterialEnvelope(
+        CONVEX_WRITE_CONFIG,
+        targets[0],
+        toolSettings.material as Exclude<MaterialId, typeof MATERIAL.Empty>,
+        worldSource.chunkVersions ?? {},
+      );
+    } else if (toolSettings.material === MATERIAL.Paint) {
+      envelope = paintCellsEnvelope(CONVEX_WRITE_CONFIG, targets, toolSettings.paintVariant, worldSource.chunkVersions ?? {});
+    } else {
+      setWorldSource((current) => ({
+        ...current,
+        message: "Convex multi-cell browser edits currently support Paint only. Use single-cell placement for other materials.",
+      }));
+      return;
+    }
+
+    setWorldSource((current) => ({
+      ...current,
+      message: `Submitting ${toolLabel(toolSettings.mode)} ${gesture} to Convex`,
+    }));
+
+    try {
+      const result: ActionResult = await convexAct({ envelope, token: CONVEX_WRITE_CONFIG.token });
+      setWorldSource((current) => ({
+        ...current,
+        message: result.accepted
+          ? `${result.summary}; waiting for Convex realtime state`
+          : `Convex action rejected: ${result.reason ?? result.summary}`,
+      }));
+    } catch (error) {
+      setWorldSource((current) => ({
+        ...current,
+        connection: "error",
+        message: error instanceof Error ? error.message : "Unable to submit browser paint to Convex",
+      }));
+    }
   }
 
   function undoEdit() {
@@ -901,6 +993,22 @@ function toolLabel(mode: MaterialToolSettings["mode"]) {
   return mode[0].toUpperCase() + mode.slice(1);
 }
 
+function changedCoords(previousCells: readonly DemoCell[], nextCells: readonly DemoCell[]): WorldCoord[] {
+  const previous = new Map(previousCells.map((cell) => [cell.id, cell]));
+  return nextCells
+    .filter((cell) => {
+      const current = previous.get(cell.id);
+      return (
+        !current ||
+        current.material !== cell.material ||
+        current.state !== cell.state ||
+        current.variant !== cell.variant ||
+        current.flags !== cell.flags
+      );
+    })
+    .map((cell) => cell.coord);
+}
+
 function paintLabel(id: number) {
   return DEFAULT_PAINT_SWATCHES.find((swatch) => swatch.id === id)?.label ?? `Paint ${id + 1}`;
 }
@@ -1450,5 +1558,6 @@ function RootApp() {
 
 function ConvexBackedApp() {
   const convexSnapshot = CONVEX_URL ? useConvexWorldSnapshot() : undefined;
-  return <App convexSnapshot={convexSnapshot} />;
+  const convexAct = CONVEX_URL ? useConvexAct() : undefined;
+  return <App convexAct={convexAct} convexSnapshot={convexSnapshot} />;
 }

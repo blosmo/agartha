@@ -1,6 +1,8 @@
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
-import type { ChunkCoord } from "@agartha/protocol/world";
+import type { ActionEnvelope, ActionResult, PaintCellsPayload, PlaceMaterialPayload } from "@agartha/protocol/actions";
+import { chunkKey } from "@agartha/protocol/actions";
+import type { ChunkCoord, MaterialId, WorldCoord } from "@agartha/protocol/world";
 
 import { absoluteCoord, type DemoCell, type DemoEvent } from "../app/demoWorld";
 import { DEFAULT_SERVER_CHUNKS } from "./worldClient";
@@ -28,6 +30,12 @@ export interface ConvexWorldSnapshot {
   readonly chunkVersions: Record<string, number>;
 }
 
+export interface ConvexWriteConfig {
+  readonly agentId: string;
+  readonly token: string;
+  readonly worldId: "origin";
+}
+
 const visibleChunksQuery = makeFunctionReference<
   "query",
   { worldId: string; chunks: { x: number; y: number }[] },
@@ -36,12 +44,76 @@ const visibleChunksQuery = makeFunctionReference<
 const recentEventsQuery = makeFunctionReference<"query", { worldId: string; limit: number }, readonly ConvexEventDto[]>(
   "events:recent",
 );
+const actMutation = makeFunctionReference<
+  "mutation",
+  { envelope: ActionEnvelope; token?: string; production?: boolean },
+  ActionResult
+>("actions:act");
+
+export function readConvexWriteConfig(env: Record<string, string | boolean | undefined>): ConvexWriteConfig | undefined {
+  const token = typeof env.VITE_AGARTHA_WRITE_TOKEN === "string" ? env.VITE_AGARTHA_WRITE_TOKEN.trim() : "";
+  if (!token) return undefined;
+
+  const agentId =
+    typeof env.VITE_AGARTHA_AGENT_ID === "string" && env.VITE_AGARTHA_AGENT_ID.trim()
+      ? env.VITE_AGARTHA_AGENT_ID.trim()
+      : "agent-moss-archivist";
+
+  return {
+    agentId,
+    token,
+    worldId: "origin",
+  };
+}
 
 export function useConvexWorldSnapshot(chunks: readonly ChunkCoord[] = DEFAULT_SERVER_CHUNKS): ConvexWorldSnapshot | undefined {
   const snapshots = useQuery(visibleChunksQuery, { worldId: "origin", chunks: chunks.map((chunk) => ({ ...chunk })) });
   const events = useQuery(recentEventsQuery, { worldId: "origin", limit: 20 });
   if (!snapshots || !events) return undefined;
   return convexSnapshotToDemoWorld(snapshots, events);
+}
+
+export function useConvexAct() {
+  return useMutation(actMutation);
+}
+
+export function placeMaterialEnvelope(
+  config: ConvexWriteConfig,
+  target: WorldCoord,
+  material: Exclude<MaterialId, 0>,
+  chunkVersions: Readonly<Record<string, number>> = {},
+): ActionEnvelope<PlaceMaterialPayload> {
+  return {
+    actionType: "place_material",
+    agentId: config.agentId,
+    expectedChunkVersions: expectedChunkVersionsFor([target], chunkVersions),
+    payload: { material, target },
+    worldId: config.worldId,
+  };
+}
+
+export function paintCellsEnvelope(
+  config: ConvexWriteConfig,
+  cells: readonly WorldCoord[],
+  variant: number,
+  chunkVersions: Readonly<Record<string, number>> = {},
+): ActionEnvelope<PaintCellsPayload> {
+  return {
+    actionType: "paint_cells",
+    agentId: config.agentId,
+    expectedChunkVersions: expectedChunkVersionsFor(cells, chunkVersions),
+    payload: { cells, variant },
+    worldId: config.worldId,
+  };
+}
+
+export function expectedChunkVersionsFor(
+  coords: readonly WorldCoord[],
+  chunkVersions: Readonly<Record<string, number>>,
+): Record<string, number> {
+  return Object.fromEntries(
+    Array.from(new Set(coords.map((coord) => chunkKey(coord.chunk)))).map((key) => [key, chunkVersions[key] ?? 0]),
+  );
 }
 
 export function convexSnapshotToDemoWorld(

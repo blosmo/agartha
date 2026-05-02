@@ -16,7 +16,7 @@ status: initial
 - Admin refill succeeds with explicit admin enablement and writes an `adminAudit` record.
 - Browser local demo mode works without Convex config.
 - Explicit Convex mode with missing `VITE_CONVEX_URL` shows a configuration error.
-- Browser Convex mode renders cells/events from Convex and blocks local painting mutations.
+- Browser Convex mode renders cells/events from Convex and browser paint/place tools persist through Convex when `VITE_AGARTHA_WRITE_TOKEN` is configured.
 - Browser status/agent-state JSON reports `mutationAuthority: "convex_api"`.
 - Public browser queries do not expose private memory, notes, token records, rejected-action detail, or admin audit rows.
 - Sparse chunk sizing spike is recorded before browser cutover is treated as production-ready.
