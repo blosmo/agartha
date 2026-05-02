@@ -61,6 +61,11 @@ const CONVEX_URL = readConvexUrl(import.meta.env);
 const BACKEND_MODE = typeof import.meta.env.VITE_AGARTHA_BACKEND === "string" ? import.meta.env.VITE_AGARTHA_BACKEND : undefined;
 const EXPLICIT_CONVEX_MODE = BACKEND_MODE === "convex";
 const CONVEX_WRITE_CONFIG = readConvexWriteConfig(import.meta.env);
+const AUTHORITATIVE_MODE = Boolean(CONVEX_URL || SERVER_WORLD_CONFIG || EXPLICIT_CONVEX_MODE);
+const INITIAL_APP_CELLS = AUTHORITATIVE_MODE ? [] : INITIAL_DEMO_CELLS;
+const INITIAL_APP_EVENTS: DemoEvent[] = AUTHORITATIVE_MODE
+  ? [{ id: "authoritative-connecting", tick: 0, summary: "Connecting to authoritative world state" }]
+  : [{ id: "demo-0001", tick: 0, summary: "Seeded origin materials" }];
 
 const AGENT_COMMANDS = [
   "masterpiece phoenix x y [scale]",
@@ -81,7 +86,7 @@ export function App({
   convexSnapshot,
 }: { readonly convexAct?: ConvexActMutation; readonly convexSnapshot?: ConvexWorldSnapshot } = {}) {
   const [uiMode, setUiMode] = useState<UIMode>("human");
-  const [cells, setCells] = useState<DemoCell[]>(INITIAL_DEMO_CELLS);
+  const [cells, setCells] = useState<DemoCell[]>(INITIAL_APP_CELLS);
   const [terrainSeedId, setTerrainSeedId] = useState(DEFAULT_TERRAIN_SEED.id);
   const [toolSettings, setToolSettings] = useState<MaterialToolSettings>(DEFAULT_TOOL_SETTINGS);
   const [paintSwatches, setPaintSwatches] = useState<PaintSwatch[]>(DEFAULT_PAINT_SWATCHES);
@@ -92,9 +97,7 @@ export function App({
   const [redoStack, setRedoStack] = useState<DemoCell[][]>([]);
   const [tick, setTick] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [events, setEvents] = useState<DemoEvent[]>([
-    { id: "demo-0001", tick: 0, summary: "Seeded origin materials" },
-  ]);
+  const [events, setEvents] = useState<DemoEvent[]>(INITIAL_APP_EVENTS);
   const [worldSource, setWorldSource] = useState<WorldSourceState>(
     EXPLICIT_CONVEX_MODE && !CONVEX_URL
       ? {
