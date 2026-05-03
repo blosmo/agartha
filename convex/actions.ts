@@ -1,9 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { MATERIAL, type CellSample, type WorldCoord } from "@agartha/protocol/world";
+import { MATERIAL, type CellSample, type ChunkCoord, type WorldCoord } from "@agartha/protocol/world";
 
 import { authenticateToken } from "./lib/auth";
-import { chunkKey, eventId } from "./lib/coords";
+import { contextForArea } from "./lib/collaboration";
+import { absoluteToWorldCoord, chunkKey, eventId, worldCoordToAbsolute } from "./lib/coords";
 import {
   acceptedResult,
   actionCost,
@@ -52,8 +53,43 @@ export const observe = query({
     if (agent === null) throw new Error("agent not found");
     const chunks = await ctx.db.query("chunks").withIndex("by_world_chunk", (q) => q.eq("worldId", worldId)).take(9);
     const events = await ctx.db.query("events").withIndex("by_world_time", (q) => q.eq("worldId", worldId)).order("desc").take(20);
+    const [sessions, messages, projects, summaries] = await Promise.all([
+      ctx.db.query("collaborationSessions").withIndex("by_world_area", (q) => q.eq("worldId", worldId)).collect(),
+      ctx.db.query("collaborationMessages").withIndex("by_world_area_time", (q) => q.eq("worldId", worldId)).collect(),
+      ctx.db.query("areaProjects").withIndex("by_world_area", (q) => q.eq("worldId", worldId)).collect(),
+      ctx.db.query("areaSummaries").withIndex("by_world_area", (q) => q.eq("worldId", worldId)).collect(),
+    ]);
     return toAgentPerception({
       agent,
+      collaboration: contextForArea({
+        position: agent.position,
+        now,
+        sessions,
+        messages: messages.map((message) => ({
+          id: message.messageId,
+          worldId: message.worldId,
+          areaId: message.areaId,
+          authorAgentId: message.authorAgentId,
+          body: message.body,
+          createdAt: message.createdAt,
+        })),
+        projects: projects.map((project) => ({
+          id: project.projectId,
+          worldId: project.worldId,
+          areaId: project.areaId,
+          title: project.title,
+          version: project.version,
+          entries: project.entries,
+          updatedAt: project.updatedAt,
+        })),
+        summaries: summaries.map((summary) => ({
+          id: summary.summaryId,
+          worldId: summary.worldId,
+          areaId: summary.areaId,
+          body: summary.body,
+          provenance: summary.provenance,
+        })),
+      }),
       visibleCells: chunks.flatMap((chunk) => chunk.cells),
       events,
       now,
@@ -209,6 +245,80 @@ export const clearAllCells = mutation({
   },
 });
 
+export const stepWorld = mutation({
+  args: { worldId: v.string(), agentId: v.string(), token: v.optional(v.string()), production: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const auth = await authenticateWrite(ctx, args, now);
+    if (!auth.ok) return rejectedResult(auth.reason);
+
+    const world = await ctx.db.query("worlds").withIndex("by_world_id", (q) => q.eq("worldId", args.worldId)).unique();
+    if (world === null) return rejectedResult("permission_denied");
+
+    const chunks = await ctx.db.query("chunks").withIndex("by_world_chunk", (q) => q.eq("worldId", args.worldId)).collect();
+    const previousByChunk = new Map(chunks.map((chunk) => [chunk.chunkKey, chunk.cells]));
+    const previousCells = chunks.flatMap((chunk) => chunk.cells);
+    const nextCells = stepSparseCells(previousCells);
+    const nextByChunk = groupCellsByChunk(nextCells);
+    const allChangedChunkKeys = new Set([...previousByChunk.keys(), ...nextByChunk.keys()]);
+    const changedChunks: string[] = [];
+
+    for (const key of allChangedChunkKeys) {
+      const previous = previousByChunk.get(key) ?? [];
+      const next = nextByChunk.get(key) ?? [];
+      if (cellSamplesEqual(previous, next)) continue;
+
+      const existing = chunks.find((chunk) => chunk.chunkKey === key);
+      const chunkCoord = next[0]?.coord.chunk ?? previous[0]?.coord.chunk ?? chunkCoordFromKey(key);
+      const chunk = existing ?? (await getOrCreateChunk(ctx, args.worldId, chunkCoord, now));
+      await ctx.db.patch(chunk._id, { cells: next, version: chunk.version + 1, updatedAt: now });
+      changedChunks.push(key);
+    }
+
+    const nextTick = (world.tick ?? 0) + 1;
+    await ctx.db.patch(world._id, { tick: nextTick, updatedAt: now });
+
+    const id = eventId(now, "time-step");
+    await insertPublicEvent(ctx, args.worldId, id, args.agentId, "time_step", `Advanced global simulation to tick ${nextTick}`, changedChunks, []);
+
+    return {
+      accepted: true,
+      eventId: id,
+      cost: 0,
+      energyRemaining: 0,
+      affectedCells: [],
+      affectedChunks: changedChunks,
+      summary: `time_step accepted: tick ${nextTick}`,
+    };
+  },
+});
+
+export const resetWorldTime = mutation({
+  args: { worldId: v.string(), agentId: v.string(), token: v.optional(v.string()), production: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const auth = await authenticateWrite(ctx, args, now);
+    if (!auth.ok) return rejectedResult(auth.reason);
+
+    const world = await ctx.db.query("worlds").withIndex("by_world_id", (q) => q.eq("worldId", args.worldId)).unique();
+    if (world === null) return rejectedResult("permission_denied");
+    await ctx.db.patch(world._id, { tick: 0, updatedAt: now });
+
+    const id = eventId(now, "time-reset");
+    await insertPublicEvent(ctx, args.worldId, id, args.agentId, "time_reset", "Reset global simulation time", [], []);
+
+    return {
+      accepted: true,
+      eventId: id,
+      cost: 0,
+      energyRemaining: 0,
+      affectedCells: [],
+      affectedChunks: [],
+      summary: "time_reset accepted",
+    };
+  },
+});
+
 export const paintBrowserCells = mutation({
   args: {
     worldId: v.string(),
@@ -291,6 +401,131 @@ export const paintBrowserCells = mutation({
     };
   },
 });
+
+async function authenticateWrite(
+  ctx: any,
+  args: { readonly worldId: string; readonly agentId: string; readonly token?: string; readonly production?: boolean },
+  now: number,
+) {
+  const records = await ctx.db
+    .query("serviceTokens")
+    .withIndex("by_prefix", (q: any) => q.eq("prefix", args.token?.slice(0, 8) ?? ""))
+    .collect();
+  return authenticateToken(args.token, records, {
+    worldId: args.worldId,
+    agentId: args.agentId,
+    scope: "agent:write",
+    now,
+    production: args.production ?? false,
+  });
+}
+
+function stepSparseCells(cells: readonly CellSample[]): CellSample[] {
+  const next = new Map(cells.map((cell) => [coordKey(cell.coord), cell]));
+  const occupied = new Set(next.keys());
+
+  for (const cell of cells) {
+    const { x, y } = worldCoordToAbsolute(cell.coord);
+
+    if (cell.material === MATERIAL.Water) {
+      const below = absoluteToWorldCoord(x, y + 1);
+      const belowKey = coordKey(below);
+      if (!occupied.has(belowKey)) {
+        next.delete(coordKey(cell.coord));
+        next.set(belowKey, { ...cell, coord: below });
+        occupied.delete(coordKey(cell.coord));
+        occupied.add(belowKey);
+      }
+    }
+
+    if (cell.material === MATERIAL.Fire) {
+      const nextAge = cell.state + 1;
+      if (nextAge > 3) {
+        next.delete(coordKey(cell.coord));
+        occupied.delete(coordKey(cell.coord));
+      } else {
+        next.set(coordKey(cell.coord), { ...cell, state: nextAge });
+      }
+
+      for (const target of [
+        absoluteToWorldCoord(x + 1, y),
+        absoluteToWorldCoord(x - 1, y),
+        absoluteToWorldCoord(x, y + 1),
+        absoluteToWorldCoord(x, y - 1),
+      ]) {
+        const targetKey = coordKey(target);
+        const targetCell = next.get(targetKey);
+        if (targetCell?.material === MATERIAL.Plant) {
+          next.set(targetKey, { ...targetCell, material: MATERIAL.Fire, state: 0 });
+        }
+      }
+    }
+
+    if (cell.material === MATERIAL.Plant) {
+      const nearWater = [
+        absoluteToWorldCoord(x + 1, y),
+        absoluteToWorldCoord(x - 1, y),
+        absoluteToWorldCoord(x, y + 1),
+        absoluteToWorldCoord(x, y - 1),
+      ].some((coord) => next.get(coordKey(coord))?.material === MATERIAL.Water);
+
+      if (nearWater) {
+        const growTarget = absoluteToWorldCoord(x + 1, y + 1);
+        const growKey = coordKey(growTarget);
+        if (!occupied.has(growKey)) {
+          next.set(growKey, { coord: growTarget, material: MATERIAL.Plant, state: 0, variant: 0, flags: 0 });
+          occupied.add(growKey);
+        }
+      }
+    }
+  }
+
+  return Array.from(next.values()).sort(compareCellSamples);
+}
+
+function groupCellsByChunk(cells: readonly CellSample[]) {
+  const byChunk = new Map<string, CellSample[]>();
+  for (const cell of cells) {
+    const key = chunkKey(cell.coord.chunk);
+    byChunk.set(key, [...(byChunk.get(key) ?? []), cell]);
+  }
+  for (const [key, chunkCells] of byChunk) {
+    byChunk.set(key, [...chunkCells].sort(compareCellSamples));
+  }
+  return byChunk;
+}
+
+function cellSamplesEqual(a: readonly CellSample[], b: readonly CellSample[]) {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort(compareCellSamples);
+  const sortedB = [...b].sort(compareCellSamples);
+  return sortedA.every((cell, index) => sameCellSample(cell, sortedB[index]));
+}
+
+function sameCellSample(a: CellSample, b: CellSample | undefined) {
+  return Boolean(
+    b &&
+      coordKey(a.coord) === coordKey(b.coord) &&
+      a.material === b.material &&
+      a.state === b.state &&
+      a.variant === b.variant &&
+      a.flags === b.flags,
+  );
+}
+
+function compareCellSamples(a: CellSample, b: CellSample) {
+  return coordKey(a.coord).localeCompare(coordKey(b.coord));
+}
+
+function coordKey(coord: WorldCoord) {
+  const absolute = worldCoordToAbsolute(coord);
+  return `${absolute.x}:${absolute.y}`;
+}
+
+function chunkCoordFromKey(key: string): ChunkCoord {
+  const [x, y] = key.split(":").map(Number);
+  return { x, y };
+}
 
 async function hasStaleChunkVersion(ctx: any, envelope: any) {
   for (const key of affectedChunkKeys(envelope)) {

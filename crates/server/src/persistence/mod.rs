@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use agartha_sim::world::{Chunk, ChunkCoord};
 
 use crate::agents::AgentRecord;
+use crate::collaboration::CollaborationState;
 use crate::events::{SymbolRecord, WorldEvent, WorldNote};
 
 #[derive(Clone, Debug)]
@@ -17,6 +18,7 @@ pub struct PersistedState {
     pub events: Vec<WorldEvent>,
     pub symbols: Vec<SymbolRecord>,
     pub notes: Vec<WorldNote>,
+    pub collaboration: CollaborationState,
     pub next_event_number: u64,
     pub next_quote_number: u64,
     pub next_symbol_number: u64,

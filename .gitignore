@@ -9,3 +9,4 @@ apps/web/dist/
 .env.openclaw
 .agartha-bin/
 openclaw-e2e-report.json
+.codex/

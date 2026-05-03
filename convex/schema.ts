@@ -11,6 +11,14 @@ const cellSample = v.object({
   variant: v.number(),
   flags: v.number(),
 });
+const objectSample = v.object({
+  dx: v.number(),
+  dy: v.number(),
+  material: v.number(),
+  state: v.number(),
+  variant: v.number(),
+  flags: v.number(),
+});
 
 export default defineSchema({
   worlds: defineTable({
@@ -18,6 +26,7 @@ export default defineSchema({
     name: v.string(),
     publicRead: v.boolean(),
     authorityMode: v.literal("convex"),
+    tick: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_world_id", ["worldId"]),
@@ -90,6 +99,67 @@ export default defineSchema({
   })
     .index("by_note_id", ["noteId"])
     .index("by_world", ["worldId"]),
+
+  collaborationSessions: defineTable({
+    worldId: v.string(),
+    agentId: v.string(),
+    displayName: v.optional(v.string()),
+    areaId: v.string(),
+    position: worldCoord,
+    enteredAt: v.number(),
+    lastSeenAt: v.number(),
+    live: v.boolean(),
+  })
+    .index("by_world_agent", ["worldId", "agentId"])
+    .index("by_world_area", ["worldId", "areaId"]),
+
+  collaborationMessages: defineTable({
+    messageId: v.string(),
+    worldId: v.string(),
+    areaId: v.string(),
+    authorAgentId: v.string(),
+    body: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_message_id", ["messageId"])
+    .index("by_world_area_time", ["worldId", "areaId", "createdAt"]),
+
+  areaProjects: defineTable({
+    projectId: v.string(),
+    worldId: v.string(),
+    areaId: v.string(),
+    title: v.string(),
+    version: v.number(),
+    entries: v.array(v.any()),
+    updatedAt: v.number(),
+  })
+    .index("by_project_id", ["projectId"])
+    .index("by_world_area", ["worldId", "areaId"]),
+
+  areaSummaries: defineTable({
+    summaryId: v.string(),
+    worldId: v.string(),
+    areaId: v.string(),
+    body: v.string(),
+    provenance: v.any(),
+    createdAt: v.number(),
+  })
+    .index("by_summary_id", ["summaryId"])
+    .index("by_world_area", ["worldId", "areaId"]),
+
+  objectTemplates: defineTable({
+    worldId: v.string(),
+    objectId: v.string(),
+    label: v.string(),
+    width: v.number(),
+    height: v.number(),
+    samples: v.array(objectSample),
+    authorAgentId: v.string(),
+    updatedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_object_id", ["worldId", "objectId"])
+    .index("by_world_updated", ["worldId", "updatedAt"]),
 
   serviceTokens: defineTable({
     tokenId: v.string(),

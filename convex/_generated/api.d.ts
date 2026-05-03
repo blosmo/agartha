@@ -11,12 +11,15 @@
 import type * as actions from "../actions.js";
 import type * as admin from "../admin.js";
 import type * as chunks from "../chunks.js";
+import type * as collaboration from "../collaboration.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_collaboration from "../lib/collaboration.js";
 import type * as lib_coords from "../lib/coords.js";
 import type * as lib_protocol from "../lib/protocol.js";
 import type * as lib_validation from "../lib/validation.js";
+import type * as objects from "../objects.js";
 import type * as seed from "../seed.js";
 import type * as worlds from "../worlds.js";
 
@@ -30,12 +33,15 @@ declare const fullApi: ApiFromModules<{
   actions: typeof actions;
   admin: typeof admin;
   chunks: typeof chunks;
+  collaboration: typeof collaboration;
   events: typeof events;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/collaboration": typeof lib_collaboration;
   "lib/coords": typeof lib_coords;
   "lib/protocol": typeof lib_protocol;
   "lib/validation": typeof lib_validation;
+  objects: typeof objects;
   seed: typeof seed;
   worlds: typeof worlds;
 }>;

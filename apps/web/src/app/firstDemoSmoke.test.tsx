@@ -5,7 +5,37 @@ import { App } from "./App";
 
 describe("first demo viewer smoke", () => {
   it("renders board, inspector, local history, and replay controls", () => {
-    render(<App convexUrl={null} />);
+    render(
+      <App
+        convexUrl={null}
+        collaborationContext={{
+          area: { id: "origin:64:64:r32", centerX: 64, centerY: 64, radius: 32 },
+          durableSummaries: [
+            {
+              id: "summary-0001",
+              body: "Decision: keep a buffer between moss and fire.",
+              provenance: { authorAgentId: "agent-moss-archivist", status: "decision" },
+            },
+          ],
+          presence: [{ agentId: "agent-moss-archivist", displayName: "Moss Archivist", live: true }],
+          projects: [
+            {
+              id: "project-0001",
+              title: "Shared boundary",
+              version: 1,
+              entries: [{ kind: "goal", body: "Keep moss and fire separated." }],
+            },
+          ],
+          recentMessages: [
+            {
+              id: "message-0001",
+              authorAgentId: "agent-moss-archivist",
+              body: "I can review the moss edge.",
+            },
+          ],
+        }}
+      />,
+    );
 
     expect(screen.getByTestId("board-canvas")).toBeInTheDocument();
     expect(screen.getByRole("application", { name: /Agartha cellular world board/ })).toHaveAttribute(
@@ -68,6 +98,11 @@ describe("first demo viewer smoke", () => {
 
     expect(screen.queryByLabelText("Agent command input")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Agent" }));
+    expect(screen.getByRole("heading", { name: "Collaboration" })).toBeInTheDocument();
+    expect(screen.getByText("Moss Archivist")).toBeInTheDocument();
+    expect(screen.getByText("Shared boundary")).toBeInTheDocument();
+    expect(screen.getByText("Decision: keep a buffer between moss and fire.")).toBeInTheDocument();
+    expect(document.querySelector('[data-agent-id="agartha-agent-state"]')).toHaveTextContent('"presenceCount":1');
     fireEvent.change(screen.getByLabelText("Agent CLI input"), { target: { value: "flower 70 52" } });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: built flower", { exact: false }).length).toBeGreaterThan(0);
@@ -158,6 +193,25 @@ describe("first demo viewer smoke", () => {
     fireEvent.pointerUp(board, { clientX: 512, clientY: 452, pointerId: 2 });
     expect(boardCells.style.transform).toEqual(transformBeforeShapeDrag);
     expect(screen.getAllByText("Shape drag:", { exact: false }).length).toBeGreaterThan(0);
+    fireEvent.pointerDown(board, { clientX: 480, clientY: 420, pointerId: 3 });
+    fireEvent.pointerMove(board, { clientX: 528, clientY: 452, pointerId: 3, shiftKey: true });
+    expect(screen.getByTestId("board-selection").style.width).toEqual(screen.getByTestId("board-selection").style.height);
+    fireEvent.pointerUp(board, { clientX: 528, clientY: 452, pointerId: 3, shiftKey: true });
+    expect(screen.getAllByText("Shape drag:", { exact: false }).length).toBeGreaterThan(1);
+    fireEvent.click(screen.getByRole("radio", { name: "Line" }));
+    expect(screen.getByRole("radio", { name: "Line" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Line options")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Line thickness"), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start arrow" }));
+    fireEvent.click(screen.getByRole("button", { name: "End arrow" }));
+    expect(screen.getByRole("button", { name: "Start arrow" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "End arrow" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.pointerDown(board, { clientX: 488, clientY: 420, pointerId: 4 });
+    fireEvent.pointerMove(board, { clientX: 552, clientY: 452, pointerId: 4 });
+    expect(screen.getByTestId("board-line-preview")).toHaveAttribute("data-start-arrow", "true");
+    expect(screen.getByTestId("board-line-preview")).toHaveAttribute("data-end-arrow", "true");
+    fireEvent.pointerUp(board, { clientX: 552, clientY: 452, pointerId: 4 });
+    expect(screen.getAllByText("Line drag:", { exact: false }).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("radio", { name: "Eraser" }));
     expect(screen.getByLabelText("Brush size menu")).toBeInTheDocument();

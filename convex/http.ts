@@ -46,6 +46,21 @@ http.route({
 });
 
 http.route({
+  path: "/collaboration",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const token = bearerToken(request);
+    const envelope = await request.json();
+    const body = await ctx.runMutation((api as any).collaboration.handle, {
+      envelope,
+      token,
+      production: isProductionLike(),
+    });
+    return json(body, body.ok ? 200 : statusForReason(body.error?.reason));
+  }),
+});
+
+http.route({
   pathPrefix: "/chunks/",
   method: "GET",
   handler: httpAction(async (ctx, request) => {

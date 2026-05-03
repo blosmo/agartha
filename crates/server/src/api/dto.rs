@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::actions::perception::{AgentPerception, VisibleCell, WorldEnergyView};
 use crate::actions::{ActionKind, ActionRequest, ActionResult, CostQuote, RejectionReason};
+use crate::collaboration::CollaborationResponse;
 use crate::events::{SymbolRecord, WorldEvent};
 use crate::patches::{ChunkSnapshot, PatchBody, PatchEnvelope};
 
@@ -267,6 +268,7 @@ pub struct AgentPerceptionDto {
     pub visible_cells: Vec<CellSampleDto>,
     pub nearby_symbols: Vec<SymbolMetadataDto>,
     pub recent_events: Vec<String>,
+    pub collaboration: serde_json::Value,
     pub available_actions: Vec<String>,
     pub world_energy: WorldEnergyViewDto,
 }
@@ -289,8 +291,37 @@ impl From<AgentPerception> for AgentPerceptionDto {
                 .map(Into::into)
                 .collect(),
             recent_events: perception.recent_events,
+            collaboration: serde_json::to_value(perception.collaboration).unwrap_or(serde_json::Value::Null),
             available_actions: perception.available_actions,
             world_energy: perception.world_energy.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationResponseDto {
+    pub ok: bool,
+    pub operation: String,
+    pub world_id: String,
+    pub agent_id: String,
+    pub area_id: Option<String>,
+    pub result: serde_json::Value,
+    pub error: Option<serde_json::Value>,
+    pub next: Vec<String>,
+}
+
+impl From<CollaborationResponse> for CollaborationResponseDto {
+    fn from(response: CollaborationResponse) -> Self {
+        Self {
+            ok: response.ok,
+            operation: response.operation,
+            world_id: response.world_id,
+            agent_id: response.agent_id,
+            area_id: response.area_id,
+            result: response.result,
+            error: response.error.map(|error| serde_json::to_value(error).unwrap_or(serde_json::Value::Null)),
+            next: response.next,
         }
     }
 }

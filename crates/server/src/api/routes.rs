@@ -20,6 +20,7 @@ use crate::api::dto::{
     AgentPerceptionDto, ApiErrorDto, ChunkCoordDto, ChunkSnapshotDto, CostQuoteDto,
     PatchEnvelopeDto, WorldEventDto,
 };
+use crate::collaboration::{CollaborationRequest, CollaborationResponse};
 use crate::state::ServerState;
 use crate::ws::SubscriptionRequest;
 
@@ -52,6 +53,7 @@ pub fn app(state: ApiState) -> Router {
         .route("/observe", get(observe))
         .route("/quote", post(quote))
         .route("/act", post(act))
+        .route("/collaboration", post(collaboration))
         .route("/admin/energy/refill", post(admin_refill_energy))
         .route("/chunks/{x}/{y}", get(chunk_snapshot))
         .route("/events", get(events))
@@ -178,6 +180,19 @@ async fn act(
     }
 
     Ok(Json(patches.0))
+}
+
+async fn collaboration(
+    State(state): State<ApiState>,
+    headers: HeaderMap,
+    Json(request): Json<CollaborationRequest>,
+) -> Result<Json<CollaborationResponse>, ApiResponseError> {
+    let auth = auth_from_headers(&headers)?;
+    let mut world = state
+        .world
+        .lock()
+        .map_err(|_| ApiResponseError::internal())?;
+    Ok(Json(world.collaborate(&auth, request)?))
 }
 
 async fn admin_refill_energy(

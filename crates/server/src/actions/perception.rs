@@ -27,6 +27,7 @@ pub struct AgentPerception {
     pub visible_cells: Vec<VisibleCell>,
     pub nearby_symbols: Vec<crate::events::SymbolRecord>,
     pub recent_events: Vec<String>,
+    pub collaboration: crate::collaboration::CollaborationContext,
     pub available_actions: Vec<String>,
     pub world_energy: WorldEnergyView,
 }

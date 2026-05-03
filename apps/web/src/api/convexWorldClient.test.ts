@@ -25,11 +25,13 @@ describe("convex world client mapping", () => {
         },
       ],
       [{ id: "event-1", tick: 10, summary: "painted" }],
+      7,
     );
 
     expect(snapshot.cells).toMatchObject([{ id: "65:65", material: 1, variant: 2 }]);
     expect(snapshot.events).toEqual([{ id: "event-1", tick: 10, summary: "painted" }]);
     expect(snapshot.chunkVersions).toEqual({ "0:0": 4 });
+    expect(snapshot.tick).toBe(7);
   });
 
   it("builds write config and chunk-version envelopes for browser paint", () => {

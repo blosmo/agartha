@@ -29,9 +29,12 @@ export const seedOrigin = mutation({
         name: "Origin",
         publicRead: true,
         authorityMode: "convex",
+        tick: 0,
         createdAt: now,
         updatedAt: now,
       });
+    } else if (existingWorld.tick === undefined) {
+      await ctx.db.patch(existingWorld._id, { tick: 0, updatedAt: now });
     }
 
     for (const [agentId, displayName, rawToken] of DEV_TOKENS) {

@@ -14,6 +14,49 @@ describe("Convex-backed browser edits", () => {
     vi.clearAllMocks();
   });
 
+  it("routes time controls through Convex global mutations", async () => {
+    const convexStepWorld = vi.fn(async () => ({
+      accepted: true,
+      affectedCells: [],
+      affectedChunks: ["1:1"],
+      cost: 0,
+      energyRemaining: 99,
+      eventId: "time-step",
+      summary: "time_step accepted: tick 1",
+    }));
+    const convexResetWorldTime = vi.fn(async () => ({
+      accepted: true,
+      affectedCells: [],
+      affectedChunks: [],
+      cost: 0,
+      energyRemaining: 99,
+      eventId: "time-reset",
+      summary: "time_reset accepted",
+    }));
+    render(
+      <App
+        convexResetWorldTime={convexResetWorldTime as never}
+        convexSnapshot={{
+          cells: [],
+          chunkVersions: { "1:1": 0 },
+          events: [],
+          tick: 0,
+        }}
+        convexStepWorld={convexStepWorld as never}
+        convexUrl="https://example.convex.cloud"
+        convexWriteConfig={{ agentId: "agent-browser", token: "token-browser", worldId: "origin" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Step time" }));
+    await waitFor(() => expect(convexStepWorld).toHaveBeenCalledTimes(1));
+    expect(convexStepWorld).toHaveBeenCalledWith({ agentId: "agent-browser", token: "token-browser", worldId: "origin" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset time" }));
+    await waitFor(() => expect(convexResetWorldTime).toHaveBeenCalledTimes(1));
+    expect(convexResetWorldTime).toHaveBeenCalledWith({ agentId: "agent-browser", token: "token-browser", worldId: "origin" });
+  });
+
   it("submits exact browser stroke cells through the Convex browser-paint mutation", async () => {
     const convexAct = vi.fn(async ({ envelope }: { envelope: any }) => ({
       accepted: true,
@@ -42,6 +85,7 @@ describe("Convex-backed browser edits", () => {
           cells: [],
           chunkVersions: { "1:1": 0 },
           events: [],
+          tick: 0,
         }}
         convexUrl="https://example.convex.cloud"
         convexWriteConfig={{ agentId: "agent-browser", token: "token-browser", worldId: "origin" }}
@@ -81,6 +125,7 @@ describe("Convex-backed browser edits", () => {
       cells: [filledCell],
       chunkVersions: { "1:1": 0 },
       events: [],
+      tick: 0,
     };
     const { rerender } = render(
       <App
@@ -131,6 +176,7 @@ describe("Convex-backed browser edits", () => {
       cells: [],
       chunkVersions: { "1:1": 0 },
       events: [],
+      tick: 0,
     };
     const { rerender } = render(
       <App
@@ -190,11 +236,75 @@ describe("Convex-backed browser edits", () => {
           cells: [demoCell(177, 140, 1)],
           chunkVersions: { "1:1": 1 },
           events: [{ id: "browser-paint", tick: 1, summary: "browser_paint_cells accepted" }],
+          tick: 1,
         }}
         convexUrl="https://example.convex.cloud"
         convexWriteConfig={{ agentId: "agent-browser", token: "token-browser", worldId: "origin" }}
       />,
     );
     expect(screen.getByTestId("board-cells")).toHaveAttribute("data-active-cells", "1");
+  });
+
+  it("saves captured objects to Convex and stamps them through the browser-paint mutation", async () => {
+    const filledCell = demoCell(177, 140, MATERIAL.Plant);
+    const convexSaveObjectTemplate = vi.fn(async ({ template }: { template: { id: string; label: string } }) => ({
+      accepted: true,
+      objectId: template.id,
+      summary: `object_template saved: ${template.label}`,
+    }));
+    const convexPaintBrowserCells = vi.fn(async ({ cells }: BrowserPaintArgs) => ({
+      accepted: true,
+      affectedCells: cells.map((cell) => cell.coord),
+      affectedChunks: ["1:1"],
+      cost: 0,
+      energyRemaining: 99,
+      eventId: "browser-stamp",
+      summary: "browser_paint_cells accepted",
+    }));
+
+    render(
+      <App
+        convexObjectTemplates={[]}
+        convexPaintBrowserCells={convexPaintBrowserCells as never}
+        convexSaveObjectTemplate={convexSaveObjectTemplate as never}
+        convexSnapshot={{
+          cells: [filledCell],
+          chunkVersions: { "1:1": 0 },
+          events: [],
+          tick: 0,
+        }}
+        convexUrl="https://example.convex.cloud"
+        convexWriteConfig={{ agentId: "agent-browser", token: "token-browser", worldId: "origin" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Capture object" }));
+
+    await waitFor(() => expect(convexSaveObjectTemplate).toHaveBeenCalledTimes(1));
+    expect(convexSaveObjectTemplate).toHaveBeenCalledWith({
+      agentId: "agent-browser",
+      template: expect.objectContaining({
+        id: "house",
+        label: "house",
+        samples: [expect.objectContaining({ material: MATERIAL.Plant })],
+      }),
+      token: "token-browser",
+      worldId: "origin",
+    });
+
+    const board = screen.getByTestId("board-canvas");
+    fireEvent.pointerDown(board, { clientX: 760, clientY: 500, pointerId: 1 });
+    fireEvent.pointerUp(board, { clientX: 760, clientY: 500, pointerId: 1 });
+
+    await waitFor(() => expect(convexPaintBrowserCells).toHaveBeenCalledTimes(1));
+    expect(convexPaintBrowserCells).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: "agent-browser",
+        cells: [expect.objectContaining({ material: MATERIAL.Plant })],
+        token: "token-browser",
+        worldId: "origin",
+      }),
+    );
+    expect(document.querySelector('[data-agent-id="canvas-source-status"]')).toHaveTextContent("Stamp accepted");
   });
 });

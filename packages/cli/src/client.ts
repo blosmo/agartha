@@ -1,4 +1,5 @@
 import type { ActionEnvelope, ActionResult, AgentPerception } from "@agartha/protocol/actions";
+import type { CollaborationEnvelope, CollaborationResponseEnvelope } from "@agartha/protocol/collaboration";
 import type { ChunkSnapshot } from "@agartha/protocol/patches";
 import type { ChunkCoord } from "@agartha/protocol/world";
 
@@ -53,6 +54,10 @@ export class AgarthaClient {
 
   act(envelope: ActionEnvelope) {
     return this.request<ActionResult>("/act", { method: "POST", body: envelope });
+  }
+
+  collaborate(envelope: CollaborationEnvelope) {
+    return this.request<CollaborationResponseEnvelope>("/collaboration", { method: "POST", body: envelope });
   }
 
   adminRefillEnergy(agentId: string, amount?: number) {

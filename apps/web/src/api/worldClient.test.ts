@@ -39,6 +39,18 @@ describe("worldClient", () => {
         return jsonResponse([{ id: "event-0001", tick: 7, summary: "Agent placed paint" }]);
       }
 
+      if (String(url).endsWith("/observe")) {
+        return jsonResponse({
+          collaboration: {
+            area: { id: "origin:64:64:r32", centerX: 64, centerY: 64, radius: 32 },
+            durableSummaries: [],
+            presence: [{ agentId: "agent-moss-archivist", displayName: "Moss Archivist", live: true }],
+            projects: [],
+            recentMessages: [],
+          },
+        });
+      }
+
       return jsonResponse({
         worldId: "origin",
         chunk: { x: 0, y: 0 },
@@ -61,10 +73,12 @@ describe("worldClient", () => {
     );
 
     expect(requestedUrls).toContain("http://127.0.0.1:8787/events");
+    expect(requestedUrls).toContain("http://127.0.0.1:8787/observe");
     for (const chunk of DEFAULT_SERVER_CHUNKS) {
       expect(requestedUrls).toContain(`http://127.0.0.1:8787/chunks/${chunk.x}/${chunk.y}`);
     }
     expect(snapshot.events).toEqual([{ id: "event-0001", tick: 7, summary: "Agent placed paint" }]);
+    expect(snapshot.collaboration?.presence[0]?.agentId).toBe("agent-moss-archivist");
     expect(snapshot.cells[0]).toMatchObject({
       id: "4:5",
       material: MATERIAL.Paint,

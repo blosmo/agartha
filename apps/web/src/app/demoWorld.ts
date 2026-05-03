@@ -22,7 +22,7 @@ export interface TerrainSeed {
   readonly seed: number;
 }
 
-export type ToolMode = "paint" | "brush" | "shape" | "bucket" | "eraser" | "stamp" | "cursor" | "marquee";
+export type ToolMode = "paint" | "brush" | "shape" | "line" | "bucket" | "eraser" | "stamp" | "cursor" | "marquee";
 export type ShapeMode = "rectangle" | "circle" | "diamond";
 
 export interface MaterialToolSettings {
@@ -33,6 +33,9 @@ export interface MaterialToolSettings {
   readonly brushSize: number;
   readonly hardness: number;
   readonly opacity: number;
+  readonly lineThickness: number;
+  readonly lineStartArrow: boolean;
+  readonly lineEndArrow: boolean;
   readonly objectId?: string;
   readonly stampRepeat: number;
   readonly stampStepX: number;
@@ -98,6 +101,9 @@ export const DEFAULT_TOOL_SETTINGS: MaterialToolSettings = {
   material: MATERIAL.Paint,
   paintVariant: 0,
   brushSize: 3,
+  lineThickness: 2,
+  lineStartArrow: false,
+  lineEndArrow: false,
   stampRepeat: 1,
   stampStepX: 20,
   stampStepY: 0,

@@ -1,8 +1,10 @@
-import { useMutation, useQuery } from "convex/react";
+import { useMemo } from "react";
+import { useMutation, useQueries, useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import type { ActionEnvelope, ActionResult, PaintCellsPayload, PlaceMaterialPayload } from "@agartha/protocol/actions";
 import type { ChunkCoord, MaterialId, WorldCoord } from "@agartha/protocol/world";
 
+import type { CellObjectTemplate } from "../app/demoWorld";
 import { absoluteCoord, type DemoCell, type DemoEvent } from "../app/demoWorld";
 import { DEFAULT_SERVER_CHUNKS } from "./worldClient";
 
@@ -23,10 +25,13 @@ interface ConvexEventDto {
   readonly summary: string;
 }
 
+const EMPTY_OBJECT_TEMPLATES: readonly CellObjectTemplate[] = [];
+
 export interface ConvexWorldSnapshot {
   readonly cells: readonly DemoCell[];
   readonly events: readonly DemoEvent[];
   readonly chunkVersions: Record<string, number>;
+  readonly tick: number;
 }
 
 export interface ConvexWriteConfig {
@@ -43,11 +48,32 @@ const visibleChunksQuery = makeFunctionReference<
 const recentEventsQuery = makeFunctionReference<"query", { worldId: string; limit: number }, readonly ConvexEventDto[]>(
   "events:recent",
 );
+const worldMetadataQuery = makeFunctionReference<
+  "query",
+  { worldId?: string },
+  null | { readonly worldId: string; readonly name: string; readonly authorityMode: "convex"; readonly publicRead: boolean; readonly tick?: number }
+>("worlds:metadata");
+const objectTemplatesQuery = makeFunctionReference<
+  "query",
+  { worldId: string; limit?: number },
+  readonly CellObjectTemplate[]
+>("objects:list");
 const actMutation = makeFunctionReference<
   "mutation",
   { envelope: ActionEnvelope; token?: string; production?: boolean },
   ActionResult
 >("actions:act");
+const saveObjectTemplateMutation = makeFunctionReference<
+  "mutation",
+  {
+    worldId: string;
+    agentId: string;
+    token?: string;
+    production?: boolean;
+    template: CellObjectTemplate;
+  },
+  { accepted: boolean; objectId: string; summary: string }
+>("objects:save");
 const paintBrowserCellsMutation = makeFunctionReference<
   "mutation",
   {
@@ -70,6 +96,16 @@ const clearAllCellsMutation = makeFunctionReference<
   { worldId: string; agentId: string; token?: string; production?: boolean },
   ActionResult
 >("actions:clearAllCells");
+const stepWorldMutation = makeFunctionReference<
+  "mutation",
+  { worldId: string; agentId: string; token?: string; production?: boolean },
+  ActionResult
+>("actions:stepWorld");
+const resetWorldTimeMutation = makeFunctionReference<
+  "mutation",
+  { worldId: string; agentId: string; token?: string; production?: boolean },
+  ActionResult
+>("actions:resetWorldTime");
 
 export function readConvexWriteConfig(env: Record<string, string | boolean | undefined>): ConvexWriteConfig | undefined {
   const token = typeof env.VITE_AGARTHA_WRITE_TOKEN === "string" ? env.VITE_AGARTHA_WRITE_TOKEN.trim() : "";
@@ -90,12 +126,30 @@ export function readConvexWriteConfig(env: Record<string, string | boolean | und
 export function useConvexWorldSnapshot(chunks: readonly ChunkCoord[] = DEFAULT_SERVER_CHUNKS): ConvexWorldSnapshot | undefined {
   const snapshots = useQuery(visibleChunksQuery, { worldId: "origin", chunks: chunks.map((chunk) => ({ ...chunk })) });
   const events = useQuery(recentEventsQuery, { worldId: "origin", limit: 20 });
-  if (!snapshots || !events) return undefined;
-  return convexSnapshotToDemoWorld(snapshots, events);
+  const metadata = useQuery(worldMetadataQuery, { worldId: "origin" });
+  if (!snapshots || !events || metadata === undefined) return undefined;
+  return convexSnapshotToDemoWorld(snapshots, events, metadata?.tick ?? 0);
+}
+
+export function useConvexObjectTemplates(): readonly CellObjectTemplate[] | undefined {
+  const queries = useMemo(
+    () => ({
+      objectTemplates: { query: objectTemplatesQuery, args: { worldId: "origin", limit: 24 } },
+    }),
+    [],
+  );
+  const results = useQueries(queries);
+  const templates = results.objectTemplates;
+  if (templates instanceof Error) return EMPTY_OBJECT_TEMPLATES;
+  return templates;
 }
 
 export function useConvexAct() {
   return useMutation(actMutation);
+}
+
+export function useConvexSaveObjectTemplate() {
+  return useMutation(saveObjectTemplateMutation);
 }
 
 export function useConvexPaintBrowserCells() {
@@ -104,6 +158,14 @@ export function useConvexPaintBrowserCells() {
 
 export function useConvexClearAllCells() {
   return useMutation(clearAllCellsMutation);
+}
+
+export function useConvexStepWorld() {
+  return useMutation(stepWorldMutation);
+}
+
+export function useConvexResetWorldTime() {
+  return useMutation(resetWorldTimeMutation);
 }
 
 export function placeMaterialEnvelope(
@@ -136,6 +198,7 @@ export function paintCellsEnvelope(
 export function convexSnapshotToDemoWorld(
   snapshots: readonly ConvexChunkSnapshot[],
   events: readonly ConvexEventDto[],
+  tick = 0,
 ): ConvexWorldSnapshot {
   const cells = snapshots
     .flatMap((snapshot) =>
@@ -153,5 +216,6 @@ export function convexSnapshotToDemoWorld(
     cells,
     events: events.map((event) => ({ id: event.id, tick: event.tick, summary: event.summary })),
     chunkVersions: Object.fromEntries(snapshots.map((snapshot) => [`${snapshot.chunk.x}:${snapshot.chunk.y}`, snapshot.version])),
+    tick,
   };
 }

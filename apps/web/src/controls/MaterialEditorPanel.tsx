@@ -5,9 +5,12 @@ import {
   Cursor,
   Plus,
   X,
+  ArrowLineLeft,
+  ArrowLineRight,
   Diamond,
   Eraser,
   FrameCorners,
+  LineSegment,
   PaintBrush,
   PaintBucket,
   PencilSimple,
@@ -50,6 +53,7 @@ const TOOL_OPTIONS: Array<{ readonly id: ToolMode; readonly label: string; reado
   { id: "paint", label: "Pencil", shortcut: "P", Icon: PencilSimple },
   { id: "brush", label: "Brush", shortcut: "B", Icon: PaintBrush },
   { id: "shape", label: "Shape", shortcut: "S", Icon: Rectangle },
+  { id: "line", label: "Line", shortcut: "L", Icon: LineSegment },
   { id: "bucket", label: "Bucket", shortcut: "F", Icon: PaintBucket },
   { id: "eraser", label: "Eraser", shortcut: "E", Icon: Eraser },
   { id: "stamp", label: "Stamp", shortcut: "T", Icon: Stamp },
@@ -138,6 +142,16 @@ export function ToolDock({ paintSwatches, settings, onUpdateSettings }: ToolDock
                 <BrushSizeBar
                   brushSize={settings.brushSize}
                   onChangeBrushSize={(brushSize) => onUpdateSettings({ ...settings, brushSize })}
+                />
+              ) : null}
+              {tool.id === "line" && settings.mode === "line" ? (
+                <LineOptionsBar
+                  endArrow={settings.lineEndArrow}
+                  onChangeEndArrow={(lineEndArrow) => onUpdateSettings({ ...settings, lineEndArrow })}
+                  onChangeStartArrow={(lineStartArrow) => onUpdateSettings({ ...settings, lineStartArrow })}
+                  onChangeThickness={(lineThickness) => onUpdateSettings({ ...settings, lineThickness })}
+                  startArrow={settings.lineStartArrow}
+                  thickness={settings.lineThickness}
                 />
               ) : null}
               <button
@@ -232,6 +246,59 @@ export function ShapeModeBar({
   );
 }
 
+function LineOptionsBar({
+  endArrow,
+  onChangeEndArrow,
+  onChangeStartArrow,
+  onChangeThickness,
+  startArrow,
+  thickness,
+}: {
+  readonly endArrow: boolean;
+  readonly onChangeEndArrow: (enabled: boolean) => void;
+  readonly onChangeStartArrow: (enabled: boolean) => void;
+  readonly onChangeThickness: (thickness: number) => void;
+  readonly startArrow: boolean;
+  readonly thickness: number;
+}) {
+  return (
+    <div className="line-options-bar" aria-label="Line options">
+      <label>
+        <span>Thickness</span>
+        <input
+          aria-label="Line thickness"
+          max="16"
+          min="1"
+          onChange={(event) => onChangeThickness(Number(event.currentTarget.value))}
+          type="range"
+          value={thickness}
+        />
+        <output>{thickness}</output>
+      </label>
+      <button
+        aria-label="Start arrow"
+        aria-pressed={startArrow}
+        data-tooltip="Start arrow"
+        onClick={() => onChangeStartArrow(!startArrow)}
+        title="Start arrow"
+        type="button"
+      >
+        <ArrowLineLeft aria-hidden="true" size={17} weight={startArrow ? "fill" : "regular"} />
+      </button>
+      <button
+        aria-label="End arrow"
+        aria-pressed={endArrow}
+        data-tooltip="End arrow"
+        onClick={() => onChangeEndArrow(!endArrow)}
+        title="End arrow"
+        type="button"
+      >
+        <ArrowLineRight aria-hidden="true" size={17} weight={endArrow ? "fill" : "regular"} />
+      </button>
+    </div>
+  );
+}
+
 function isBrushSizeTool(mode: ToolMode) {
   return mode === "brush" || mode === "eraser";
 }
@@ -303,7 +370,7 @@ export function MaterialEditorPanel({
 }: MaterialEditorPanelProps) {
   const isEraser = settings.mode === "eraser";
   const isObjectTool = settings.mode === "stamp" || settings.mode === "cursor" || settings.mode === "marquee";
-  const usesShapeSettings = !isObjectTool && settings.mode !== "paint" && settings.mode !== "eraser";
+  const usesShapeSettings = !isObjectTool && settings.mode !== "paint" && settings.mode !== "line" && settings.mode !== "eraser";
   const isPaint = !isEraser && settings.material === MATERIAL.Paint;
   const isSingleCellTool = settings.mode === "paint" || settings.mode === "eraser" || isObjectTool;
   const activePaintSwatch = paintSwatches.find((swatch) => swatch.id === settings.paintVariant) ?? paintSwatches[0];
