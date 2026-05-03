@@ -930,7 +930,8 @@ button:disabled {
   padding-top: 7px;
 }
 
-.object-library-panel output {
+.object-library-panel output,
+.object-library-panel__feedback {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   color: #8e98a8;
   display: block;

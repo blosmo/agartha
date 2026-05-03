@@ -886,7 +886,7 @@ export function App({
           <ToolDock paintSwatches={paintSwatches} settings={toolSettings} onUpdateSettings={updateToolSettings} />
         )}
       </section>
-      <aside className="agartha-side-panel" aria-label="World inspector" data-agent-region="world-inspector">
+      <aside className="agartha-side-panel" aria-label="Editor sidebar" data-agent-region="world-inspector">
         {uiMode === "agent" ? (
           <>
             <div className="agartha-side-panel__group" aria-label="Automation" data-agent-region="automation">
@@ -900,19 +900,30 @@ export function App({
               />
               <ReplayControls />
             </div>
-            <div className="agartha-side-panel__group" aria-label="Create" data-agent-region="create">
-              <h2>Create</h2>
-              <ObjectLibraryPanel
-                onCapture={captureObject}
-                onSelectTemplate={selectObjectTemplate}
-                onUpdateStampPattern={updateStampPattern}
-                selectedId={toolSettings.objectId}
-                selection={selection}
-                stampRepeat={toolSettings.stampRepeat}
-                stampStepX={toolSettings.stampStepX}
-                stampStepY={toolSettings.stampStepY}
-                templates={objectTemplates}
+            <div className="agartha-side-panel__group" aria-label="Inspect" data-agent-region="inspect">
+              <h2>Inspect</h2>
+              <CellInspector coord={selectedCoord} material={selectedCell?.material ?? MATERIAL.Empty} state={selectedCell?.state ?? 0} />
+              <EventHistoryPanel events={events} />
+            </div>
+            <div className="agartha-side-panel__group" aria-label="Simulation" data-agent-region="world">
+              <h2>Simulation</h2>
+              <TerrainSeedPanel
+                onSelectSeed={selectTerrainSeed}
+                seeds={TERRAIN_SEEDS}
+                selectedSeedId={terrainSeedId}
               />
+              <TimeControls
+                isPlaying={isPlaying}
+                onResetTime={() => {
+                  resetTime();
+                }}
+                onStep={advanceTime}
+                onTogglePlay={togglePlayback}
+                tick={tick}
+              />
+            </div>
+            <div className="agartha-side-panel__group" aria-label="Tools" data-agent-region="create">
+              <h2>Tools</h2>
               <MaterialEditorPanel
                 canRedo={redoStack.length > 0}
                 canUndo={undoStack.length > 0}
@@ -926,81 +937,73 @@ export function App({
                 paintSwatches={paintSwatches}
                 settings={toolSettings}
               />
+              <ObjectLibraryPanel
+                onCapture={captureObject}
+                onSelectTemplate={selectObjectTemplate}
+                onUpdateStampPattern={updateStampPattern}
+                selectedId={toolSettings.objectId}
+                selection={selection}
+                stampRepeat={toolSettings.stampRepeat}
+                stampStepX={toolSettings.stampStepX}
+                stampStepY={toolSettings.stampStepY}
+                templates={objectTemplates}
+              />
             </div>
           </>
         ) : (
           <>
-        <div className="agartha-side-panel__group" aria-label="Create" data-agent-region="create">
-          <h2>Create</h2>
-          <MaterialEditorPanel
-            canRedo={redoStack.length > 0}
-            canUndo={undoStack.length > 0}
-            onCreatePaintSwatch={createPaintSwatch}
-            onClear={resetDemo}
-            onClearAllCells={clearAllCells}
-            onRedo={redoEdit}
-            onUndo={undoEdit}
-            onUpdatePaintSwatch={updatePaintSwatch}
-            onUpdateSettings={updateToolSettings}
-            paintSwatches={paintSwatches}
-            settings={toolSettings}
-            showClearAllCells
-          />
-          <ObjectLibraryPanel
-            onCapture={captureObject}
-            onSelectTemplate={selectObjectTemplate}
-            onUpdateStampPattern={updateStampPattern}
-            selectedId={toolSettings.objectId}
-            selection={selection}
-            stampRepeat={toolSettings.stampRepeat}
-            stampStepX={toolSettings.stampStepX}
-            stampStepY={toolSettings.stampStepY}
-            templates={objectTemplates}
-          />
-        </div>
-        <div className="agartha-side-panel__group" aria-label="World" data-agent-region="world">
-          <h2>World</h2>
-          <TerrainSeedPanel
-            onSelectSeed={selectTerrainSeed}
-            seeds={TERRAIN_SEEDS}
-            selectedSeedId={terrainSeedId}
-          />
-          <TimeControls
-            isPlaying={isPlaying}
-            onResetTime={() => {
-              resetTime();
-            }}
-            onStep={advanceTime}
-            onTogglePlay={togglePlayback}
-            tick={tick}
-          />
-        </div>
+            <div className="agartha-side-panel__group" aria-label="Inspect" data-agent-region="inspect">
+              <h2>Inspect</h2>
+              <CellInspector coord={selectedCoord} material={selectedCell?.material ?? MATERIAL.Empty} state={selectedCell?.state ?? 0} />
+              <EventHistoryPanel events={events} />
+            </div>
+            <div className="agartha-side-panel__group" aria-label="Simulation" data-agent-region="world">
+              <h2>Simulation</h2>
+              <TerrainSeedPanel
+                onSelectSeed={selectTerrainSeed}
+                seeds={TERRAIN_SEEDS}
+                selectedSeedId={terrainSeedId}
+              />
+              <TimeControls
+                isPlaying={isPlaying}
+                onResetTime={() => {
+                  resetTime();
+                }}
+                onStep={advanceTime}
+                onTogglePlay={togglePlayback}
+                tick={tick}
+              />
+            </div>
+            <div className="agartha-side-panel__group" aria-label="Tools" data-agent-region="create">
+              <h2>Tools</h2>
+              <MaterialEditorPanel
+                canRedo={redoStack.length > 0}
+                canUndo={undoStack.length > 0}
+                onCreatePaintSwatch={createPaintSwatch}
+                onClear={resetDemo}
+                onClearAllCells={clearAllCells}
+                onRedo={redoEdit}
+                onUndo={undoEdit}
+                onUpdatePaintSwatch={updatePaintSwatch}
+                onUpdateSettings={updateToolSettings}
+                paintSwatches={paintSwatches}
+                settings={toolSettings}
+                showClearAllCells
+              />
+              <ObjectLibraryPanel
+                onCapture={captureObject}
+                onSelectTemplate={selectObjectTemplate}
+                onUpdateStampPattern={updateStampPattern}
+                selectedId={toolSettings.objectId}
+                selection={selection}
+                stampRepeat={toolSettings.stampRepeat}
+                stampStepX={toolSettings.stampStepX}
+                stampStepY={toolSettings.stampStepY}
+                templates={objectTemplates}
+              />
+            </div>
           </>
         )}
-        <div className="agartha-side-panel__group" aria-label="Inspect" data-agent-region="inspect">
-          <h2>Inspect</h2>
-          <CellInspector coord={selectedCoord} material={selectedCell?.material ?? MATERIAL.Empty} state={selectedCell?.state ?? 0} />
-          <EventHistoryPanel events={events} />
-        </div>
-        {uiMode === "agent" ? (
-          <div className="agartha-side-panel__group" aria-label="World" data-agent-region="world">
-            <h2>World</h2>
-            <TerrainSeedPanel
-              onSelectSeed={selectTerrainSeed}
-              seeds={TERRAIN_SEEDS}
-              selectedSeedId={terrainSeedId}
-            />
-            <TimeControls
-              isPlaying={isPlaying}
-            onResetTime={() => {
-                resetTime();
-              }}
-              onStep={advanceTime}
-              onTogglePlay={togglePlayback}
-              tick={tick}
-            />
-          </div>
-        ) : null}
       </aside>
     </main>
   );

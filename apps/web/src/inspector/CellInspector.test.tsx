@@ -10,7 +10,7 @@ describe("CellInspector", () => {
   it("shows selected cell material, state, coordinates, and version", () => {
     render(<CellInspector coord={toWorldCoord(65, 65)} material={MATERIAL.Fire} state={3} />);
 
-    expect(screen.getByRole("heading", { name: "Cell Inspector" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Selected cell" })).toBeInTheDocument();
     expect(screen.getByText("fire")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("0:0")).toBeInTheDocument();

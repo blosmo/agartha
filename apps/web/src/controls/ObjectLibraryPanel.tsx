@@ -1,5 +1,5 @@
 import { Archive, FrameCorners } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { CellObjectTemplate } from "../app/demoWorld";
 import type { CellSelection } from "../board/BoardCanvas";
@@ -28,24 +28,18 @@ export function ObjectLibraryPanel({
   onUpdateStampPattern,
 }: ObjectLibraryPanelProps) {
   const [label, setLabel] = useState("house");
-  const [result, setResult] = useState("No saved objects");
+  const [lastCaptureMessage, setLastCaptureMessage] = useState<string | null>(null);
 
   const activeId = selectedId ?? templates[0]?.id;
 
-  useEffect(() => {
-    if (templates.length > 0 && result === "No saved objects") {
-      setResult(`${templates.length} saved object${templates.length === 1 ? "" : "s"}`);
-    }
-  }, [result, templates]);
-
   function capture() {
     const message = onCapture(label);
-    setResult(message);
+    setLastCaptureMessage(message);
   }
 
   return (
-    <section className="inspector-panel object-library-panel gradient-border gradient-border-to-br" aria-label="Object library">
-      <h2>Objects</h2>
+    <section className="inspector-panel object-library-panel" aria-label="Stamp library">
+      <h2>Stamps</h2>
       <div className="object-library-panel__capture">
         <input
           aria-label="Object name"
@@ -63,7 +57,7 @@ export function ObjectLibraryPanel({
       </div>
       <div className="object-library-panel__templates" role="radiogroup" aria-label="Saved object">
         {templates.length === 0 ? (
-          <p>Capture from selected cell</p>
+          <p>Use Marquee, select cells, then capture.</p>
         ) : (
           templates.map((template) => (
             <button
@@ -115,7 +109,11 @@ export function ObjectLibraryPanel({
           />
         </label>
       </div>
-      <output aria-label="Object library result">{result}</output>
+      {lastCaptureMessage ? (
+        <output aria-label="Last capture result" className="object-library-panel__feedback">
+          {lastCaptureMessage}
+        </output>
+      ) : null}
     </section>
   );
 }

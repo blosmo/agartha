@@ -6,12 +6,12 @@ export interface EventHistoryPanelProps {
 
 export function EventHistoryPanel({ events }: EventHistoryPanelProps) {
   return (
-    <section className="inspector-panel gradient-border gradient-border-to-br" aria-label="Event history" data-agent-region="event-history">
-      <h2>Local History</h2>
+    <section className="inspector-panel" aria-label="Recent activity" data-agent-region="event-history">
+      <h2>Recent activity</h2>
       <ol aria-live="polite" className="event-history-panel__list" role="log">
         {events.map((event) => (
           <li data-agent-id={`event-${event.id}`} key={event.id}>
-            {event.id} tick {event.tick}: {event.summary}
+            Tick {event.tick}: {event.summary}
           </li>
         ))}
       </ol>

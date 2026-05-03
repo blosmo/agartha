@@ -8,8 +8,8 @@ export interface CellInspectorProps {
 
 export function CellInspector({ coord, material = MATERIAL.Paint, state = 0 }: CellInspectorProps) {
   return (
-    <section className="inspector-panel gradient-border gradient-border-to-br" aria-label="Cell inspector">
-      <h2>Cell Inspector</h2>
+    <section className="inspector-panel" aria-label="Selected cell">
+      <h2>Selected cell</h2>
       <dl>
         <div>
           <dt>Material</dt>
@@ -30,10 +30,6 @@ export function CellInspector({ coord, material = MATERIAL.Paint, state = 0 }: C
           <dd>
             {coord.cell.x}:{coord.cell.y}
           </dd>
-        </div>
-        <div>
-          <dt>Version</dt>
-          <dd>1</dd>
         </div>
       </dl>
     </section>
