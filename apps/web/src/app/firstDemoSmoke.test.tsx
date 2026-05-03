@@ -193,6 +193,11 @@ describe("first demo viewer smoke", () => {
     fireEvent.pointerUp(board, { clientX: 512, clientY: 452, pointerId: 2 });
     expect(boardCells.style.transform).toEqual(transformBeforeShapeDrag);
     expect(screen.getAllByText("Shape drag:", { exact: false }).length).toBeGreaterThan(0);
+    fireEvent.pointerDown(board, { clientX: 480, clientY: 420, pointerId: 3 });
+    fireEvent.pointerMove(board, { clientX: 528, clientY: 452, pointerId: 3, shiftKey: true });
+    expect(screen.getByTestId("board-selection").style.width).toEqual(screen.getByTestId("board-selection").style.height);
+    fireEvent.pointerUp(board, { clientX: 528, clientY: 452, pointerId: 3, shiftKey: true });
+    expect(screen.getAllByText("Shape drag:", { exact: false }).length).toBeGreaterThan(1);
 
     fireEvent.click(screen.getByRole("radio", { name: "Eraser" }));
     expect(screen.getByLabelText("Brush size menu")).toBeInTheDocument();

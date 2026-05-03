@@ -256,7 +256,11 @@ export function BoardCanvas({
           return;
         }
         if (drag.mode === "shape" && drag.startCoord) {
-          const nextSelection = selectionFromCoords(drag.startCoord, screenToCoord(event.clientX, event.clientY, event.currentTarget, cameraRef.current));
+          const nextSelection = shapeSelectionFromPointer(
+            drag.startCoord,
+            screenToCoord(event.clientX, event.clientY, event.currentTarget, cameraRef.current),
+            event.shiftKey,
+          );
           setMarqueePreview(nextSelection);
           return;
         }
@@ -299,7 +303,7 @@ export function BoardCanvas({
               onSelectCell(finalCoord);
               onApplyTool(finalCoord);
             } else {
-              const nextSelection = selectionFromCoords(drag.startCoord, finalCoord);
+              const nextSelection = shapeSelectionFromPointer(drag.startCoord, finalCoord, event.shiftKey);
               const shapeCoords = shapeCoordsFromSelection(nextSelection, toolSettings.shapeMode);
               setMarqueePreview(undefined);
               onSelectCell(finalCoord);
@@ -497,6 +501,28 @@ function selectionFromCoords(a: WorldCoord, b: WorldCoord): CellSelection {
     origin: screenAbsoluteToCoord(minX, minY),
     width: Math.abs(absoluteB.x - absoluteA.x) + 1,
   };
+}
+
+function shapeSelectionFromPointer(start: WorldCoord, end: WorldCoord, constrainToSquare: boolean): CellSelection {
+  if (!constrainToSquare) return selectionFromCoords(start, end);
+
+  const startAbsolute = absoluteCoord(start);
+  const endAbsolute = absoluteCoord(end);
+  const deltaX = endAbsolute.x - startAbsolute.x;
+  const deltaY = endAbsolute.y - startAbsolute.y;
+  const side = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+  const constrainedEnd = screenAbsoluteToCoord(
+    startAbsolute.x + signedDirection(deltaX, 1) * side,
+    startAbsolute.y + signedDirection(deltaY, 1) * side,
+  );
+
+  return selectionFromCoords(start, constrainedEnd);
+}
+
+function signedDirection(value: number, fallback: 1) {
+  if (value < 0) return -1;
+  if (value > 0) return 1;
+  return fallback;
 }
 
 function shapeCoordsFromSelection(selection: CellSelection, shapeMode: MaterialToolSettings["shapeMode"]) {
