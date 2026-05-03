@@ -500,7 +500,7 @@ function toolTargets(
   const { x, y } = absoluteCoord(coord);
   const radius = Math.max(1, Math.min(10, Math.round(settings.brushSize)));
 
-  if (settings.mode === "paint" || settings.mode === "eraser") {
+  if (settings.mode === "paint") {
     return [coord];
   }
 
@@ -512,7 +512,7 @@ function toolTargets(
   for (let dy = -radius; dy <= radius; dy += 1) {
     for (let dx = -radius; dx <= radius; dx += 1) {
       if (
-        (settings.mode === "brush" || (settings.mode === "shape" && settings.shapeMode === "circle")) &&
+        (settings.mode === "brush" || settings.mode === "eraser" || (settings.mode === "shape" && settings.shapeMode === "circle")) &&
         dx * dx + dy * dy > radius * radius
       ) {
         continue;

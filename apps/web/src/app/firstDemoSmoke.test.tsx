@@ -32,6 +32,9 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByRole("radio", { name: "Pencil" })).toHaveAttribute("title", "Pencil (1)");
     fireEvent.keyDown(window, { key: "2" });
     expect(screen.getByRole("radio", { name: "Brush" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Brush size menu")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Toolbar brush size"), { target: { value: "4" } });
+    expect(screen.getByLabelText("Brush size")).toHaveValue("4");
     fireEvent.click(screen.getAllByRole("radio", { name: "Paint 2" })[0]);
     expect(screen.getAllByRole("radio", { name: "Paint 2" }).some((element) => element.getAttribute("aria-checked") === "true")).toBe(true);
     expect(screen.getByLabelText("Paint color")).toHaveAttribute("type", "color");
@@ -148,8 +151,16 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByRole("radio", { name: "Circle" })).toHaveAttribute("aria-checked", "true");
     applyBoardPointer(board, 472, 420);
     expect(screen.getAllByText("Shape tool:", { exact: false }).length).toBeGreaterThan(0);
+    const transformBeforeShapeDrag = boardCells.style.transform;
+    fireEvent.click(screen.getByRole("radio", { name: "Rectangle" }));
+    fireEvent.pointerDown(board, { clientX: 480, clientY: 420, pointerId: 2 });
+    fireEvent.pointerMove(board, { clientX: 512, clientY: 452, pointerId: 2 });
+    fireEvent.pointerUp(board, { clientX: 512, clientY: 452, pointerId: 2 });
+    expect(boardCells.style.transform).toEqual(transformBeforeShapeDrag);
+    expect(screen.getAllByText("Shape drag:", { exact: false }).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("radio", { name: "Eraser" }));
+    expect(screen.getByLabelText("Brush size menu")).toBeInTheDocument();
     applyBoardPointer(board, 472, 420);
     expect(screen.getAllByText("Eraser stroke:", { exact: false }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Undo edit" })).toBeEnabled();

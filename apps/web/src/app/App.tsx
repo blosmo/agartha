@@ -325,6 +325,34 @@ export function App({
     ]);
   }
 
+  function applyShape(coords: readonly WorldCoord[]) {
+    if (coords.length === 0) return;
+
+    const shapeSettings: MaterialToolSettings = { ...toolSettings, mode: "paint" };
+    const result = applyMaterialStroke(cells, coords, shapeSettings);
+    const finalCoord = coords[coords.length - 1];
+    if (convexUrl) {
+      void submitConvexMaterialEdit(cells, result.cells, finalCoord, "shape");
+      return;
+    }
+    if (blockServerBackedMutation("Browser shape edits are disabled in server-backed mode. Use agartha CLI/API.")) return;
+
+    setSelectedCoord(finalCoord);
+    if (result.affected > 0) {
+      setUndoStack((current) => [cells, ...current].slice(0, 24));
+      setRedoStack([]);
+    }
+    setCells(result.cells);
+    setEvents((eventList) => [
+      {
+        id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
+        tick,
+        summary: `Shape drag: ${editSummary(result.affected, finalCoord, result.material)}`,
+      },
+      ...eventList,
+    ]);
+  }
+
   function commitCells(nextCells: DemoCell[], summary: string, coord?: WorldCoord, previousCells = cells) {
     if (blockServerBackedMutation("Browser cell commits are disabled in server-backed mode. Use agartha CLI/API.")) return;
     setUndoStack((current) => [previousCells, ...current].slice(0, 24));
@@ -345,7 +373,7 @@ export function App({
     previousCells: readonly DemoCell[],
     nextCells: readonly DemoCell[],
     coord: WorldCoord,
-    gesture: "tool" | "stroke",
+    gesture: "shape" | "tool" | "stroke",
   ) {
     setSelectedCoord(coord);
 
@@ -458,7 +486,7 @@ export function App({
   async function submitConvexBrowserCells(
     nextCells: readonly DemoCell[],
     optimisticCells: readonly DemoCell[],
-    gesture: "tool" | "stroke",
+    gesture: "shape" | "tool" | "stroke",
   ) {
     if (!convexPaintBrowserCells || !convexWriteConfig) return;
 
@@ -854,8 +882,9 @@ export function App({
       </div>
       <section className="agartha-board-shell" aria-label="Agartha board" data-agent-region="board">
         <ModeSwitch mode={uiMode} onChangeMode={setUiMode} />
-        <BoardCanvas
+    <BoardCanvas
           cells={cells}
+          onApplyShape={applyShape}
           onApplyStroke={applyStroke}
           onApplyTool={applyTool}
           onMarqueeSelect={updateSelection}

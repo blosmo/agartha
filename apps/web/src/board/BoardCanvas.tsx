@@ -15,6 +15,7 @@ export interface BoardCanvasProps {
   readonly selectedCoord: WorldCoord;
   readonly selection?: CellSelection;
   readonly toolSettings: MaterialToolSettings;
+  readonly onApplyShape?: (coords: readonly WorldCoord[]) => void;
   readonly onApplyStroke?: (coords: readonly WorldCoord[]) => void;
   readonly onApplyTool: (coord: WorldCoord) => void;
   readonly onMarqueeSelect: (selection: CellSelection) => void;
@@ -33,6 +34,7 @@ export function BoardCanvas({
   selectedCoord,
   selection,
   toolSettings,
+  onApplyShape,
   onApplyStroke,
   onApplyTool,
   onMarqueeSelect,
@@ -54,7 +56,7 @@ export function BoardCanvas({
     panY: number;
     startCoord?: WorldCoord;
     lastStrokeCoord?: WorldCoord;
-    mode: "pan" | "marquee" | "stroke";
+    mode: "pan" | "marquee" | "shape" | "stroke";
     strokeCoords?: WorldCoord[];
     strokeKeys?: Set<string>;
   } | null>(null);
@@ -212,6 +214,7 @@ export function BoardCanvas({
       }}
       onPointerDown={(event) => {
         const canStroke = isStrokeTool(toolSettings.mode);
+        const canShapeDrag = toolSettings.mode === "shape";
         event.currentTarget.setPointerCapture?.(event.pointerId);
         const currentCamera = cameraRef.current;
         const coord = screenToCoord(event.clientX, event.clientY, event.currentTarget, currentCamera);
@@ -226,8 +229,8 @@ export function BoardCanvas({
           panX: currentCamera.x,
           panY: currentCamera.y,
           lastStrokeCoord: canStroke ? coord : undefined,
-          mode: canStroke ? "stroke" : toolSettings.mode === "marquee" ? "marquee" : "pan",
-          startCoord: toolSettings.mode === "marquee" ? coord : undefined,
+          mode: canStroke ? "stroke" : canShapeDrag ? "shape" : toolSettings.mode === "marquee" ? "marquee" : "pan",
+          startCoord: canShapeDrag || toolSettings.mode === "marquee" ? coord : undefined,
           strokeCoords,
           strokeKeys,
         };
@@ -250,6 +253,19 @@ export function BoardCanvas({
         }
         if (drag.mode === "marquee" && drag.startCoord) {
           setMarqueePreview(selectionFromCoords(drag.startCoord, screenToCoord(event.clientX, event.clientY, event.currentTarget, cameraRef.current)));
+          return;
+        }
+        if (drag.mode === "shape" && drag.startCoord) {
+          const nextSelection = selectionFromCoords(drag.startCoord, screenToCoord(event.clientX, event.clientY, event.currentTarget, cameraRef.current));
+          setMarqueePreview(nextSelection);
+          previewStroke(
+            shapeCoordsFromSelection(nextSelection, toolSettings.shapeMode),
+            { ...toolSettings, mode: "paint" },
+            paintSwatches,
+            textureCacheRef.current,
+            chunkCanvasRefs.current,
+            gpuSurfaceRef.current,
+          );
           return;
         }
         applyCamera(
@@ -282,6 +298,27 @@ export function BoardCanvas({
             setMarqueePreview(undefined);
             onMarqueeSelect(nextSelection);
             onSelectCell(nextSelection.origin);
+            dragStart.current = null;
+            return;
+          }
+          if (drag.mode === "shape" && drag.startCoord) {
+            const finalCoord = screenToCoord(event.clientX, event.clientY, hostRef.current, cameraRef.current);
+            if (moved < 4) {
+              onSelectCell(finalCoord);
+              onApplyTool(finalCoord);
+            } else {
+              const nextSelection = selectionFromCoords(drag.startCoord, finalCoord);
+              const shapeCoords = shapeCoordsFromSelection(nextSelection, toolSettings.shapeMode);
+              setMarqueePreview(undefined);
+              onSelectCell(finalCoord);
+              if (onApplyShape) {
+                onApplyShape(shapeCoords);
+              } else if (onApplyStroke) {
+                onApplyStroke(shapeCoords);
+              } else {
+                shapeCoords.forEach((shapeCoord) => onApplyTool(shapeCoord));
+              }
+            }
             dragStart.current = null;
             return;
           }
@@ -468,6 +505,40 @@ function selectionFromCoords(a: WorldCoord, b: WorldCoord): CellSelection {
     origin: screenAbsoluteToCoord(minX, minY),
     width: Math.abs(absoluteB.x - absoluteA.x) + 1,
   };
+}
+
+function shapeCoordsFromSelection(selection: CellSelection, shapeMode: MaterialToolSettings["shapeMode"]) {
+  const origin = absoluteCoord(selection.origin);
+  const width = Math.max(1, selection.width);
+  const height = Math.max(1, selection.height);
+  const centerX = origin.x + (width - 1) / 2;
+  const centerY = origin.y + (height - 1) / 2;
+  const radiusX = Math.max(0.5, width / 2);
+  const radiusY = Math.max(0.5, height / 2);
+  const coords: WorldCoord[] = [];
+
+  for (let dy = 0; dy < height; dy += 1) {
+    for (let dx = 0; dx < width; dx += 1) {
+      const x = origin.x + dx;
+      const y = origin.y + dy;
+
+      if (shapeMode === "circle") {
+        const normalizedX = (x - centerX) / radiusX;
+        const normalizedY = (y - centerY) / radiusY;
+        if (normalizedX * normalizedX + normalizedY * normalizedY > 1) continue;
+      }
+
+      if (shapeMode === "diamond") {
+        const normalizedX = Math.abs(x - centerX) / radiusX;
+        const normalizedY = Math.abs(y - centerY) / radiusY;
+        if (normalizedX + normalizedY > 1) continue;
+      }
+
+      coords.push(screenAbsoluteToCoord(x, y));
+    }
+  }
+
+  return coords;
 }
 
 function screenAbsoluteToCoord(x: number, y: number): WorldCoord {
@@ -692,7 +763,7 @@ function previewStroke(
 }
 
 function previewTargets(coord: WorldCoord, toolSettings: MaterialToolSettings) {
-  if (toolSettings.mode === "paint" || toolSettings.mode === "eraser") return [coord];
+  if (toolSettings.mode === "paint") return [coord];
 
   const origin = absoluteCoord(coord);
   const radius = Math.max(1, Math.min(10, Math.round(toolSettings.brushSize)));

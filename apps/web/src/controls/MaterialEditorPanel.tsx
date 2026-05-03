@@ -134,10 +134,17 @@ export function ToolDock({ paintSwatches, settings, onUpdateSettings }: ToolDock
                   onChangeMode={(shapeMode) => onUpdateSettings({ ...settings, shapeMode })}
                 />
               ) : null}
+              {isBrushSizeTool(tool.id) && tool.id === settings.mode ? (
+                <BrushSizeBar
+                  brushSize={settings.brushSize}
+                  onChangeBrushSize={(brushSize) => onUpdateSettings({ ...settings, brushSize })}
+                />
+              ) : null}
               <button
                 aria-checked={tool.id === settings.mode}
                 aria-label={tool.label}
                 className="tool-dock__button"
+                data-submenu-open={isBrushSizeTool(tool.id) && tool.id === settings.mode ? "true" : undefined}
                 data-tooltip={`${tool.label} (${tool.shortcut})`}
                 data-tool={tool.id}
                 onClick={() => updateMode(tool.id)}
@@ -174,6 +181,27 @@ export function ToolDock({ paintSwatches, settings, onUpdateSettings }: ToolDock
   );
 }
 
+function BrushSizeBar({
+  brushSize,
+  onChangeBrushSize,
+}: {
+  readonly brushSize: number;
+  readonly onChangeBrushSize: (size: number) => void;
+}) {
+  return (
+    <div className="brush-size-bar" aria-label="Brush size menu">
+      <input
+        aria-label="Toolbar brush size"
+        max="10"
+        min="1"
+        onChange={(event) => onChangeBrushSize(Number(event.currentTarget.value))}
+        type="range"
+        value={brushSize}
+      />
+    </div>
+  );
+}
+
 export function ShapeModeBar({
   mode,
   onChangeMode,
@@ -202,6 +230,10 @@ export function ShapeModeBar({
       })}
     </div>
   );
+}
+
+function isBrushSizeTool(mode: ToolMode) {
+  return mode === "brush" || mode === "eraser";
 }
 
 interface MaterialPaletteItem {

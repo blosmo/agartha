@@ -128,14 +128,19 @@ describe("applyMaterialTool", () => {
   });
 
   it("clears cells with the eraser", () => {
-    const cells = [demoCell(20, 20, MATERIAL.Fire)];
+    const cells = [
+      demoCell(20, 20, MATERIAL.Fire),
+      demoCell(21, 20, MATERIAL.Fire),
+      demoCell(26, 20, MATERIAL.Fire),
+    ];
     const result = applyMaterialTool(cells, cells[0].coord, {
       ...DEFAULT_TOOL_SETTINGS,
       mode: "eraser",
+      brushSize: 2,
     });
 
-    expect(result.affected).toBe(1);
-    expect(result.cells).toHaveLength(0);
+    expect(result.affected).toBe(2);
+    expect(result.cells).toHaveLength(1);
   });
 });
 
