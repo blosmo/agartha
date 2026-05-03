@@ -14,6 +14,8 @@ import {
 
 import { materialColor } from "./materialPalette";
 
+export type CellColorResolver = (cell: CellSample) => [number, number, number, number];
+
 export interface ChunkTextureRecord {
   readonly chunk: ChunkCoord;
   version: number;
@@ -28,12 +30,12 @@ export type PatchApplyResult =
 export class ChunkTextureCache {
   private readonly records = new Map<string, ChunkTextureRecord>();
 
-  applySnapshot(snapshot: ChunkSnapshot): ChunkTextureRecord {
+  applySnapshot(snapshot: ChunkSnapshot, resolveColor: CellColorResolver = defaultCellColor): ChunkTextureRecord {
     const record = this.getOrCreate(snapshot.chunk);
-    record.pixels.fill(0);
+    fillMaterial(record.pixels, MATERIAL.Empty);
 
     for (const cell of snapshot.cells) {
-      this.paintCell(record, cell);
+      this.paintCell(record, cell, resolveColor);
     }
 
     record.version = snapshot.version;
@@ -101,14 +103,18 @@ export class ChunkTextureCache {
     return record;
   }
 
-  private paintCell(record: ChunkTextureRecord, cell: CellSample) {
+  private paintCell(record: ChunkTextureRecord, cell: CellSample, resolveColor: CellColorResolver = defaultCellColor) {
     const offset = (cell.coord.cell.y * CHUNK_SIZE + cell.coord.cell.x) * 4;
-    const color = materialColor(cell.material);
+    const color = resolveColor(cell);
     record.pixels[offset] = color[0];
     record.pixels[offset + 1] = color[1];
     record.pixels[offset + 2] = color[2];
     record.pixels[offset + 3] = color[3];
   }
+}
+
+function defaultCellColor(cell: CellSample) {
+  return materialColor(cell.material);
 }
 
 export function chunkKey(chunk: ChunkCoord): string {

@@ -8,7 +8,7 @@ export interface CellInspectorProps {
 
 export function CellInspector({ coord, material = MATERIAL.Paint, state = 0 }: CellInspectorProps) {
   return (
-    <section className="inspector-panel" aria-label="Cell inspector">
+    <section className="inspector-panel gradient-border gradient-border-to-br" aria-label="Cell inspector">
       <h2>Cell Inspector</h2>
       <dl>
         <div>

@@ -6,14 +6,16 @@
   "type": "module",
   "workspaces": [
     "apps/web",
+    "packages/cli",
     "packages/protocol"
   ],
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
-    "build": "npm --workspace packages/protocol run build && npm --workspace apps/web run build && npm run build:scripts",
+    "build": "npm --workspace packages/protocol run build && npm --workspace packages/cli run build && npm --workspace apps/web run build && npm run build:scripts",
     "build:scripts": "tsc --noEmit -p tsconfig.scripts.json",
-    "test": "npm --workspace packages/protocol run test && npm --workspace apps/web run test && npm run test:scripts",
+    "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts && npm run test:convex",
     "test:scripts": "vitest run --dir scripts",
+    "test:convex": "vitest run --dir convex",
     "test:rust": "cargo test --workspace",
     "test:all": "npm run test && npm run test:rust"
   },
@@ -25,5 +27,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "convex": "^1.37.0"
   }
 }

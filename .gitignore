@@ -4,3 +4,5 @@ target/
 dist/
 apps/web/dist/
 *.log
+
+.env.local

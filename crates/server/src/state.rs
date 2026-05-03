@@ -56,6 +56,15 @@ impl ServerState {
                 WorldCoord::from_absolute(66, 64),
             ),
         );
+        agents.insert(
+            "agent-stream-gardener".to_string(),
+            AgentRecord::first_demo(
+                "agent-stream-gardener",
+                "Stream Gardener",
+                "token-gardener",
+                WorldCoord::from_absolute(62, 66),
+            ),
+        );
 
         Self {
             tick: 0,
@@ -296,6 +305,33 @@ impl ServerState {
                 next_regeneration_tick: agent.energy.last_regeneration_tick
                     + agent.energy.regenerates_every_ticks,
             },
+        })
+    }
+
+    pub fn refill_agent_energy(
+        &mut self,
+        agent_id: &str,
+        amount: Option<u32>,
+    ) -> Result<WorldEnergyView, RejectionReason> {
+        let Some(agent) = self.agents.get_mut(agent_id) else {
+            return Err(RejectionReason::InvalidTarget);
+        };
+
+        agent.energy.current = match amount {
+            Some(amount) => agent
+                .energy
+                .current
+                .saturating_add(amount)
+                .min(agent.energy.cap),
+            None => agent.energy.cap,
+        };
+
+        Ok(WorldEnergyView {
+            current: agent.energy.current,
+            cap: agent.energy.cap,
+            regenerates_every_ticks: agent.energy.regenerates_every_ticks,
+            next_regeneration_tick: agent.energy.last_regeneration_tick
+                + agent.energy.regenerates_every_ticks,
         })
     }
 

@@ -1,17 +1,22 @@
-# First Demo Acceptance
+---
+title: First demo acceptance checklist
+date: 2026-05-02
+status: initial
+---
 
-The first demo is complete when these outcomes are true and covered by tests:
+# First Demo Acceptance Checklist
 
-- A seeded origin region can accept an authenticated scripted-agent style action.
-- World Energy is quoted, spent on acceptance, regenerated on cadence, and preserved on rejection.
-- Stale versions, invalid auth, insufficient energy, and out-of-range actions reject without mutation.
-- Static chunks sleep after stabilization; dynamic materials are scheduled with bounded local rules.
-- Patch envelopes are versioned, ordered per chunk, subscription scoped, and recoverable by snapshot.
-- Local persistence restores chunk state, agent records, energy balances, symbols, notes, and event history.
-- Selected-area replay filters authoritative accepted events.
-- The viewer renders a board surface, inspector, event history, and replay controls without sending mutation requests.
-- Scripted agents observe, quote, act, register symbols, and submit notes through an external client boundary.
-
-## Deferred Boundaries
-
-Convex metadata indexes, OpenClaw runtime integration, object storage snapshots, executable material proposals, WebGPU compute, distributed authority, and monetization are not first-demo acceptance items.
+- Convex dev loop is running and generated files exist.
+- `seed.seedOrigin` creates one public `origin` world, three agents, one empty origin chunk, and one seed event.
+- CLI `observe` works in local Rust mode.
+- CLI `observe`, `quote`, `act`, `chunk`, and `events` work in Convex mode with `AGARTHA_BACKEND=convex`.
+- CLI `act paint-cells` preserves expected chunk versions for every affected chunk.
+- Missing, revoked, wrong-world, wrong-agent, expired, and production seeded tokens reject.
+- Admin refill is rejected while admin is disabled.
+- Admin refill succeeds with explicit admin enablement and writes an `adminAudit` record.
+- Browser local demo mode works without Convex config.
+- Explicit Convex mode with missing `VITE_CONVEX_URL` shows a configuration error.
+- Browser Convex mode renders cells/events from Convex and browser paint/place tools persist through Convex when `VITE_AGARTHA_WRITE_TOKEN` is configured.
+- Browser status/agent-state JSON reports `mutationAuthority: "convex_api"`.
+- Public browser queries do not expose private memory, notes, token records, rejected-action detail, or admin audit rows.
+- Sparse chunk sizing spike is recorded before browser cutover is treated as production-ready.

@@ -1,0 +1,22 @@
+{
+  "name": "@agartha/cli",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "agartha": "./src/index.ts"
+  },
+  "scripts": {
+    "agartha": "tsx src/index.ts",
+    "build": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agartha/protocol": "file:../protocol"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}

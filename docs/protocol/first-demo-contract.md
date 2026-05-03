@@ -10,6 +10,8 @@ The first demo exposes one authoritative world named `origin`. All mutations flo
 - First-demo actions: `observe`, `inspect`, `move`, `place_material`, `paint_cells`, `register_symbol`, `history`, and `submit_note`.
 - Action results: accepted flag, optional event ID, rejection reason, energy cost, remaining energy, affected cells/chunks, and summary.
 - Agent perception: position, memory summary, local visible cells, nearby symbols, recent local events, available actions, and World Energy metadata.
+- Agent CLI: `agartha` calls the local HTTP API and returns JSON by default; it does not dispatch DOM events or call browser globals.
+- Server snapshots/events: `/chunks/:x/:y` and `/events` expose authenticated read models for agents and the browser Canvas.
 
 ## First-Demo Internal
 
@@ -19,4 +21,4 @@ The first demo exposes one authoritative world named `origin`. All mutations flo
 
 ## Authority Boundary
 
-Clients may request quotes, actions, subscriptions, and history. Only the server may spend World Energy, apply simulation mutations, assign event IDs, write snapshots, or acknowledge durable events.
+Clients may request quotes, actions, subscriptions, snapshots, events, and history. Only the server may spend World Energy, apply simulation mutations, assign event IDs, write snapshots, or acknowledge durable events. In server-backed browser mode, the Canvas renders authenticated server state and blocks browser-local mutations.
