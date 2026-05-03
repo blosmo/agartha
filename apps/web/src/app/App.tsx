@@ -33,7 +33,9 @@ import {
   readConvexWriteConfig,
   useConvexAct,
   useConvexClearAllCells,
+  useConvexPaintBrowserCells,
   useConvexWorldSnapshot,
+  type ConvexWriteConfig,
   type ConvexWorldSnapshot,
 } from "../api/convexWorldClient";
 import { fetchServerWorldSnapshot, readServerWorldConfig } from "../api/worldClient";
@@ -60,11 +62,6 @@ type WorldSourceState = {
 const SERVER_WORLD_CONFIG = readServerWorldConfig(import.meta.env);
 const CONVEX_URL = readConvexUrl(import.meta.env);
 const CONVEX_WRITE_CONFIG = readConvexWriteConfig(import.meta.env);
-const AUTHORITATIVE_MODE = Boolean(CONVEX_URL || SERVER_WORLD_CONFIG);
-const INITIAL_APP_CELLS = AUTHORITATIVE_MODE ? [] : INITIAL_DEMO_CELLS;
-const INITIAL_APP_EVENTS: DemoEvent[] = AUTHORITATIVE_MODE
-  ? [{ id: "authoritative-connecting", tick: 0, summary: "Connecting to authoritative world state" }]
-  : [{ id: "demo-0001", tick: 0, summary: "Seeded origin materials" }];
 
 const AGENT_COMMANDS = [
   "masterpiece phoenix x y [scale]",
@@ -80,18 +77,26 @@ const AGENT_COMMANDS = [
 
 type ConvexActMutation = ReturnType<typeof useConvexAct>;
 type ConvexClearAllCellsMutation = ReturnType<typeof useConvexClearAllCells>;
+type ConvexPaintBrowserCellsMutation = ReturnType<typeof useConvexPaintBrowserCells>;
 
 export function App({
   convexAct,
   convexClearAllCells,
+  convexPaintBrowserCells,
   convexSnapshot,
+  convexUrl = CONVEX_URL,
+  convexWriteConfig = CONVEX_WRITE_CONFIG,
 }: {
   readonly convexAct?: ConvexActMutation;
   readonly convexClearAllCells?: ConvexClearAllCellsMutation;
+  readonly convexPaintBrowserCells?: ConvexPaintBrowserCellsMutation;
   readonly convexSnapshot?: ConvexWorldSnapshot;
+  readonly convexUrl?: string | null;
+  readonly convexWriteConfig?: ConvexWriteConfig;
 } = {}) {
+  const isAuthoritativeMode = Boolean(convexUrl || SERVER_WORLD_CONFIG);
   const [uiMode, setUiMode] = useState<UIMode>("human");
-  const [cells, setCells] = useState<DemoCell[]>(INITIAL_APP_CELLS);
+  const [cells, setCells] = useState<DemoCell[]>(() => (isAuthoritativeMode ? [] : INITIAL_DEMO_CELLS));
   const [terrainSeedId, setTerrainSeedId] = useState(DEFAULT_TERRAIN_SEED.id);
   const [toolSettings, setToolSettings] = useState<MaterialToolSettings>(DEFAULT_TOOL_SETTINGS);
   const [paintSwatches, setPaintSwatches] = useState<PaintSwatch[]>(DEFAULT_PAINT_SWATCHES);
@@ -102,12 +107,16 @@ export function App({
   const [redoStack, setRedoStack] = useState<DemoCell[][]>([]);
   const [tick, setTick] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [events, setEvents] = useState<DemoEvent[]>(INITIAL_APP_EVENTS);
+  const [events, setEvents] = useState<DemoEvent[]>(() =>
+    isAuthoritativeMode
+      ? [{ id: "authoritative-connecting", tick: 0, summary: "Connecting to authoritative world state" }]
+      : [{ id: "demo-0001", tick: 0, summary: "Seeded origin materials" }],
+  );
   const [pendingConvexCells, setPendingConvexCells] = useState<DemoCell[]>([]);
   const [worldSource, setWorldSource] = useState<WorldSourceState>(
-    CONVEX_URL
+    convexUrl
       ? {
-          apiUrl: CONVEX_URL,
+          apiUrl: convexUrl,
           connection: "connecting",
           message: "Connecting to Convex authoritative state",
           mode: "convex_backed",
@@ -138,7 +147,7 @@ export function App({
   );
 
   useEffect(() => {
-    if (CONVEX_URL || !SERVER_WORLD_CONFIG) return;
+    if (convexUrl || !SERVER_WORLD_CONFIG) return;
 
     let cancelled = false;
     let timer: number | undefined;
@@ -188,10 +197,10 @@ export function App({
       cancelled = true;
       if (timer !== undefined) window.clearInterval(timer);
     };
-  }, []);
+  }, [convexUrl]);
 
   useEffect(() => {
-    if (!CONVEX_URL || !convexSnapshot) return;
+    if (!convexUrl || !convexSnapshot) return;
     const unresolvedPendingCells = pendingConvexCells.filter((cell) => !snapshotHasCell(convexSnapshot.cells, cell));
     if (unresolvedPendingCells.length !== pendingConvexCells.length) setPendingConvexCells(unresolvedPendingCells);
     setCells(mergeCells(convexSnapshot.cells, unresolvedPendingCells));
@@ -208,17 +217,17 @@ export function App({
       convexSnapshot.cells.some((cell) => cell.id === cellKey(current)) ? current : convexSnapshot.cells[0]?.coord ?? current,
     );
     setWorldSource({
-      apiUrl: CONVEX_URL,
+      apiUrl: convexUrl,
       chunkVersions: convexSnapshot.chunkVersions,
       connection: "connected",
       message: "Rendering Convex authoritative state",
       mode: "convex_backed",
     });
-  }, [convexSnapshot, pendingConvexCells]);
+  }, [convexSnapshot, pendingConvexCells, convexUrl]);
 
   useEffect(() => {
     if (!isPlaying) return;
-    if (SERVER_WORLD_CONFIG || CONVEX_URL) return;
+    if (SERVER_WORLD_CONFIG || convexUrl) return;
     const timer = window.setInterval(() => {
       advanceTime();
     }, 650);
@@ -267,9 +276,8 @@ export function App({
     }
 
     const result = applyMaterialTool(cells, coord, toolSettings);
-    if (CONVEX_URL) {
-      setCells(result.cells);
-      void submitConvexMaterialEdit(result.cells, coord, "tool");
+    if (convexUrl) {
+      void submitConvexMaterialEdit(cells, result.cells, coord, "tool");
       return;
     }
     if (blockServerBackedMutation("Browser tool edits are disabled in server-backed mode. Use agartha CLI/API.")) return;
@@ -295,9 +303,8 @@ export function App({
 
     const result = applyMaterialStroke(cells, coords, toolSettings);
     const finalCoord = coords[coords.length - 1];
-    if (CONVEX_URL) {
-      setCells(result.cells);
-      void submitConvexMaterialEdit(result.cells, finalCoord, "stroke");
+    if (convexUrl) {
+      void submitConvexMaterialEdit(cells, result.cells, finalCoord, "stroke");
       return;
     }
     if (blockServerBackedMutation("Browser paint strokes are disabled in server-backed mode. Use agartha CLI/API.")) return;
@@ -322,7 +329,7 @@ export function App({
     if (blockServerBackedMutation("Browser cell commits are disabled in server-backed mode. Use agartha CLI/API.")) return;
     setUndoStack((current) => [previousCells, ...current].slice(0, 24));
     setRedoStack([]);
-    setCells(nextCells);
+    setCells([...nextCells]);
     if (coord) setSelectedCoord(coord);
     setEvents((eventList) => [
       {
@@ -334,10 +341,15 @@ export function App({
     ]);
   }
 
-  async function submitConvexMaterialEdit(nextCells: readonly DemoCell[], coord: WorldCoord, gesture: "tool" | "stroke") {
+  async function submitConvexMaterialEdit(
+    previousCells: readonly DemoCell[],
+    nextCells: readonly DemoCell[],
+    coord: WorldCoord,
+    gesture: "tool" | "stroke",
+  ) {
     setSelectedCoord(coord);
 
-    if (!convexAct || !CONVEX_WRITE_CONFIG) {
+    if ((!convexPaintBrowserCells && !convexAct) || !convexWriteConfig) {
       setWorldSource((current) => ({
         ...current,
         message: "Convex painting needs VITE_AGARTHA_WRITE_TOKEN in the local web app environment.",
@@ -353,7 +365,7 @@ export function App({
       return;
     }
 
-    const targets = changedCoords(cells, nextCells);
+    const targets = changedCoords(previousCells, nextCells);
     if (targets.length === 0) {
       setWorldSource((current) => ({
         ...current,
@@ -362,25 +374,54 @@ export function App({
       return;
     }
 
-    let envelope: ActionEnvelope;
-    const optimisticCells = nextCells.filter((cell) => targets.some((target) => cell.id === cellKey(target)));
-    if (targets.length === 1) {
-      envelope = placeMaterialEnvelope(
-        CONVEX_WRITE_CONFIG,
-        targets[0],
-        toolSettings.material as Exclude<MaterialId, typeof MATERIAL.Empty>,
-        toolSettings.material === MATERIAL.Paint ? toolSettings.paintVariant : 0,
-      );
-    } else if (toolSettings.material === MATERIAL.Paint) {
-      envelope = paintCellsEnvelope(CONVEX_WRITE_CONFIG, targets, toolSettings.paintVariant);
-    } else {
+    const nextById = new Map(nextCells.map((cell) => [cell.id, cell]));
+    const optimisticCells = targets.map((target) => nextById.get(cellKey(target))).filter((cell): cell is DemoCell => Boolean(cell));
+    if (optimisticCells.length !== targets.length) {
       setWorldSource((current) => ({
         ...current,
-        message: "Convex multi-cell browser edits currently support Paint only. Use single-cell placement for other materials.",
+        message: "Convex erasing is not supported yet; authoritative browser edits can add material only.",
       }));
       return;
     }
 
+    if (convexPaintBrowserCells) {
+      await submitConvexBrowserCells(nextCells, optimisticCells, gesture);
+      return;
+    }
+
+    let envelopes: ActionEnvelope[];
+    if (targets.length === 1) {
+      envelopes = [
+        placeMaterialEnvelope(
+          convexWriteConfig,
+          targets[0],
+          optimisticCells[0].material as Exclude<MaterialId, typeof MATERIAL.Empty>,
+          optimisticCells[0].variant,
+        ),
+      ];
+    } else if (toolSettings.material === MATERIAL.Paint) {
+      envelopes = [
+        paintCellsEnvelope(
+          convexWriteConfig,
+          targets,
+          toolSettings.paintVariant,
+        ),
+      ];
+    } else {
+      envelopes = optimisticCells.map((cell) =>
+        placeMaterialEnvelope(
+          convexWriteConfig,
+          cell.coord,
+          cell.material as Exclude<MaterialId, typeof MATERIAL.Empty>,
+          cell.variant,
+        ),
+      );
+    }
+
+    const submitAct = convexAct;
+    if (!submitAct) return;
+
+    setCells([...nextCells]);
     setPendingConvexCells((current) => mergeCells(current, optimisticCells));
     setWorldSource((current) => ({
       ...current,
@@ -388,18 +429,70 @@ export function App({
     }));
 
     try {
-      const result: ActionResult = await convexAct({ envelope, token: CONVEX_WRITE_CONFIG.token });
+      const results: ActionResult[] = [];
+      for (const envelope of envelopes) {
+        results.push(await submitAct({ envelope, token: convexWriteConfig.token }));
+      }
+      const rejected = results.find((result) => !result.accepted);
+      setWorldSource((current) => ({
+        ...current,
+        message: rejected
+          ? `Convex action rejected: ${rejected.reason ?? rejected.summary}`
+          : results.length === 1
+          ? `${results[0].summary}; waiting for Convex realtime state`
+          : `${toolLabel(toolSettings.mode)} ${gesture} accepted: ${optimisticCells.length} cells; waiting for Convex realtime state`,
+      }));
+      if (rejected) {
+        setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => sameCell(cell, optimistic))));
+      }
+    } catch (error) {
+      setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => sameCell(cell, optimistic))));
+      setWorldSource((current) => ({
+        ...current,
+        connection: "error",
+        message: error instanceof Error ? error.message : "Unable to submit browser paint to Convex",
+      }));
+    }
+  }
+
+  async function submitConvexBrowserCells(
+    nextCells: readonly DemoCell[],
+    optimisticCells: readonly DemoCell[],
+    gesture: "tool" | "stroke",
+  ) {
+    if (!convexPaintBrowserCells || !convexWriteConfig) return;
+
+    setCells([...nextCells]);
+    setPendingConvexCells((current) => mergeCells(current, optimisticCells));
+    setWorldSource((current) => ({
+      ...current,
+      message: `Submitting ${toolLabel(toolSettings.mode)} ${gesture} to Convex`,
+    }));
+
+    try {
+      const result: ActionResult = await convexPaintBrowserCells({
+        agentId: convexWriteConfig.agentId,
+        cells: optimisticCells.map(({ coord, flags, material, state, variant }) => ({
+          coord,
+          flags,
+          material,
+          state,
+          variant,
+        })),
+        token: convexWriteConfig.token,
+        worldId: convexWriteConfig.worldId,
+      });
       setWorldSource((current) => ({
         ...current,
         message: result.accepted
-          ? `${result.summary}; waiting for Convex realtime state`
+          ? `${toolLabel(toolSettings.mode)} ${gesture} accepted: ${optimisticCells.length} cells; waiting for Convex realtime state`
           : `Convex action rejected: ${result.reason ?? result.summary}`,
       }));
       if (!result.accepted) {
-        setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => optimistic.id === cell.id)));
+        setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => sameCell(cell, optimistic))));
       }
     } catch (error) {
-      setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => optimistic.id === cell.id)));
+      setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => sameCell(cell, optimistic))));
       setWorldSource((current) => ({
         ...current,
         connection: "error",
@@ -409,7 +502,7 @@ export function App({
   }
 
   async function submitConvexClearAllCells() {
-    if (!convexClearAllCells || !CONVEX_WRITE_CONFIG) {
+    if (!convexClearAllCells || !convexWriteConfig) {
       setWorldSource((current) => ({
         ...current,
         message: "Convex clear all needs VITE_AGARTHA_WRITE_TOKEN in the local web app environment.",
@@ -429,9 +522,9 @@ export function App({
 
     try {
       const result: ActionResult = await convexClearAllCells({
-        agentId: CONVEX_WRITE_CONFIG.agentId,
-        token: CONVEX_WRITE_CONFIG.token,
-        worldId: CONVEX_WRITE_CONFIG.worldId,
+        agentId: convexWriteConfig.agentId,
+        token: convexWriteConfig.token,
+        worldId: convexWriteConfig.worldId,
       });
       setWorldSource((current) => ({
         ...current,
@@ -494,7 +587,7 @@ export function App({
     setPaintSwatches((current) =>
       current.map((swatch) => (swatch.id === id ? { ...swatch, color } : swatch)),
     );
-    if (SERVER_WORLD_CONFIG || CONVEX_URL) return;
+    if (SERVER_WORLD_CONFIG || convexUrl) return;
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
@@ -525,7 +618,7 @@ export function App({
       paintVariant: nextId,
       ...MATERIAL_TOOL_DEFAULTS[MATERIAL.Paint],
     }));
-    if (SERVER_WORLD_CONFIG || CONVEX_URL) return;
+    if (SERVER_WORLD_CONFIG || convexUrl) return;
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
@@ -632,7 +725,7 @@ export function App({
   }
 
   function clearAllCells() {
-    if (CONVEX_URL) {
+    if (convexUrl) {
       void submitConvexClearAllCells();
       return;
     }
@@ -680,7 +773,7 @@ export function App({
   function updateSelection(nextSelection: CellSelection) {
     setSelection(nextSelection);
     setSelectedCoord(nextSelection.origin);
-    if (SERVER_WORLD_CONFIG || CONVEX_URL) {
+    if (SERVER_WORLD_CONFIG || convexUrl) {
       setWorldSource((current) => ({
         ...current,
       message: `Selected ${nextSelection.width}x${nextSelection.height} cells in authoritative view`,
@@ -723,7 +816,7 @@ export function App({
   }
 
   function blockServerBackedMutation(message: string) {
-    if (!SERVER_WORLD_CONFIG && !CONVEX_URL) return false;
+    if (!SERVER_WORLD_CONFIG && !convexUrl) return false;
     setWorldSource((current) => ({
       ...current,
       message,
@@ -1073,13 +1166,16 @@ function mergeCells(baseCells: readonly DemoCell[], overlayCells: readonly DemoC
 }
 
 function snapshotHasCell(snapshotCells: readonly DemoCell[], pendingCell: DemoCell) {
-  return snapshotCells.some(
-    (cell) =>
-      cell.id === pendingCell.id &&
-      cell.material === pendingCell.material &&
-      cell.state === pendingCell.state &&
-      cell.variant === pendingCell.variant &&
-      cell.flags === pendingCell.flags,
+  return snapshotCells.some((cell) => sameCell(cell, pendingCell));
+}
+
+function sameCell(a: DemoCell, b: DemoCell) {
+  return (
+    a.id === b.id &&
+    a.material === b.material &&
+    a.state === b.state &&
+    a.variant === b.variant &&
+    a.flags === b.flags
   );
 }
 
@@ -1633,6 +1729,14 @@ function RootApp() {
 function ConvexBackedApp() {
   const convexSnapshot = CONVEX_URL ? useConvexWorldSnapshot() : undefined;
   const convexAct = CONVEX_URL ? useConvexAct() : undefined;
+  const convexPaintBrowserCells = CONVEX_URL ? useConvexPaintBrowserCells() : undefined;
   const convexClearAllCells = CONVEX_URL ? useConvexClearAllCells() : undefined;
-  return <App convexAct={convexAct} convexClearAllCells={convexClearAllCells} convexSnapshot={convexSnapshot} />;
+  return (
+    <App
+      convexAct={convexAct}
+      convexClearAllCells={convexClearAllCells}
+      convexPaintBrowserCells={convexPaintBrowserCells}
+      convexSnapshot={convexSnapshot}
+    />
+  );
 }

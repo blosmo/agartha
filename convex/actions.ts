@@ -14,9 +14,19 @@ import {
   toAgentPerception,
   validatePublicEnvelope,
 } from "./lib/protocol";
-import { assertInRange, mergeSparseCells } from "./lib/validation";
+import { assertInRange, assertValidWorldCoord, mergeSparseCells } from "./lib/validation";
 
 const actionEnvelopeArg = v.any();
+const browserCellArg = v.object({
+  coord: v.object({
+    chunk: v.object({ x: v.number(), y: v.number() }),
+    cell: v.object({ x: v.number(), y: v.number() }),
+  }),
+  material: v.number(),
+  state: v.number(),
+  variant: v.number(),
+  flags: v.number(),
+});
 
 export const observe = query({
   args: { agentId: v.string(), worldId: v.optional(v.string()), token: v.optional(v.string()), production: v.optional(v.boolean()) },
@@ -195,6 +205,90 @@ export const clearAllCells = mutation({
       affectedCells: [],
       affectedChunks,
       summary: "clear_all_cells accepted",
+    };
+  },
+});
+
+export const paintBrowserCells = mutation({
+  args: {
+    worldId: v.string(),
+    agentId: v.string(),
+    token: v.optional(v.string()),
+    production: v.optional(v.boolean()),
+    cells: v.array(browserCellArg),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const records = await ctx.db
+      .query("serviceTokens")
+      .withIndex("by_prefix", (q) => q.eq("prefix", args.token?.slice(0, 8) ?? ""))
+      .collect();
+    const auth = await authenticateToken(args.token, records, {
+      worldId: args.worldId,
+      agentId: args.agentId,
+      scope: "agent:write",
+      now,
+      production: args.production ?? false,
+    });
+    if (!auth.ok) return rejectedResult(auth.reason);
+
+    const agent = await ctx.db
+      .query("agents")
+      .withIndex("by_world_agent", (q) => q.eq("worldId", args.worldId).eq("agentId", args.agentId))
+      .unique();
+    if (agent === null) return rejectedResult("permission_denied");
+    if (args.cells.length === 0) return rejectedResult("malformed");
+
+    const byChunk = new Map<string, typeof args.cells>();
+    try {
+      for (const cell of args.cells) {
+        assertValidWorldCoord(cell.coord);
+        if (cell.material === MATERIAL.Empty) return rejectedResult("malformed");
+        const key = chunkKey(cell.coord.chunk);
+        byChunk.set(key, [...(byChunk.get(key) ?? []), cell]);
+      }
+    } catch (error) {
+      const reason = error instanceof Error && error.message === "invalid_target" ? "invalid_target" : "malformed";
+      return rejectedResult(reason);
+    }
+
+    for (const cells of byChunk.values()) {
+      const chunk = await getOrCreateChunk(ctx, args.worldId, cells[0].coord.chunk, now);
+      const mergedCells = mergeSparseCells(
+        chunk.cells,
+        cells.map((cell) => ({
+          coord: cell.coord,
+          material: cell.material,
+          state: cell.state,
+          variant: cell.variant,
+        })),
+      );
+      await ctx.db.patch(chunk._id, { cells: mergedCells, version: chunk.version + 1, updatedAt: now });
+    }
+
+    await ctx.db.patch(agent._id, { energyUpdatedAt: now, updatedAt: now });
+    const affectedCells = args.cells.map((cell) => cell.coord);
+    const affectedChunks = Array.from(byChunk.keys());
+    const id = eventId(now, "browser-paint");
+    await insertPublicEvent(
+      ctx,
+      args.worldId,
+      id,
+      args.agentId,
+      "browser_paint_cells",
+      `${args.agentId} browser painted ${args.cells.length} cells`,
+      affectedChunks,
+      affectedCells,
+    );
+
+    return {
+      accepted: true,
+      eventId: id,
+      cost: 0,
+      energyRemaining: effectiveEnergy(agent, now),
+      affectedCells,
+      affectedChunks,
+      summary: "browser_paint_cells accepted",
     };
   },
 });

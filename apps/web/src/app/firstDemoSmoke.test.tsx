@@ -5,7 +5,7 @@ import { App } from "./App";
 
 describe("first demo viewer smoke", () => {
   it("renders board, inspector, local history, and replay controls", () => {
-    render(<App />);
+    render(<App convexUrl={null} />);
 
     expect(screen.getByTestId("board-canvas")).toBeInTheDocument();
     expect(screen.getByRole("application", { name: /Agartha cellular world board/ })).toHaveAttribute(

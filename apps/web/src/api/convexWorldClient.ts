@@ -48,6 +48,23 @@ const actMutation = makeFunctionReference<
   { envelope: ActionEnvelope; token?: string; production?: boolean },
   ActionResult
 >("actions:act");
+const paintBrowserCellsMutation = makeFunctionReference<
+  "mutation",
+  {
+    worldId: string;
+    agentId: string;
+    token?: string;
+    production?: boolean;
+    cells: readonly {
+      readonly coord: DemoCell["coord"];
+      readonly material: DemoCell["material"];
+      readonly state: number;
+      readonly variant: number;
+      readonly flags: number;
+    }[];
+  },
+  ActionResult
+>("actions:paintBrowserCells");
 const clearAllCellsMutation = makeFunctionReference<
   "mutation",
   { worldId: string; agentId: string; token?: string; production?: boolean },
@@ -79,6 +96,10 @@ export function useConvexWorldSnapshot(chunks: readonly ChunkCoord[] = DEFAULT_S
 
 export function useConvexAct() {
   return useMutation(actMutation);
+}
+
+export function useConvexPaintBrowserCells() {
+  return useMutation(paintBrowserCellsMutation);
 }
 
 export function useConvexClearAllCells() {
