@@ -363,9 +363,9 @@ export function MaterialEditorPanel({
   }
 
   return (
-    <section className="inspector-panel material-editor gradient-border gradient-border-to-br" aria-label="Material editor">
+    <section className="inspector-panel material-editor" aria-label="Brush and paint settings">
       <div className="inspector-panel__header-row">
-        <h2>Tool Settings</h2>
+        <h2>Brush &amp; paint</h2>
       </div>
       {!isEraser && !isObjectTool ? (
         <div className="material-editor__active-material" aria-label="Active material">
