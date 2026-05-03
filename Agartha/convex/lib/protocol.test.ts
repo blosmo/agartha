@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { actionCost, effectiveEnergy, toChunkSnapshot, validatePublicEnvelope } from "./protocol";
+import { mergeSparseCells } from "./validation";
 
 describe("Convex protocol mapping", () => {
   it("validates public envelopes and computes multi-cell paint cost", () => {
@@ -32,6 +33,17 @@ describe("Convex protocol mapping", () => {
         ],
       }).cells,
     ).toHaveLength(1);
+  });
+
+  it("lets authoritative paint writes replace visible cells", () => {
+    const coord = { chunk: { x: 0, y: 0 }, cell: { x: 12, y: 16 } };
+
+    expect(
+      mergeSparseCells(
+        [{ coord, material: 1, state: 0, variant: 0, flags: 0 }],
+        [{ coord, material: 1, variant: 2 }],
+      ),
+    ).toEqual([{ coord, material: 1, state: 0, variant: 2, flags: 0 }]);
   });
 
   it("computes capped regenerated energy without persistence", () => {

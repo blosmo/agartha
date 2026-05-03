@@ -24,8 +24,6 @@ export function mergeSparseCells(
   const cells = new Map(existing.map((cell) => [cellKey(cell.coord), cell]));
   for (const write of writes) {
     const key = cellKey(write.coord);
-    const current = cells.get(key);
-    if (current && current.material !== 0) throw new Error("illegal_material_overwrite");
     cells.set(key, {
       coord: write.coord,
       material: write.material,
