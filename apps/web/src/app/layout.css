@@ -272,7 +272,8 @@ button:disabled {
   z-index: 3;
 }
 
-.brush-size-bar {
+.brush-size-bar,
+.line-options-bar {
   align-items: center;
   backdrop-filter: blur(18px);
   background: rgba(18, 19, 23, 0.88);
@@ -292,10 +293,35 @@ button:disabled {
   z-index: 3;
 }
 
+.line-options-bar {
+  gap: 8px;
+  padding: 5px 8px 5px 12px;
+}
+
 .brush-size-bar input {
   accent-color: #e8eaef;
   min-width: 0;
   width: 122px;
+}
+
+.line-options-bar label {
+  align-items: center;
+  color: #c8d0dc;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 6px;
+}
+
+.line-options-bar input {
+  accent-color: #e8eaef;
+  width: 98px;
+}
+
+.line-options-bar output {
+  color: #edf2f7;
+  font-size: 11px;
+  min-width: 2ch;
+  text-align: right;
 }
 
 .shape-mode-bar button {
@@ -310,6 +336,31 @@ button:disabled {
   padding: 0;
   position: relative;
   width: 30px;
+}
+
+.line-options-bar button {
+  align-items: center;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 999px;
+  box-shadow: none;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0;
+  position: relative;
+  width: 30px;
+}
+
+.line-options-bar button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.line-options-bar button[aria-pressed="true"] {
+  background: var(--agartha-neutral-active);
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.09), 0 10px 24px rgba(0, 0, 0, 0.2);
+  color: var(--agartha-neutral-on-active);
 }
 
 .shape-mode-bar button:hover {
@@ -508,6 +559,7 @@ button:disabled {
 
 .tool-dock__button::after,
 .shape-mode-bar button::after,
+.line-options-bar button::after,
 .tool-dock__color::after {
   background: rgba(8, 11, 16, 0.96);
   border: 1px solid rgba(87, 101, 123, 0.8);
@@ -530,6 +582,8 @@ button:disabled {
 .tool-dock__button:focus-visible::after,
 .shape-mode-bar button:hover::after,
 .shape-mode-bar button:focus-visible::after,
+.line-options-bar button:hover::after,
+.line-options-bar button:focus-visible::after,
 .tool-dock__color:hover::after,
 .tool-dock__color:focus-visible::after {
   opacity: 1;
