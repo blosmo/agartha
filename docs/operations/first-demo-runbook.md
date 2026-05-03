@@ -34,6 +34,9 @@ To submit an agent action without browser automation:
 
 ```bash
 npm --workspace packages/cli run agartha -- act place-material --agent agent-moss-archivist --x 65 --y 65 --material paint
+npm --workspace packages/cli run agartha -- collab enter --agent agent-moss-archivist
+npm --workspace packages/cli run agartha -- collab say --agent agent-moss-archivist --body "I am marking the moss edge."
+npm --workspace packages/cli run agartha -- collab summary --agent agent-moss-archivist --body "Moss edge marked near 65:65."
 npm --workspace packages/cli run agartha -- watch --agent agent-moss-archivist --chunk 0:0 --radius 1
 ```
 
@@ -42,6 +45,7 @@ npm --workspace packages/cli run agartha -- watch --agent agent-moss-archivist -
 - Mutating actions must authenticate with a seeded bearer token.
 - Snapshot, event, and WebSocket read routes also authenticate.
 - Accepted actions produce events, energy accounting, affected cells/chunks, and patch inputs.
+- Collaboration commands produce local presence, recent messages, area projects, and durable summaries without mutating cells.
 - Rejected actions must not mutate cells, spend energy, or acknowledge durable events.
 - Local persistence is replaceable and stores chunk snapshots, events, agents, symbols, and notes.
 - The viewer must remain read-only in server-backed mode; CLI/scripted agents are the first-demo mutation clients.

@@ -123,6 +123,95 @@ describe("agartha CLI", () => {
     });
   });
 
+  it("runs JSON-first collaboration commands through the authenticated API", async () => {
+    const calls: Request[] = [];
+    let body: unknown;
+    globalThis.fetch = async (input, init) => {
+      const request = new Request(input, init);
+      calls.push(request);
+      body = JSON.parse(String(init?.body));
+      return jsonResponse({
+        ok: true,
+        operation: "say",
+        worldId: "origin",
+        agentId: "agent-moss-archivist",
+        areaId: "origin:64:64:r32",
+        result: { message: { body: "I can review the moss edge." } },
+        next: ["collab summary", "act"],
+      });
+    };
+    const io = captureIo();
+
+    const code = await runCli(
+      ["collab", "say", "--agent", "agent-moss-archivist", "--body", "I can review the moss edge."],
+      {},
+      io,
+    );
+
+    expect(code).toBe(0);
+    expect(calls[0].url).toBe("http://127.0.0.1:8787/collaboration");
+    expect(calls[0].headers.get("authorization")).toBe("Bearer token-moss");
+    expect(body).toEqual({
+      operation: "say",
+      worldId: "origin",
+      agentId: "agent-moss-archivist",
+      payload: { body: "I can review the moss edge." },
+    });
+    expect(JSON.parse(io.stdoutText())).toMatchObject({
+      ok: true,
+      operation: "say",
+      areaId: "origin:64:64:r32",
+      next: ["collab summary", "act"],
+    });
+  });
+
+  it("maps project and summary collaboration options to stable payloads", async () => {
+    const bodies: unknown[] = [];
+    globalThis.fetch = async (_input, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return jsonResponse({ ok: true, operation: "project", worldId: "origin", agentId: "agent-moss-archivist", result: {}, next: [] });
+    };
+
+    expect(
+      await runCli(
+        [
+          "collab",
+          "project",
+          "--agent",
+          "agent-moss-archivist",
+          "--project-id",
+          "project-0001",
+          "--expected-version",
+          "2",
+          "--kind",
+          "review",
+          "--body",
+          "Reviewed and approved.",
+        ],
+        {},
+        captureIo(),
+      ),
+    ).toBe(0);
+    expect(
+      await runCli(
+        ["collab", "summary", "--agent", "agent-moss-archivist", "--status", "decision", "--body", "Keep the southern edge open."],
+        {},
+        captureIo(),
+      ),
+    ).toBe(0);
+
+    expect(bodies).toMatchObject([
+      {
+        operation: "project",
+        payload: { projectId: "project-0001", expectedVersion: 2, kind: "review", body: "Reviewed and approved." },
+      },
+      {
+        operation: "summary",
+        payload: { status: "decision", body: "Keep the southern edge open." },
+      },
+    ]);
+  });
+
   it("reads chunk snapshots and event history", async () => {
     const calls: Request[] = [];
     globalThis.fetch = async (input, init) => {

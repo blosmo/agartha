@@ -57,6 +57,7 @@ export function toChunkSnapshot(chunk: ConvexChunkDoc): ChunkSnapshot {
 
 export function toAgentPerception(args: {
   readonly agent: ConvexAgentDoc;
+  readonly collaboration?: AgentPerception["collaboration"];
   readonly visibleCells: readonly CellSample[];
   readonly symbols?: readonly SymbolMetadata[];
   readonly events: readonly ConvexEventDoc[];
@@ -71,7 +72,8 @@ export function toAgentPerception(args: {
     visibleCells: args.visibleCells,
     nearbySymbols: args.symbols ?? [],
     recentEvents: args.events.filter((event) => event.public).map((event) => event.summary),
-    availableActions: ["move", "place_material", "paint_cells", "register_symbol", "submit_note"],
+    collaboration: args.collaboration,
+    availableActions: ["move", "place_material", "paint_cells", "register_symbol", "submit_note", "collab"],
     worldEnergy: {
       current,
       cap: args.agent.energyCap,

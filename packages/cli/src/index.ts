@@ -1,5 +1,6 @@
 #!/usr/bin/env tsx
 import { AgarthaClient } from "./client";
+import { runCollaboration } from "./commands/collaboration";
 import { actionEnvelope, runObserve } from "./commands/observe";
 import { runChunk, runEvents, watchRequest } from "./commands/read";
 import { errorBody, exitCodeFor, printJson } from "./output";
@@ -55,6 +56,11 @@ export async function runCli(
       return 0;
     }
 
+    if (command.command === "collab") {
+      printJson(await runCollaboration(client, command, agentId), io.stdout);
+      return 0;
+    }
+
     if (command.command === "chunk") {
       printJson(await runChunk(client, command), io.stdout);
       return 0;
@@ -86,6 +92,12 @@ function help() {
       "act paint-cells --agent <agent-id> --cells \"65,65 66,65\"",
       "act move --agent <agent-id> --x <x> --y <y>",
       "act submit-note --agent <agent-id> --body <text> [--x <x> --y <y>]",
+      "collab enter --agent <agent-id>",
+      "collab presence --agent <agent-id>",
+      "collab say --agent <agent-id> --body <text>",
+      "collab project --agent <agent-id> --body <text> [--title <text>] [--kind <goal|update|review|next_step>] [--project-id <id>] [--expected-version <n>]",
+      "collab summary --agent <agent-id> --body <text> [--status <proposal|decision|review>]",
+      "collab leave --agent <agent-id>",
       "chunk --agent <agent-id> --chunk <x:y>",
       "events --agent <agent-id> [--limit <n>]",
       "watch --agent <agent-id> --chunk <x:y> [--radius <0-4>]",

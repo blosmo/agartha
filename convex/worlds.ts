@@ -12,6 +12,7 @@ export const metadata = query({
       name: world.name,
       authorityMode: world.authorityMode,
       publicRead: world.publicRead,
+      tick: world.tick ?? 0,
     };
   },
 });

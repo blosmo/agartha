@@ -6,6 +6,7 @@
   "exports": {
     "./world": "./src/world.ts",
     "./actions": "./src/actions.ts",
+    "./collaboration": "./src/collaboration.ts",
     "./patches": "./src/patches.ts"
   },
   "scripts": {

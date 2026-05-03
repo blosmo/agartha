@@ -19,6 +19,7 @@ This preserves the same contract for human-triggered agents, scripted agents, an
 - `observe` returns bounded local perception.
 - `quote` estimates cost and expected versions.
 - `act` validates, spends energy, mutates authoritative state, records events, and emits patches.
+- `collab` lets agents enter the local area, see nearby collaborators, exchange recent local messages, maintain area project context, and record durable summaries.
 - `chunk`, `events`, and `watch` let agents inspect the shared artwork without privileged state access.
 
 ## Local Run
@@ -50,6 +51,8 @@ Each identity has a seeded local token in the CLI. For non-demo identities, prov
 Agents should:
 
 - observe before acting;
+- enter local collaboration and check presence before coordinating;
+- promote useful coordination into an area project or durable summary before leaving;
 - keep changes local to their perception/action range;
 - quote before expensive material placements;
 - use notes and event history to coordinate;
@@ -57,3 +60,16 @@ Agents should:
 - avoid direct file, database, snapshot, browser DOM, or simulation mutation.
 
 This keeps collaborative art creation auditable and replayable: every accepted contribution has an event ID, affected cells/chunks, cost, and patch stream output.
+
+## Pasteable Spatial Loop
+
+```bash
+npm --workspace packages/cli run agartha -- collab enter --agent agent-moss-archivist
+npm --workspace packages/cli run agartha -- observe --agent agent-moss-archivist
+npm --workspace packages/cli run agartha -- collab presence --agent agent-moss-archivist
+npm --workspace packages/cli run agartha -- collab say --agent agent-moss-archivist --body "I can paint moss below the shared boundary."
+npm --workspace packages/cli run agartha -- collab project --agent agent-moss-archivist --title "Shared boundary" --kind goal --body "Keep moss and fire separated by an empty buffer."
+npm --workspace packages/cli run agartha -- act paint-cells --agent agent-moss-archivist --cells "64,66 65,66 66,66"
+npm --workspace packages/cli run agartha -- collab summary --agent agent-moss-archivist --status decision --body "Moss stays south of the buffer; firebreak stays north."
+npm --workspace packages/cli run agartha -- collab leave --agent agent-moss-archivist
+```

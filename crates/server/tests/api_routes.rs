@@ -96,6 +96,170 @@ async fn missing_auth_rejects_read_and_write_routes() {
 }
 
 #[tokio::test]
+async fn collaboration_route_tracks_presence_chat_project_summary_and_leave() {
+    let app = app(ApiState::new(ServerState::seeded_origin()));
+
+    let enter = json!({
+        "operation": "enter",
+        "worldId": "origin",
+        "agentId": "agent-moss-archivist",
+        "payload": {}
+    });
+    let response = app
+        .clone()
+        .oneshot(
+            request(Method::POST, "/collaboration", Some(enter.clone()))
+                .header(header::AUTHORIZATION, "Bearer token-moss")
+                .body(Body::from(enter.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let entered = json_body(response).await;
+    assert_eq!(entered["ok"], true);
+    assert_eq!(entered["areaId"], "origin:64:64:r32");
+    assert_eq!(entered["result"]["context"]["presence"][0]["agentId"], "agent-moss-archivist");
+
+    let say = json!({
+        "operation": "say",
+        "worldId": "origin",
+        "agentId": "agent-firebreak-builder",
+        "payload": { "body": "I will keep the firebreak north of the moss edge." }
+    });
+    let response = app
+        .clone()
+        .oneshot(
+            request(Method::POST, "/collaboration", Some(say.clone()))
+                .header(header::AUTHORIZATION, "Bearer token-firebreak")
+                .body(Body::from(say.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let said = json_body(response).await;
+    assert_eq!(said["result"]["message"]["body"], "I will keep the firebreak north of the moss edge.");
+    assert_eq!(said["result"]["context"]["recentMessages"].as_array().unwrap().len(), 1);
+
+    let project = json!({
+        "operation": "project",
+        "worldId": "origin",
+        "agentId": "agent-moss-archivist",
+        "payload": { "title": "Shared boundary", "kind": "goal", "body": "Keep moss and fire separated.", "expectedVersion": 0 }
+    });
+    let response = app
+        .clone()
+        .oneshot(
+            request(Method::POST, "/collaboration", Some(project.clone()))
+                .header(header::AUTHORIZATION, "Bearer token-moss")
+                .body(Body::from(project.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let projected = json_body(response).await;
+    assert_eq!(projected["result"]["project"]["version"], 1);
+
+    let stale = json!({
+        "operation": "project",
+        "worldId": "origin",
+        "agentId": "agent-firebreak-builder",
+        "payload": {
+            "projectId": projected["result"]["project"]["id"],
+            "kind": "review",
+            "body": "Stale update",
+            "expectedVersion": 0
+        }
+    });
+    let response = app
+        .clone()
+        .oneshot(
+            request(Method::POST, "/collaboration", Some(stale.clone()))
+                .header(header::AUTHORIZATION, "Bearer token-firebreak")
+                .body(Body::from(stale.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_body(response).await["error"]["reason"], "stale_project_version");
+
+    let summary = json!({
+        "operation": "summary",
+        "worldId": "origin",
+        "agentId": "agent-moss-archivist",
+        "payload": { "body": "Decision: leave a neutral buffer between moss and fire.", "status": "decision" }
+    });
+    let response = app
+        .clone()
+        .oneshot(
+            request(Method::POST, "/collaboration", Some(summary.clone()))
+                .header(header::AUTHORIZATION, "Bearer token-moss")
+                .body(Body::from(summary.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_body(response).await["result"]["summary"]["provenance"]["status"], "decision");
+
+    let leave = json!({
+        "operation": "leave",
+        "worldId": "origin",
+        "agentId": "agent-moss-archivist",
+        "payload": {}
+    });
+    let response = app
+        .oneshot(
+            request(Method::POST, "/collaboration", Some(leave.clone()))
+                .header(header::AUTHORIZATION, "Bearer token-moss")
+                .body(Body::from(leave.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let left = json_body(response).await;
+    let presence = left["result"]["context"]["presence"].as_array().unwrap();
+    assert!(!presence.iter().any(|agent| agent["agentId"] == "agent-moss-archivist"));
+    assert_eq!(left["result"]["context"]["durableSummaries"].as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn observe_includes_machine_readable_collaboration_context() {
+    let app = app(ApiState::new(ServerState::seeded_origin()));
+    let enter = json!({
+        "operation": "enter",
+        "worldId": "origin",
+        "agentId": "agent-moss-archivist",
+        "payload": {}
+    });
+    let _ = app
+        .clone()
+        .oneshot(
+            request(Method::POST, "/collaboration", Some(enter.clone()))
+                .header(header::AUTHORIZATION, "Bearer token-moss")
+                .body(Body::from(enter.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let observe = request(Method::GET, "/observe", None)
+        .header(header::AUTHORIZATION, "Bearer token-moss")
+        .body(Body::empty())
+        .unwrap();
+    let response = app.oneshot(observe).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let perception = json_body(response).await;
+    assert_eq!(perception["collaboration"]["area"]["id"], "origin:64:64:r32");
+    assert_eq!(perception["collaboration"]["presence"][0]["agentId"], "agent-moss-archivist");
+    assert!(perception["availableActions"].as_array().unwrap().contains(&json!("collab")));
+}
+
+#[tokio::test]
 async fn admin_refill_energy_requires_admin_token_and_caps_at_agent_cap() {
     let mut state = ServerState::seeded_origin();
     state

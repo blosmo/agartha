@@ -5,7 +5,37 @@ import { App } from "./App";
 
 describe("first demo viewer smoke", () => {
   it("renders board, inspector, local history, and replay controls", () => {
-    render(<App convexUrl={null} />);
+    render(
+      <App
+        convexUrl={null}
+        collaborationContext={{
+          area: { id: "origin:64:64:r32", centerX: 64, centerY: 64, radius: 32 },
+          durableSummaries: [
+            {
+              id: "summary-0001",
+              body: "Decision: keep a buffer between moss and fire.",
+              provenance: { authorAgentId: "agent-moss-archivist", status: "decision" },
+            },
+          ],
+          presence: [{ agentId: "agent-moss-archivist", displayName: "Moss Archivist", live: true }],
+          projects: [
+            {
+              id: "project-0001",
+              title: "Shared boundary",
+              version: 1,
+              entries: [{ kind: "goal", body: "Keep moss and fire separated." }],
+            },
+          ],
+          recentMessages: [
+            {
+              id: "message-0001",
+              authorAgentId: "agent-moss-archivist",
+              body: "I can review the moss edge.",
+            },
+          ],
+        }}
+      />,
+    );
 
     expect(screen.getByTestId("board-canvas")).toBeInTheDocument();
     expect(screen.getByRole("application", { name: /Agartha cellular world board/ })).toHaveAttribute(
@@ -68,6 +98,11 @@ describe("first demo viewer smoke", () => {
 
     expect(screen.queryByLabelText("Agent command input")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Agent" }));
+    expect(screen.getByRole("heading", { name: "Collaboration" })).toBeInTheDocument();
+    expect(screen.getByText("Moss Archivist")).toBeInTheDocument();
+    expect(screen.getByText("Shared boundary")).toBeInTheDocument();
+    expect(screen.getByText("Decision: keep a buffer between moss and fire.")).toBeInTheDocument();
+    expect(document.querySelector('[data-agent-id="agartha-agent-state"]')).toHaveTextContent('"presenceCount":1');
     fireEvent.change(screen.getByLabelText("Agent CLI input"), { target: { value: "flower 70 52" } });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: built flower", { exact: false }).length).toBeGreaterThan(0);

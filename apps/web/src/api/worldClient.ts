@@ -11,6 +11,7 @@ export interface ServerWorldConfig {
 
 export interface ServerWorldSnapshot {
   readonly cells: DemoCell[];
+  readonly collaboration?: ServerCollaborationContext;
   readonly events: DemoEvent[];
   readonly chunkVersions: Record<string, number>;
 }
@@ -19,6 +20,14 @@ export interface WorldEventDto {
   readonly id: string;
   readonly tick: number;
   readonly summary: string;
+}
+
+export interface ServerCollaborationContext {
+  readonly area: { readonly id: string; readonly centerX?: number; readonly centerY?: number; readonly radius: number };
+  readonly presence: ReadonlyArray<{ readonly agentId: string; readonly displayName?: string; readonly live: boolean }>;
+  readonly recentMessages: ReadonlyArray<{ readonly id: string; readonly authorAgentId: string; readonly body: string }>;
+  readonly projects: ReadonlyArray<{ readonly id: string; readonly title: string; readonly version: number; readonly entries: ReadonlyArray<{ readonly kind: string; readonly body: string }> }>;
+  readonly durableSummaries: ReadonlyArray<{ readonly id: string; readonly body: string; readonly provenance?: { readonly status?: string; readonly authorAgentId?: string } }>;
 }
 
 export const DEFAULT_SERVER_CHUNKS: readonly ChunkCoord[] = [
@@ -48,8 +57,9 @@ export async function fetchServerWorldSnapshot(
   }
 
   const chunks = config.chunks ?? DEFAULT_SERVER_CHUNKS;
-  const [events, snapshots] = await Promise.all([
+  const [events, perception, snapshots] = await Promise.all([
     fetchJson<WorldEventDto[]>(`${config.baseUrl}/events`, config.token, fetchImpl),
+    fetchJson<{ readonly collaboration?: ServerCollaborationContext }>(`${config.baseUrl}/observe`, config.token, fetchImpl),
     Promise.all(
       chunks.map((chunk) =>
         fetchJson<ChunkSnapshot>(`${config.baseUrl}/chunks/${chunk.x}/${chunk.y}`, config.token, fetchImpl),
@@ -64,6 +74,7 @@ export async function fetchServerWorldSnapshot(
 
   return {
     cells,
+    collaboration: perception.collaboration,
     chunkVersions,
     events: events.map((event) => ({
       id: event.id,

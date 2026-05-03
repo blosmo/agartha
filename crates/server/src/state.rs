@@ -12,6 +12,7 @@ use crate::actions::{
 };
 use crate::agents::AgentRecord;
 use crate::auth::authenticate;
+use crate::collaboration::{CollaborationRequest, CollaborationResponse, CollaborationState};
 use crate::events::{SymbolRecord, WorldEvent, WorldNote};
 use crate::memory::record_outcome;
 use crate::persistence::PersistedState;
@@ -25,6 +26,7 @@ pub struct ServerState {
     events: Vec<WorldEvent>,
     symbols: Vec<SymbolRecord>,
     notes: Vec<WorldNote>,
+    collaboration: CollaborationState,
     next_event_number: u64,
     next_quote_number: u64,
     next_symbol_number: u64,
@@ -74,6 +76,7 @@ impl ServerState {
             events: Vec::new(),
             symbols: Vec::new(),
             notes: Vec::new(),
+            collaboration: CollaborationState::new(),
             next_event_number: 1,
             next_quote_number: 1,
             next_symbol_number: 1,
@@ -117,6 +120,7 @@ impl ServerState {
             events: self.events.clone(),
             symbols: self.symbols.clone(),
             notes: self.notes.clone(),
+            collaboration: self.collaboration.clone(),
             next_event_number: self.next_event_number,
             next_quote_number: self.next_quote_number,
             next_symbol_number: self.next_symbol_number,
@@ -133,6 +137,7 @@ impl ServerState {
             events: persisted.events,
             symbols: persisted.symbols,
             notes: persisted.notes,
+            collaboration: persisted.collaboration,
             next_event_number: persisted.next_event_number,
             next_quote_number: persisted.next_quote_number,
             next_symbol_number: persisted.next_symbol_number,
@@ -288,6 +293,7 @@ impl ServerState {
                 .take(20)
                 .map(|event| event.summary.clone())
                 .collect(),
+            collaboration: self.collaboration.context_for(agent.position, self.tick),
             available_actions: vec![
                 "observe".to_string(),
                 "inspect".to_string(),
@@ -297,6 +303,7 @@ impl ServerState {
                 "register_symbol".to_string(),
                 "history".to_string(),
                 "submit_note".to_string(),
+                "collab".to_string(),
             ],
             world_energy: WorldEnergyView {
                 current: agent.energy.current,
@@ -306,6 +313,32 @@ impl ServerState {
                     + agent.energy.regenerates_every_ticks,
             },
         })
+    }
+
+    pub fn collaborate(
+        &mut self,
+        auth: &AuthContext,
+        request: CollaborationRequest,
+    ) -> Result<CollaborationResponse, RejectionReason> {
+        let authenticated_agent_id = authenticate(&self.agents, auth)?;
+        if authenticated_agent_id != request.agent_id {
+            return Err(RejectionReason::PermissionDenied);
+        }
+        if request.world_id != "origin" {
+            return Err(RejectionReason::Malformed);
+        }
+        self.regenerate_agent(&authenticated_agent_id);
+        let agent = self
+            .agents
+            .get(&authenticated_agent_id)
+            .cloned()
+            .ok_or(RejectionReason::Unauthenticated)?;
+        Ok(self.collaboration.handle(
+            request,
+            agent.position,
+            Some(agent.name),
+            self.tick,
+        ))
     }
 
     pub fn refill_agent_energy(

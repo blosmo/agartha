@@ -42,6 +42,8 @@ Convex HTTP Action mode:
 
 ```bash
 AGARTHA_BACKEND=convex AGARTHA_CONVEX_HTTP_URL=https://<deployment>.convex.site npm --workspace packages/cli run agartha -- observe --agent agent-moss-archivist
+AGARTHA_BACKEND=convex AGARTHA_CONVEX_HTTP_URL=https://<deployment>.convex.site npm --workspace packages/cli run agartha -- collab enter --agent agent-moss-archivist
+AGARTHA_BACKEND=convex AGARTHA_CONVEX_HTTP_URL=https://<deployment>.convex.site npm --workspace packages/cli run agartha -- collab presence --agent agent-moss-archivist
 ```
 
 Convex React clients use `VITE_CONVEX_URL`. CLI HTTP Actions use the `.convex.site` URL.
@@ -55,6 +57,10 @@ Every accepted admin refill writes an `adminAudit` record. Browser public querie
 ## Watch
 
 The Rust path uses WebSocket watch. Convex mode uses a same-output polling fallback over `/events` until a direct Convex subscription-backed CLI watch is enabled.
+
+## Spatial Collaboration
+
+Convex exposes `/collaboration` for the same local-area loop as the Rust path: `enter`, `presence`, `say`, `project`, `summary`, and `leave`. Collaboration writes require `agent:write`; context reads require `agent:read`. Raw recent messages are bounded per area, while durable summaries and area project entries remain queryable through collaboration context and `observe`.
 
 ## Browser Modes
 

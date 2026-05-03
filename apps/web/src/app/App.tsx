@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { ActionEnvelope, ActionResult } from "@agartha/protocol/actions";
 import { MATERIAL, MATERIAL_NAME, toWorldCoord, type MaterialId, type WorldCoord } from "@agartha/protocol/world";
@@ -33,12 +33,16 @@ import {
   readConvexWriteConfig,
   useConvexAct,
   useConvexClearAllCells,
+  useConvexObjectTemplates,
   useConvexPaintBrowserCells,
+  useConvexResetWorldTime,
+  useConvexSaveObjectTemplate,
+  useConvexStepWorld,
   useConvexWorldSnapshot,
   type ConvexWriteConfig,
   type ConvexWorldSnapshot,
 } from "../api/convexWorldClient";
-import { fetchServerWorldSnapshot, readServerWorldConfig } from "../api/worldClient";
+import { fetchServerWorldSnapshot, readServerWorldConfig, type ServerCollaborationContext } from "../api/worldClient";
 import { AgarthaConvexProvider, readConvexUrl } from "./ConvexProvider";
 import { AgentCliBar } from "../controls/AgentCommandPanel";
 import { MaterialEditorPanel, ToolDock } from "../controls/MaterialEditorPanel";
@@ -77,20 +81,33 @@ const AGENT_COMMANDS = [
 
 type ConvexActMutation = ReturnType<typeof useConvexAct>;
 type ConvexClearAllCellsMutation = ReturnType<typeof useConvexClearAllCells>;
+type ConvexSaveObjectTemplateMutation = ReturnType<typeof useConvexSaveObjectTemplate>;
 type ConvexPaintBrowserCellsMutation = ReturnType<typeof useConvexPaintBrowserCells>;
+type ConvexResetWorldTimeMutation = ReturnType<typeof useConvexResetWorldTime>;
+type ConvexStepWorldMutation = ReturnType<typeof useConvexStepWorld>;
 
 export function App({
   convexAct,
   convexClearAllCells,
+  convexObjectTemplates,
   convexPaintBrowserCells,
+  collaborationContext: initialCollaborationContext,
+  convexResetWorldTime,
+  convexSaveObjectTemplate,
   convexSnapshot,
+  convexStepWorld,
   convexUrl = CONVEX_URL,
   convexWriteConfig = CONVEX_WRITE_CONFIG,
 }: {
   readonly convexAct?: ConvexActMutation;
   readonly convexClearAllCells?: ConvexClearAllCellsMutation;
+  readonly convexObjectTemplates?: readonly CellObjectTemplate[];
   readonly convexPaintBrowserCells?: ConvexPaintBrowserCellsMutation;
+  readonly collaborationContext?: ServerCollaborationContext;
+  readonly convexResetWorldTime?: ConvexResetWorldTimeMutation;
+  readonly convexSaveObjectTemplate?: ConvexSaveObjectTemplateMutation;
   readonly convexSnapshot?: ConvexWorldSnapshot;
+  readonly convexStepWorld?: ConvexStepWorldMutation;
   readonly convexUrl?: string | null;
   readonly convexWriteConfig?: ConvexWriteConfig;
 } = {}) {
@@ -113,6 +130,8 @@ export function App({
       : [{ id: "demo-0001", tick: 0, summary: "Seeded origin materials" }],
   );
   const [pendingConvexCells, setPendingConvexCells] = useState<DemoCell[]>([]);
+  const [collaborationContext, setCollaborationContext] = useState<ServerCollaborationContext | undefined>(initialCollaborationContext);
+  const timeMutationPendingRef = useRef(false);
   const [worldSource, setWorldSource] = useState<WorldSourceState>(
     convexUrl
       ? {
@@ -167,6 +186,7 @@ export function App({
             ? snapshot.events
             : [{ id: "server-0000", tick: 0, summary: "Connected to authoritative server state" }],
         );
+        setCollaborationContext(snapshot.collaboration);
         setSelectedCoord((current) =>
           snapshot.cells.some((cell) => cell.id === cellKey(current)) ? current : snapshot.cells[0]?.coord ?? current,
         );
@@ -206,13 +226,13 @@ export function App({
     setCells(mergeCells(convexSnapshot.cells, unresolvedPendingCells));
     setUndoStack([]);
     setRedoStack([]);
-    setIsPlaying(false);
-    setTick(convexSnapshot.events[0]?.tick ?? 0);
+    setTick(convexSnapshot.tick);
     setEvents(
       convexSnapshot.events.length > 0
         ? [...convexSnapshot.events]
-        : [{ id: "convex-0000", tick: 0, summary: "Connected to empty Convex authoritative world" }],
+        : [{ id: "convex-0000", tick: convexSnapshot.tick, summary: "Connected to empty Convex authoritative world" }],
     );
+    setCollaborationContext(undefined);
     setSelectedCoord((current) =>
       convexSnapshot.cells.some((cell) => cell.id === cellKey(current)) ? current : convexSnapshot.cells[0]?.coord ?? current,
     );
@@ -226,8 +246,12 @@ export function App({
   }, [convexSnapshot, pendingConvexCells, convexUrl]);
 
   useEffect(() => {
+    if (!convexUrl || !convexObjectTemplates) return;
+    setObjectTemplates((current) => mergeObjectTemplates(convexObjectTemplates, current));
+  }, [convexObjectTemplates, convexUrl]);
+
+  useEffect(() => {
     if (!isPlaying) return;
-    if (SERVER_WORLD_CONFIG || convexUrl) return;
     const timer = window.setInterval(() => {
       advanceTime();
     }, 650);
@@ -248,7 +272,6 @@ export function App({
     }
 
     if (toolSettings.mode === "stamp") {
-      if (blockServerBackedMutation("Stamp edits are disabled in server-backed mode. Use agartha CLI/API.")) return;
       const template = objectTemplates.find((candidate) => candidate.id === toolSettings.objectId) ?? objectTemplates[0];
       if (!template) {
         setEvents((eventList) => [
@@ -271,6 +294,11 @@ export function App({
         result.placements === 1
           ? `Stamp tool: placed ${template.label} with ${result.affected} cells near ${cellKey(coord)}`
           : `Stamp tool: placed ${result.placements} ${template.label} objects with ${result.affected} cells from ${cellKey(coord)}`;
+      if (convexUrl) {
+        void submitConvexMaterialEdit(cells, result.cells, coord, "stamp");
+        return;
+      }
+      if (blockServerBackedMutation("Stamp edits are disabled in server-backed mode. Use agartha CLI/API.")) return;
       commitCells(result.cells, summary, coord);
       return;
     }
@@ -373,7 +401,7 @@ export function App({
     previousCells: readonly DemoCell[],
     nextCells: readonly DemoCell[],
     coord: WorldCoord,
-    gesture: "shape" | "tool" | "stroke",
+    gesture: "shape" | "stamp" | "tool" | "stroke",
   ) {
     setSelectedCoord(coord);
 
@@ -456,7 +484,7 @@ export function App({
     setPendingConvexCells((current) => mergePendingCells(current, optimisticCells));
     setWorldSource((current) => ({
       ...current,
-      message: `Submitting ${toolLabel(toolSettings.mode)} ${gesture} to Convex`,
+      message: `Submitting ${convexEditLabel(toolSettings.mode, gesture)} to Convex`,
     }));
 
     try {
@@ -471,7 +499,7 @@ export function App({
           ? `Convex action rejected: ${rejected.reason ?? rejected.summary}`
           : results.length === 1
           ? `${results[0].summary}; waiting for Convex realtime state`
-          : `${toolLabel(toolSettings.mode)} ${gesture} accepted: ${optimisticCells.length} cells; waiting for Convex realtime state`,
+          : `${convexEditLabel(toolSettings.mode, gesture)} accepted: ${optimisticCells.length} cells; waiting for Convex realtime state`,
       }));
       if (rejected) {
         setPendingConvexCells((current) => current.filter((cell) => !optimisticCells.some((optimistic) => sameCell(cell, optimistic))));
@@ -489,7 +517,7 @@ export function App({
   async function submitConvexBrowserCells(
     nextCells: readonly DemoCell[],
     optimisticCells: readonly DemoCell[],
-    gesture: "shape" | "tool" | "stroke",
+    gesture: "shape" | "stamp" | "tool" | "stroke",
   ) {
     if (!convexPaintBrowserCells || !convexWriteConfig) return;
 
@@ -497,7 +525,7 @@ export function App({
     setPendingConvexCells((current) => mergePendingCells(current, optimisticCells));
     setWorldSource((current) => ({
       ...current,
-      message: `Submitting ${toolLabel(toolSettings.mode)} ${gesture} to Convex`,
+      message: `Submitting ${convexEditLabel(toolSettings.mode, gesture)} to Convex`,
     }));
 
     try {
@@ -516,7 +544,7 @@ export function App({
       setWorldSource((current) => ({
         ...current,
         message: result.accepted
-          ? `${toolLabel(toolSettings.mode)} ${gesture} accepted: ${optimisticCells.length} cells; waiting for Convex realtime state`
+          ? `${convexEditLabel(toolSettings.mode, gesture)} accepted: ${optimisticCells.length} cells; waiting for Convex realtime state`
           : `Convex action rejected: ${result.reason ?? result.summary}`,
       }));
       if (!result.accepted) {
@@ -661,7 +689,7 @@ export function App({
   }
 
   function runAgentCommand(command: string) {
-    if (blockServerBackedMutation("In-app agent commands are disabled in authoritative mode. Use the agartha CLI.")) {
+    if (SERVER_WORLD_CONFIG && !convexUrl && blockServerBackedMutation("In-app agent commands are disabled in authoritative mode. Use the agartha CLI.")) {
       return "In-app agent commands are disabled in authoritative mode. Use the agartha CLI.";
     }
 
@@ -692,9 +720,14 @@ export function App({
       const template = result.template;
       setObjectTemplates((current) => upsertTemplate(current, template));
       setToolSettings((current) => ({ ...current, objectId: template.id }));
+      if (convexUrl) void submitConvexObjectTemplate(template);
     }
 
     if (result.cells) {
+      if (convexUrl && result.coord) {
+        void submitConvexMaterialEdit(cells, result.cells, result.coord, "stamp");
+        return result.summary;
+      }
       commitCells(result.cells, result.summary, result.coord);
     } else {
       setEvents((eventList) => [
@@ -726,7 +759,11 @@ export function App({
   });
 
   function advanceTime() {
-    if (blockServerBackedMutation("Local time stepping is disabled in server-backed mode.")) return;
+    if (convexUrl) {
+      void submitConvexTimeStep();
+      return;
+    }
+    if (blockServerBackedMutation("Server-backed time stepping is not available for this backend.")) return;
     setCells((current) => stepDemoWorld(current));
     setTick((currentTick) => {
       const nextTick = currentTick + 1;
@@ -740,6 +777,45 @@ export function App({
       ]);
       return nextTick;
     });
+  }
+
+  async function submitConvexTimeStep() {
+    if (timeMutationPendingRef.current) return;
+    if (!convexStepWorld || !convexWriteConfig) {
+      setWorldSource((current) => ({
+        ...current,
+        message: "Convex time stepping needs VITE_AGARTHA_WRITE_TOKEN in the local web app environment.",
+      }));
+      return;
+    }
+
+    timeMutationPendingRef.current = true;
+    setWorldSource((current) => ({
+      ...current,
+      message: "Advancing global Convex simulation",
+    }));
+
+    try {
+      const result: ActionResult = await convexStepWorld({
+        agentId: convexWriteConfig.agentId,
+        token: convexWriteConfig.token,
+        worldId: convexWriteConfig.worldId,
+      });
+      setWorldSource((current) => ({
+        ...current,
+        message: result.accepted
+          ? `${result.summary}; waiting for Convex realtime state`
+          : `Convex time step rejected: ${result.reason ?? result.summary}`,
+      }));
+    } catch (error) {
+      setWorldSource((current) => ({
+        ...current,
+        connection: "error",
+        message: error instanceof Error ? error.message : "Unable to advance Convex simulation",
+      }));
+    } finally {
+      timeMutationPendingRef.current = false;
+    }
   }
 
   function resetDemo() {
@@ -776,12 +852,23 @@ export function App({
   }
 
   function captureObject(label: string) {
-    if (blockServerBackedMutation("Object capture is disabled in server-backed mode.")) return "Object capture is disabled in server-backed mode.";
+    if (SERVER_WORLD_CONFIG && !convexUrl) {
+      blockServerBackedMutation("Object capture is disabled in server-backed mode.");
+      return "Object capture is disabled in server-backed mode.";
+    }
     const captureSelection = selection ?? { height: 1, origin: selectedCoord, width: 1 };
     const template = captureCellObject(cells, label, captureSelection.origin, captureSelection.width, captureSelection.height);
     setObjectTemplates((current) => upsertTemplate(current, template));
     setToolSettings((current) => ({ ...current, mode: "stamp", objectId: template.id }));
     const summary = `Captured object ${template.label} with ${template.samples.length} cells`;
+    if (convexUrl) {
+      void submitConvexObjectTemplate(template);
+      setWorldSource((current) => ({
+        ...current,
+        message: `Saving object ${template.label} to Convex`,
+      }));
+      return summary;
+    }
     setEvents((eventList) => [
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
@@ -791,6 +878,35 @@ export function App({
       ...eventList,
     ]);
     return summary;
+  }
+
+  async function submitConvexObjectTemplate(template: CellObjectTemplate) {
+    if (!convexSaveObjectTemplate || !convexWriteConfig) {
+      setWorldSource((current) => ({
+        ...current,
+        message: "Convex object capture needs VITE_AGARTHA_WRITE_TOKEN in the local web app environment.",
+      }));
+      return;
+    }
+
+    try {
+      const result = await convexSaveObjectTemplate({
+        agentId: convexWriteConfig.agentId,
+        template,
+        token: convexWriteConfig.token,
+        worldId: convexWriteConfig.worldId,
+      });
+      setWorldSource((current) => ({
+        ...current,
+        message: result.accepted ? `${result.summary}; waiting for Convex realtime state` : `Convex object save rejected: ${result.summary}`,
+      }));
+    } catch (error) {
+      setWorldSource((current) => ({
+        ...current,
+        connection: "error",
+        message: error instanceof Error ? error.message : "Unable to save object template to Convex",
+      }));
+    }
   }
 
   function selectObjectTemplate(id: string) {
@@ -836,13 +952,56 @@ export function App({
   }
 
   function resetTime() {
-    if (blockServerBackedMutation("Local time reset is disabled in server-backed mode.")) return;
+    if (convexUrl) {
+      void submitConvexTimeReset();
+      return;
+    }
+    if (blockServerBackedMutation("Server-backed time reset is not available for this backend.")) return;
     setTick(0);
     setIsPlaying(false);
   }
 
+  async function submitConvexTimeReset() {
+    if (!convexResetWorldTime || !convexWriteConfig) {
+      setWorldSource((current) => ({
+        ...current,
+        message: "Convex time reset needs VITE_AGARTHA_WRITE_TOKEN in the local web app environment.",
+      }));
+      return;
+    }
+
+    setIsPlaying(false);
+    setWorldSource((current) => ({
+      ...current,
+      message: "Resetting global Convex time",
+    }));
+
+    try {
+      const result: ActionResult = await convexResetWorldTime({
+        agentId: convexWriteConfig.agentId,
+        token: convexWriteConfig.token,
+        worldId: convexWriteConfig.worldId,
+      });
+      setWorldSource((current) => ({
+        ...current,
+        message: result.accepted
+          ? `${result.summary}; waiting for Convex realtime state`
+          : `Convex time reset rejected: ${result.reason ?? result.summary}`,
+      }));
+    } catch (error) {
+      setWorldSource((current) => ({
+        ...current,
+        connection: "error",
+        message: error instanceof Error ? error.message : "Unable to reset Convex time",
+      }));
+    }
+  }
+
   function togglePlayback() {
-    if (blockServerBackedMutation("Local playback is disabled in server-backed mode.")) return;
+    if (SERVER_WORLD_CONFIG && !convexUrl) {
+      blockServerBackedMutation("Server-backed playback is not available for this backend.");
+      return;
+    }
     setIsPlaying((current) => !current);
   }
 
@@ -876,6 +1035,7 @@ export function App({
         selection={selection}
         tool={toolSettings.mode}
         worldSource={worldSource}
+        collaborationContext={collaborationContext}
       />
       <div className="sr-only" data-agent-id="latest-event-status" role="status" aria-live="polite">
         {latestEvent ? latestEvent.summary : "Ready"}
@@ -930,6 +1090,7 @@ export function App({
                 selection={selection}
                 tool={toolSettings.mode}
               />
+              <CollaborationPanel context={collaborationContext} worldSource={worldSource} />
               <ReplayControls />
             </div>
             <div className="agartha-side-panel__group" aria-label="Inspect" data-agent-region="inspect">
@@ -1062,6 +1223,7 @@ function ModeSwitch({
 
 function AgentStateBridge({
   cells,
+  collaborationContext,
   commands,
   latestEvent,
   mode,
@@ -1073,6 +1235,7 @@ function AgentStateBridge({
   worldSource,
 }: {
   readonly cells: number;
+  readonly collaborationContext?: ServerCollaborationContext;
   readonly commands: readonly string[];
   readonly latestEvent?: DemoEvent;
   readonly mode: UIMode;
@@ -1109,6 +1272,37 @@ function AgentStateBridge({
       mutationAuthority: worldSource.mode === "server_backed" ? "server_api" : worldSource.mode === "convex_backed" ? "convex_api" : "browser_local_demo",
       status: worldSource.message,
     },
+    collaboration: collaborationContext
+      ? {
+          areaId: collaborationContext.area.id,
+          durableSummaries: collaborationContext.durableSummaries.map((summary) => ({
+            id: summary.id,
+            status: summary.provenance?.status ?? null,
+            body: summary.body,
+          })),
+          latestMessage: collaborationContext.recentMessages.at(-1) ?? null,
+          presentAgents: collaborationContext.presence
+            .filter((agent) => agent.live)
+            .map((agent) => ({ agentId: agent.agentId, displayName: agent.displayName ?? null })),
+          presenceCount: collaborationContext.presence.filter((agent) => agent.live).length,
+          projects: collaborationContext.projects.map((project) => ({
+            id: project.id,
+            title: project.title,
+            version: project.version,
+            latestEntry: project.entries.at(-1) ?? null,
+          })),
+          recommendedNextAction:
+            collaborationContext.durableSummaries.length === 0 && collaborationContext.recentMessages.length > 0
+              ? "collab summary"
+              : "collab say",
+          writeAuthority:
+            worldSource.mode === "local_demo"
+              ? "browser_local_only"
+              : worldSource.mode === "server_backed"
+              ? "cli_or_server_api_token"
+              : "convex_api_token",
+        }
+      : null,
     tool,
     visibleCells: cells,
   };
@@ -1119,6 +1313,74 @@ function AgentStateBridge({
       type="application/json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(state) }}
     />
+  );
+}
+
+function CollaborationPanel({
+  context,
+  worldSource,
+}: {
+  readonly context?: ServerCollaborationContext;
+  readonly worldSource: WorldSourceState;
+}) {
+  const livePresence = context?.presence.filter((agent) => agent.live) ?? [];
+  const latestProject = context?.projects.at(-1);
+  const latestSummary = context?.durableSummaries.at(-1);
+  const latestMessages = context?.recentMessages.slice(-3) ?? [];
+  const writeEnabled = worldSource.mode === "local_demo" ? false : worldSource.connection === "connected";
+
+  return (
+    <section
+      className="inspector-panel collaboration-panel gradient-border gradient-border-to-br"
+      aria-label="Spatial collaboration"
+      data-agent-region="collaboration"
+    >
+      <h2>Collaboration</h2>
+      <dl>
+        <div>
+          <dt>area</dt>
+          <dd>{context?.area.id ?? "local demo"}</dd>
+        </div>
+        <div>
+          <dt>presence</dt>
+          <dd>{livePresence.length}</dd>
+        </div>
+        <div>
+          <dt>writes</dt>
+          <dd>{writeEnabled ? "api token" : "read only"}</dd>
+        </div>
+      </dl>
+      <div className="collaboration-panel__section" aria-label="Present agents">
+        {livePresence.length > 0 ? (
+          livePresence.map((agent) => (
+            <span className="collaboration-panel__pill" key={agent.agentId}>
+              {agent.displayName ?? agent.agentId}
+            </span>
+          ))
+        ) : (
+          <p>No live agents nearby</p>
+        )}
+      </div>
+      <div className="collaboration-panel__section" aria-label="Area project">
+        <strong>{latestProject?.title ?? "No area project"}</strong>
+        {latestProject?.entries.at(-1) ? <p>{latestProject.entries.at(-1)?.body}</p> : null}
+      </div>
+      <div className="collaboration-panel__section" aria-label="Durable summary">
+        <strong>{latestSummary ? latestSummary.provenance?.status ?? "summary" : "No durable summary"}</strong>
+        {latestSummary ? <p>{latestSummary.body}</p> : null}
+      </div>
+      <div className="collaboration-panel__section" aria-label="Recent local messages" role="log">
+        {latestMessages.length > 0 ? (
+          latestMessages.map((message) => (
+            <p key={message.id}>
+              <span>{message.authorAgentId}</span>: {message.body}
+            </p>
+          ))
+        ) : (
+          <p>No recent local messages</p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1178,6 +1440,11 @@ function toolLabel(mode: MaterialToolSettings["mode"]) {
   return mode[0].toUpperCase() + mode.slice(1);
 }
 
+function convexEditLabel(mode: MaterialToolSettings["mode"], gesture: "shape" | "stamp" | "tool" | "stroke") {
+  if (gesture === "stamp") return "Stamp";
+  return `${toolLabel(mode)} ${gesture}`;
+}
+
 function changedCoords(previousCells: readonly DemoCell[], nextCells: readonly DemoCell[]): WorldCoord[] {
   const previous = new Map(previousCells.map((cell) => [cell.id, cell]));
   const next = new Map(nextCells.map((cell) => [cell.id, cell]));
@@ -1219,6 +1486,13 @@ function mergePendingCells(baseCells: readonly DemoCell[], overlayCells: readonl
   const merged = new Map(baseCells.map((cell) => [cell.id, cell]));
   for (const cell of overlayCells) merged.set(cell.id, cell);
   return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function mergeObjectTemplates(primary: readonly CellObjectTemplate[], secondary: readonly CellObjectTemplate[]): CellObjectTemplate[] {
+  const merged = new Map<string, CellObjectTemplate>();
+  for (const template of secondary) merged.set(template.id, template);
+  for (const template of primary) merged.set(template.id, template);
+  return Array.from(merged.values()).slice(0, 24);
 }
 
 function snapshotHasCell(snapshotCells: readonly DemoCell[], pendingCell: DemoCell) {
@@ -1785,15 +2059,23 @@ function RootApp() {
 
 function ConvexBackedApp() {
   const convexSnapshot = CONVEX_URL ? useConvexWorldSnapshot() : undefined;
+  const convexObjectTemplates = CONVEX_URL ? useConvexObjectTemplates() : undefined;
   const convexAct = CONVEX_URL ? useConvexAct() : undefined;
+  const convexSaveObjectTemplate = CONVEX_URL ? useConvexSaveObjectTemplate() : undefined;
   const convexPaintBrowserCells = CONVEX_URL ? useConvexPaintBrowserCells() : undefined;
   const convexClearAllCells = CONVEX_URL ? useConvexClearAllCells() : undefined;
+  const convexStepWorld = CONVEX_URL ? useConvexStepWorld() : undefined;
+  const convexResetWorldTime = CONVEX_URL ? useConvexResetWorldTime() : undefined;
   return (
     <App
       convexAct={convexAct}
       convexClearAllCells={convexClearAllCells}
+      convexObjectTemplates={convexObjectTemplates}
       convexPaintBrowserCells={convexPaintBrowserCells}
+      convexResetWorldTime={convexResetWorldTime}
+      convexSaveObjectTemplate={convexSaveObjectTemplate}
       convexSnapshot={convexSnapshot}
+      convexStepWorld={convexStepWorld}
     />
   );
 }

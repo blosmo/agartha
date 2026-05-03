@@ -2,6 +2,7 @@ pub mod actions;
 pub mod agents;
 pub mod api;
 pub mod auth;
+pub mod collaboration;
 pub mod events;
 pub mod memory;
 pub mod patches;

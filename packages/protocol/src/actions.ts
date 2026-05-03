@@ -1,4 +1,8 @@
 import {
+  type CollaborationContext,
+  type LocalArea,
+} from "./collaboration";
+import {
   type AgentId,
   type CellSample,
   type ChunkVersion,
@@ -87,6 +91,8 @@ export interface AgentPerception {
   readonly visibleCells: readonly CellSample[];
   readonly nearbySymbols: readonly SymbolMetadata[];
   readonly recentEvents: readonly string[];
+  readonly localArea?: LocalArea;
+  readonly collaboration?: CollaborationContext;
   readonly availableActions: readonly ActionType[];
   readonly worldEnergy: {
     readonly current: number;

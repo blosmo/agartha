@@ -258,14 +258,6 @@ export function BoardCanvas({
         if (drag.mode === "shape" && drag.startCoord) {
           const nextSelection = selectionFromCoords(drag.startCoord, screenToCoord(event.clientX, event.clientY, event.currentTarget, cameraRef.current));
           setMarqueePreview(nextSelection);
-          previewStroke(
-            shapeCoordsFromSelection(nextSelection, toolSettings.shapeMode),
-            { ...toolSettings, mode: "paint" },
-            paintSwatches,
-            textureCacheRef.current,
-            chunkCanvasRefs.current,
-            gpuSurfaceRef.current,
-          );
           return;
         }
         applyCamera(
