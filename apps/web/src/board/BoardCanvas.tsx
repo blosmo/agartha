@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Crosshair, MagnifyingGlassMinus, MagnifyingGlassPlus } from "@phosphor-icons/react";
 import { CHUNK_SIZE, MATERIAL, MATERIAL_NAME, type ChunkCoord, type WorldCoord } from "@agartha/protocol/world";
 
@@ -56,13 +56,14 @@ export function BoardCanvas({
     panY: number;
     startCoord?: WorldCoord;
     lastStrokeCoord?: WorldCoord;
-    mode: "pan" | "marquee" | "shape" | "stroke";
+    mode: "line" | "pan" | "marquee" | "shape" | "stroke";
     strokeCoords?: WorldCoord[];
     strokeKeys?: Set<string>;
   } | null>(null);
   const [, forceCameraRender] = useState(0);
   const [rendererMode, setRendererMode] = useState<BoardRendererMode>("chunk-canvas");
   const [marqueePreview, setMarqueePreview] = useState<CellSelection | undefined>();
+  const [linePreview, setLinePreview] = useState<LinePreview | undefined>();
 
   useEffect(() => {
     if (typeof window === "undefined" || window.navigator.userAgent.toLowerCase().includes("jsdom")) return;
@@ -215,6 +216,7 @@ export function BoardCanvas({
       onPointerDown={(event) => {
         const canStroke = isStrokeTool(toolSettings.mode);
         const canShapeDrag = toolSettings.mode === "shape";
+        const canLineDrag = toolSettings.mode === "line";
         event.currentTarget.setPointerCapture?.(event.pointerId);
         const currentCamera = cameraRef.current;
         const coord = screenToCoord(event.clientX, event.clientY, event.currentTarget, currentCamera);
@@ -229,8 +231,8 @@ export function BoardCanvas({
           panX: currentCamera.x,
           panY: currentCamera.y,
           lastStrokeCoord: canStroke ? coord : undefined,
-          mode: canStroke ? "stroke" : canShapeDrag ? "shape" : toolSettings.mode === "marquee" ? "marquee" : "pan",
-          startCoord: canShapeDrag || toolSettings.mode === "marquee" ? coord : undefined,
+          mode: canStroke ? "stroke" : canShapeDrag ? "shape" : canLineDrag ? "line" : toolSettings.mode === "marquee" ? "marquee" : "pan",
+          startCoord: canShapeDrag || canLineDrag || toolSettings.mode === "marquee" ? coord : undefined,
           strokeCoords,
           strokeKeys,
         };
@@ -262,6 +264,10 @@ export function BoardCanvas({
             event.shiftKey,
           );
           setMarqueePreview(nextSelection);
+          return;
+        }
+        if (drag.mode === "line" && drag.startCoord) {
+          setLinePreview({ end: screenToCoord(event.clientX, event.clientY, event.currentTarget, cameraRef.current), start: drag.startCoord });
           return;
         }
         applyCamera(
@@ -313,6 +319,30 @@ export function BoardCanvas({
                 onApplyStroke(shapeCoords);
               } else {
                 shapeCoords.forEach((shapeCoord) => onApplyTool(shapeCoord));
+              }
+            }
+            dragStart.current = null;
+            return;
+          }
+          if (drag.mode === "line" && drag.startCoord) {
+            const finalCoord = screenToCoord(event.clientX, event.clientY, hostRef.current, cameraRef.current);
+            if (moved < 4) {
+              onSelectCell(finalCoord);
+              onApplyTool(finalCoord);
+            } else {
+              const lineCoords = lineCoordsFromEndpoints(drag.startCoord, finalCoord, {
+                endArrow: toolSettings.lineEndArrow,
+                startArrow: toolSettings.lineStartArrow,
+                thickness: toolSettings.lineThickness,
+              });
+              setLinePreview(undefined);
+              onSelectCell(finalCoord);
+              if (onApplyShape) {
+                onApplyShape(lineCoords);
+              } else if (onApplyStroke) {
+                onApplyStroke(lineCoords);
+              } else {
+                lineCoords.forEach((lineCoord) => onApplyTool(lineCoord));
               }
             }
             dragStart.current = null;
@@ -443,6 +473,7 @@ export function BoardCanvas({
           />
         ))}
         <SelectionOverlay cameraZoom={camera.zoom} selection={marqueePreview ?? selection} />
+        <LineOverlay cameraZoom={camera.zoom} line={linePreview} settings={toolSettings} />
         <div className="sr-only" data-agent-id="board-renderer-status" data-testid="board-renderer-status">
           Renderer: {rendererMode}
         </div>
@@ -452,6 +483,11 @@ export function BoardCanvas({
       </div>
     </div>
   );
+}
+
+interface LinePreview {
+  readonly start: WorldCoord;
+  readonly end: WorldCoord;
 }
 
 function SelectionOverlay({ cameraZoom, selection }: { readonly cameraZoom: number; readonly selection?: CellSelection }) {
@@ -467,6 +503,43 @@ function SelectionOverlay({ cameraZoom, selection }: { readonly cameraZoom: numb
         top: origin.y * cameraZoom,
         width: selection.width * cameraZoom,
       }}
+    />
+  );
+}
+
+function LineOverlay({
+  cameraZoom,
+  line,
+  settings,
+}: {
+  readonly cameraZoom: number;
+  readonly line?: LinePreview;
+  readonly settings: MaterialToolSettings;
+}) {
+  if (!line) return null;
+  const start = absoluteCoord(line.start);
+  const end = absoluteCoord(line.end);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.max(1, Math.hypot(dx, dy) * cameraZoom);
+  const thickness = Math.max(1, settings.lineThickness) * cameraZoom;
+
+  return (
+    <div
+      aria-hidden="true"
+      className="board-canvas__line-preview"
+      data-end-arrow={settings.lineEndArrow ? "true" : "false"}
+      data-start-arrow={settings.lineStartArrow ? "true" : "false"}
+      data-testid="board-line-preview"
+      style={
+        {
+          "--line-preview-length": `${length}px`,
+          "--line-preview-thickness": `${thickness}px`,
+          left: (start.x + 0.5) * cameraZoom,
+          top: (start.y + 0.5) * cameraZoom,
+          transform: `rotate(${Math.atan2(dy, dx)}rad)`,
+        } as CSSProperties
+      }
     />
   );
 }
@@ -553,6 +626,91 @@ function shapeCoordsFromSelection(selection: CellSelection, shapeMode: MaterialT
       }
 
       coords.push(screenAbsoluteToCoord(x, y));
+    }
+  }
+
+  return coords;
+}
+
+function lineCoordsFromEndpoints(
+  start: WorldCoord,
+  end: WorldCoord,
+  options: { readonly thickness: number; readonly startArrow: boolean; readonly endArrow: boolean },
+): WorldCoord[] {
+  const startAbsolute = absoluteCoord(start);
+  const endAbsolute = absoluteCoord(end);
+  const lineCoords = rasterLine(startAbsolute.x, startAbsolute.y, endAbsolute.x, endAbsolute.y);
+  const cells = new Map<string, WorldCoord>();
+  addThickCoords(cells, lineCoords, options.thickness);
+
+  if (options.endArrow) {
+    addArrowHead(cells, startAbsolute, endAbsolute, options.thickness);
+  }
+  if (options.startArrow) {
+    addArrowHead(cells, endAbsolute, startAbsolute, options.thickness);
+  }
+
+  return Array.from(cells.values()).sort((a, b) => formatCoord(a).localeCompare(formatCoord(b)));
+}
+
+function addArrowHead(
+  cells: Map<string, WorldCoord>,
+  from: { readonly x: number; readonly y: number },
+  tip: { readonly x: number; readonly y: number },
+  thickness: number,
+) {
+  const dx = tip.x - from.x;
+  const dy = tip.y - from.y;
+  if (dx === 0 && dy === 0) return;
+
+  const angle = Math.atan2(dy, dx);
+  const length = Math.max(4, Math.min(24, Math.round(thickness * 3 + 4)));
+  for (const wing of [angle + (3 * Math.PI) / 4, angle - (3 * Math.PI) / 4]) {
+    const endX = Math.round(tip.x + Math.cos(wing) * length);
+    const endY = Math.round(tip.y + Math.sin(wing) * length);
+    addThickCoords(cells, rasterLine(tip.x, tip.y, endX, endY), thickness);
+  }
+}
+
+function addThickCoords(
+  cells: Map<string, WorldCoord>,
+  coords: readonly { readonly x: number; readonly y: number }[],
+  thickness: number,
+) {
+  const radius = Math.max(0, (Math.round(thickness) - 1) / 2);
+  const bound = Math.ceil(radius);
+  for (const coord of coords) {
+    for (let y = -bound; y <= bound; y += 1) {
+      for (let x = -bound; x <= bound; x += 1) {
+        if (x * x + y * y > radius * radius + 0.35) continue;
+        const worldCoord = screenAbsoluteToCoord(coord.x + x, coord.y + y);
+        cells.set(formatCoord(worldCoord), worldCoord);
+      }
+    }
+  }
+}
+
+function rasterLine(startX: number, startY: number, endX: number, endY: number) {
+  const coords: Array<{ x: number; y: number }> = [];
+  const dx = Math.abs(endX - startX);
+  const dy = Math.abs(endY - startY);
+  const sx = startX < endX ? 1 : -1;
+  const sy = startY < endY ? 1 : -1;
+  let error = dx - dy;
+  let x = startX;
+  let y = startY;
+
+  while (true) {
+    coords.push({ x, y });
+    if (x === endX && y === endY) break;
+    const error2 = 2 * error;
+    if (error2 > -dy) {
+      error -= dy;
+      x += sx;
+    }
+    if (error2 < dx) {
+      error += dx;
+      y += sy;
     }
   }
 
