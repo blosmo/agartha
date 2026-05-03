@@ -385,10 +385,10 @@ export function App({
       return;
     }
 
-    if (toolSettings.mode === "eraser" || toolSettings.material === MATERIAL.Empty) {
+    if ((toolSettings.mode === "eraser" || toolSettings.material === MATERIAL.Empty) && !convexPaintBrowserCells) {
       setWorldSource((current) => ({
         ...current,
-        message: "Convex erasing is not supported yet; authoritative browser edits can add material only.",
+        message: "Convex erasing needs the browser cell mutation; authoritative action envelopes can add material only.",
       }));
       return;
     }
@@ -403,14 +403,17 @@ export function App({
     }
 
     const nextById = new Map(nextCells.map((cell) => [cell.id, cell]));
-    const optimisticCells = targets.map((target) => nextById.get(cellKey(target))).filter((cell): cell is DemoCell => Boolean(cell));
-    if (optimisticCells.length !== targets.length) {
-      setWorldSource((current) => ({
-        ...current,
-        message: "Convex erasing is not supported yet; authoritative browser edits can add material only.",
-      }));
-      return;
-    }
+    const previousById = new Map(previousCells.map((cell) => [cell.id, cell]));
+    const optimisticCells = targets
+      .map((target) => {
+        const key = cellKey(target);
+        const nextCell = nextById.get(key);
+        if (nextCell) return nextCell;
+        const previousCell = previousById.get(key);
+        if (!previousCell) return undefined;
+        return { ...previousCell, material: MATERIAL.Empty, state: 0, variant: 0, flags: 0 };
+      })
+      .filter((cell): cell is DemoCell => Boolean(cell));
 
     if (convexPaintBrowserCells) {
       await submitConvexBrowserCells(nextCells, optimisticCells, gesture);
@@ -450,7 +453,7 @@ export function App({
     if (!submitAct) return;
 
     setCells([...nextCells]);
-    setPendingConvexCells((current) => mergeCells(current, optimisticCells));
+    setPendingConvexCells((current) => mergePendingCells(current, optimisticCells));
     setWorldSource((current) => ({
       ...current,
       message: `Submitting ${toolLabel(toolSettings.mode)} ${gesture} to Convex`,
@@ -491,7 +494,7 @@ export function App({
     if (!convexPaintBrowserCells || !convexWriteConfig) return;
 
     setCells([...nextCells]);
-    setPendingConvexCells((current) => mergeCells(current, optimisticCells));
+    setPendingConvexCells((current) => mergePendingCells(current, optimisticCells));
     setWorldSource((current) => ({
       ...current,
       message: `Submitting ${toolLabel(toolSettings.mode)} ${gesture} to Convex`,
@@ -1177,27 +1180,49 @@ function toolLabel(mode: MaterialToolSettings["mode"]) {
 
 function changedCoords(previousCells: readonly DemoCell[], nextCells: readonly DemoCell[]): WorldCoord[] {
   const previous = new Map(previousCells.map((cell) => [cell.id, cell]));
-  return nextCells
-    .filter((cell) => {
-      const current = previous.get(cell.id);
-      return (
-        !current ||
-        current.material !== cell.material ||
-        current.state !== cell.state ||
-        current.variant !== cell.variant ||
-        current.flags !== cell.flags
-      );
-    })
-    .map((cell) => cell.coord);
+  const next = new Map(nextCells.map((cell) => [cell.id, cell]));
+  const changed: WorldCoord[] = [];
+
+  for (const cell of nextCells) {
+    const current = previous.get(cell.id);
+    if (
+      !current ||
+      current.material !== cell.material ||
+      current.state !== cell.state ||
+      current.variant !== cell.variant ||
+      current.flags !== cell.flags
+    ) {
+      changed.push(cell.coord);
+    }
+  }
+
+  for (const cell of previousCells) {
+    if (!next.has(cell.id)) changed.push(cell.coord);
+  }
+
+  return changed;
 }
 
 function mergeCells(baseCells: readonly DemoCell[], overlayCells: readonly DemoCell[]): DemoCell[] {
+  const merged = new Map(baseCells.map((cell) => [cell.id, cell]));
+  for (const cell of overlayCells) {
+    if (cell.material === MATERIAL.Empty) {
+      merged.delete(cell.id);
+    } else {
+      merged.set(cell.id, cell);
+    }
+  }
+  return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function mergePendingCells(baseCells: readonly DemoCell[], overlayCells: readonly DemoCell[]): DemoCell[] {
   const merged = new Map(baseCells.map((cell) => [cell.id, cell]));
   for (const cell of overlayCells) merged.set(cell.id, cell);
   return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function snapshotHasCell(snapshotCells: readonly DemoCell[], pendingCell: DemoCell) {
+  if (pendingCell.material === MATERIAL.Empty) return !snapshotCells.some((cell) => cell.id === pendingCell.id);
   return snapshotCells.some((cell) => sameCell(cell, pendingCell));
 }
 

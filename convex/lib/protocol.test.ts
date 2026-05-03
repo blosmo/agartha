@@ -46,6 +46,17 @@ describe("Convex protocol mapping", () => {
     ).toEqual([{ coord, material: 1, state: 0, variant: 2, flags: 0 }]);
   });
 
+  it("lets authoritative empty writes delete visible cells", () => {
+    const coord = { chunk: { x: 0, y: 0 }, cell: { x: 12, y: 16 } };
+
+    expect(
+      mergeSparseCells(
+        [{ coord, material: 1, state: 0, variant: 0, flags: 0 }],
+        [{ coord, material: 0 }],
+      ),
+    ).toEqual([]);
+  });
+
   it("computes capped regenerated energy without persistence", () => {
     expect(
       effectiveEnergy(

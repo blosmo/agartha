@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { MATERIAL } from "@agartha/protocol/world";
 
 import { App } from "./App";
 import { demoCell, type DemoCell } from "./demoWorld";
@@ -63,6 +64,59 @@ describe("Convex-backed browser edits", () => {
     expect(document.querySelector('[data-agent-id="canvas-source-status"]')).toHaveTextContent(
       "Brush stroke accepted",
     );
+  });
+
+  it("submits erased Convex cells as empty tombstones and keeps them erased optimistically", async () => {
+    const convexPaintBrowserCells = vi.fn(async ({ cells }: BrowserPaintArgs) => ({
+      accepted: true,
+      affectedCells: cells.map((cell) => cell.coord),
+      affectedChunks: ["1:1"],
+      cost: 0,
+      energyRemaining: 99,
+      eventId: "browser-erase",
+      summary: "browser_paint_cells accepted",
+    }));
+    const filledCell = demoCell(177, 140, MATERIAL.Plant);
+    const staleSnapshot = {
+      cells: [filledCell],
+      chunkVersions: { "1:1": 0 },
+      events: [],
+    };
+    const { rerender } = render(
+      <App
+        convexPaintBrowserCells={convexPaintBrowserCells as never}
+        convexSnapshot={staleSnapshot}
+        convexUrl="https://example.convex.cloud"
+        convexWriteConfig={{ agentId: "agent-browser", token: "token-browser", worldId: "origin" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Eraser" }));
+    const board = screen.getByTestId("board-canvas");
+    fireEvent.pointerDown(board, { clientX: 800, clientY: 500, pointerId: 1 });
+    fireEvent.pointerUp(board, { clientX: 800, clientY: 500, pointerId: 1 });
+
+    await waitFor(() => expect(convexPaintBrowserCells).toHaveBeenCalledTimes(1));
+    const eraseCall = (convexPaintBrowserCells.mock.calls as unknown as BrowserPaintArgs[][])[0]?.[0];
+    expect(eraseCall?.cells).toMatchObject([
+      {
+        coord: { chunk: { x: 1, y: 1 }, cell: { x: 49, y: 12 } },
+        material: MATERIAL.Empty,
+        state: 0,
+        variant: 0,
+      },
+    ]);
+    await waitFor(() => expect(screen.getByTestId("board-cells")).toHaveAttribute("data-active-cells", "0"));
+
+    rerender(
+      <App
+        convexPaintBrowserCells={convexPaintBrowserCells as never}
+        convexSnapshot={staleSnapshot}
+        convexUrl="https://example.convex.cloud"
+        convexWriteConfig={{ agentId: "agent-browser", token: "token-browser", worldId: "origin" }}
+      />,
+    );
+    expect(screen.getByTestId("board-cells")).toHaveAttribute("data-active-cells", "0");
   });
 
   it("keeps the exact optimistic cell across stale Convex snapshots until the accepted cell arrives", async () => {

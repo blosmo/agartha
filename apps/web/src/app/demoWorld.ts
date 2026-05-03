@@ -504,6 +504,10 @@ function toolTargets(
     return [coord];
   }
 
+  if (settings.mode === "eraser" && radius === 1) {
+    return [coord];
+  }
+
   if (settings.mode === "bucket") {
     return bucketTargets(cells, coord, radius);
   }

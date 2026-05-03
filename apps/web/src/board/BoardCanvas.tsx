@@ -767,6 +767,8 @@ function previewTargets(coord: WorldCoord, toolSettings: MaterialToolSettings) {
 
   const origin = absoluteCoord(coord);
   const radius = Math.max(1, Math.min(10, Math.round(toolSettings.brushSize)));
+  if (toolSettings.mode === "eraser" && radius === 1) return [coord];
+
   const targets: WorldCoord[] = [];
   for (let dy = -radius; dy <= radius; dy += 1) {
     for (let dx = -radius; dx <= radius; dx += 1) {

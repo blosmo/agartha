@@ -47,14 +47,14 @@ const MATERIAL_SWATCH_COLORS: Record<MaterialId, string> = {
 };
 
 const TOOL_OPTIONS: Array<{ readonly id: ToolMode; readonly label: string; readonly shortcut: string; readonly Icon: Icon }> = [
-  { id: "paint", label: "Pencil", shortcut: "1", Icon: PencilSimple },
-  { id: "brush", label: "Brush", shortcut: "2", Icon: PaintBrush },
-  { id: "shape", label: "Shape", shortcut: "3", Icon: Rectangle },
-  { id: "bucket", label: "Bucket", shortcut: "4", Icon: PaintBucket },
-  { id: "eraser", label: "Eraser", shortcut: "5", Icon: Eraser },
-  { id: "stamp", label: "Stamp", shortcut: "6", Icon: Stamp },
-  { id: "cursor", label: "Cursor", shortcut: "7", Icon: Cursor },
-  { id: "marquee", label: "Marquee", shortcut: "8", Icon: FrameCorners },
+  { id: "paint", label: "Pencil", shortcut: "P", Icon: PencilSimple },
+  { id: "brush", label: "Brush", shortcut: "B", Icon: PaintBrush },
+  { id: "shape", label: "Shape", shortcut: "S", Icon: Rectangle },
+  { id: "bucket", label: "Bucket", shortcut: "F", Icon: PaintBucket },
+  { id: "eraser", label: "Eraser", shortcut: "E", Icon: Eraser },
+  { id: "stamp", label: "Stamp", shortcut: "T", Icon: Stamp },
+  { id: "cursor", label: "Cursor", shortcut: "C", Icon: Cursor },
+  { id: "marquee", label: "Marquee", shortcut: "M", Icon: FrameCorners },
 ];
 
 const SHAPE_OPTIONS: Array<{ readonly id: ShapeMode; readonly label: string; readonly Icon: Icon }> = [
@@ -102,7 +102,7 @@ export function ToolDock({ paintSwatches, settings, onUpdateSettings }: ToolDock
         return;
       }
 
-      const tool = TOOL_OPTIONS.find((option) => option.shortcut === event.key);
+      const tool = TOOL_OPTIONS.find((option) => option.shortcut.toLowerCase() === event.key.toLowerCase());
       if (!tool) return;
       event.preventDefault();
       updateMode(tool.id);

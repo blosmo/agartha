@@ -243,7 +243,6 @@ export const paintBrowserCells = mutation({
     try {
       for (const cell of args.cells) {
         assertValidWorldCoord(cell.coord);
-        if (cell.material === MATERIAL.Empty) return rejectedResult("malformed");
         const key = chunkKey(cell.coord.chunk);
         byChunk.set(key, [...(byChunk.get(key) ?? []), cell]);
       }
@@ -276,7 +275,7 @@ export const paintBrowserCells = mutation({
       id,
       args.agentId,
       "browser_paint_cells",
-      `${args.agentId} browser painted ${args.cells.length} cells`,
+      `${args.agentId} browser edited ${args.cells.length} cells`,
       affectedChunks,
       affectedCells,
     );

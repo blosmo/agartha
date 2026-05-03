@@ -1,4 +1,4 @@
-import { isValidCellCoord, type CellSample, type MaterialId, type WorldCoord } from "@agartha/protocol/world";
+import { MATERIAL, isValidCellCoord, type CellSample, type MaterialId, type WorldCoord } from "@agartha/protocol/world";
 
 import { isCellInRange } from "./coords";
 import { cellKey } from "./protocol";
@@ -24,6 +24,10 @@ export function mergeSparseCells(
   const cells = new Map(existing.map((cell) => [cellKey(cell.coord), cell]));
   for (const write of writes) {
     const key = cellKey(write.coord);
+    if (write.material === MATERIAL.Empty) {
+      cells.delete(key);
+      continue;
+    }
     cells.set(key, {
       coord: write.coord,
       material: write.material,

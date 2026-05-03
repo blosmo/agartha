@@ -29,8 +29,8 @@ describe("first demo viewer smoke", () => {
     expect(
       screen.getAllByRole("radio", { name: "Paint 1" }).some((element) => element.getAttribute("aria-checked") === "true"),
     ).toBe(true);
-    expect(screen.getByRole("radio", { name: "Pencil" })).toHaveAttribute("title", "Pencil (1)");
-    fireEvent.keyDown(window, { key: "2" });
+    expect(screen.getByRole("radio", { name: "Pencil" })).toHaveAttribute("title", "Pencil (P)");
+    fireEvent.keyDown(window, { key: "b" });
     expect(screen.getByRole("radio", { name: "Brush" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByLabelText("Brush size menu")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Toolbar brush size"), { target: { value: "4" } });
@@ -64,7 +64,7 @@ describe("first demo viewer smoke", () => {
     applyBoardPointer(board);
     expect(screen.getByTestId("board-selection")).toBeInTheDocument();
     expect(screen.getByTestId("board-cells").querySelectorAll('canvas[data-agent-id^="chunk-"]').length).toEqual(cursorChunkCount);
-    expect(screen.getByRole("radio", { name: "Marquee" })).toHaveAttribute("title", "Marquee (8)");
+    expect(screen.getByRole("radio", { name: "Marquee" })).toHaveAttribute("title", "Marquee (M)");
 
     expect(screen.queryByLabelText("Agent command input")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Agent" }));

@@ -142,6 +142,21 @@ describe("applyMaterialTool", () => {
     expect(result.affected).toBe(2);
     expect(result.cells).toHaveLength(1);
   });
+
+  it("clears exactly one cell with the smallest eraser size", () => {
+    const cells = [
+      demoCell(20, 20, MATERIAL.Fire),
+      demoCell(21, 20, MATERIAL.Fire),
+    ];
+    const result = applyMaterialTool(cells, cells[0].coord, {
+      ...DEFAULT_TOOL_SETTINGS,
+      mode: "eraser",
+      brushSize: 1,
+    });
+
+    expect(result.affected).toBe(1);
+    expect(result.cells).toEqual([cells[1]]);
+  });
 });
 
 describe("applyMaterialStroke", () => {
