@@ -198,6 +198,20 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByTestId("board-selection").style.width).toEqual(screen.getByTestId("board-selection").style.height);
     fireEvent.pointerUp(board, { clientX: 528, clientY: 452, pointerId: 3, shiftKey: true });
     expect(screen.getAllByText("Shape drag:", { exact: false }).length).toBeGreaterThan(1);
+    fireEvent.click(screen.getByRole("radio", { name: "Line" }));
+    expect(screen.getByRole("radio", { name: "Line" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Line options")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Line thickness"), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start arrow" }));
+    fireEvent.click(screen.getByRole("button", { name: "End arrow" }));
+    expect(screen.getByRole("button", { name: "Start arrow" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "End arrow" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.pointerDown(board, { clientX: 488, clientY: 420, pointerId: 4 });
+    fireEvent.pointerMove(board, { clientX: 552, clientY: 452, pointerId: 4 });
+    expect(screen.getByTestId("board-line-preview")).toHaveAttribute("data-start-arrow", "true");
+    expect(screen.getByTestId("board-line-preview")).toHaveAttribute("data-end-arrow", "true");
+    fireEvent.pointerUp(board, { clientX: 552, clientY: 452, pointerId: 4 });
+    expect(screen.getAllByText("Line drag:", { exact: false }).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("radio", { name: "Eraser" }));
     expect(screen.getByLabelText("Brush size menu")).toBeInTheDocument();

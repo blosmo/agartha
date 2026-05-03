@@ -375,7 +375,7 @@ export function App({
       {
         id: `demo-${String(eventList.length + 1).padStart(4, "0")}`,
         tick,
-        summary: `Shape drag: ${editSummary(result.affected, finalCoord, result.material)}`,
+        summary: `${toolLabel(toolSettings.mode)} drag: ${editSummary(result.affected, finalCoord, result.material)}`,
       },
       ...eventList,
     ]);
