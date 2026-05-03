@@ -194,6 +194,7 @@ button:disabled {
 .board-canvas[data-tool="brush"],
 .board-canvas[data-tool="paint"],
 .board-canvas[data-tool="shape"],
+.board-canvas[data-tool="line"],
 .board-canvas[data-tool="bucket"],
 .board-canvas[data-tool="stamp"] {
   cursor: crosshair;
@@ -448,6 +449,43 @@ button:disabled {
   pointer-events: none;
   position: absolute;
   z-index: 1;
+}
+
+.board-canvas__line-preview {
+  background: rgba(237, 242, 247, 0.88);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(12, 14, 18, 0.55), 0 0 18px rgba(237, 242, 247, 0.22);
+  height: var(--line-preview-thickness);
+  pointer-events: none;
+  position: absolute;
+  transform-origin: 0 50%;
+  width: var(--line-preview-length);
+  z-index: 2;
+}
+
+.board-canvas__line-preview::before,
+.board-canvas__line-preview::after {
+  border: solid rgba(237, 242, 247, 0.88);
+  content: "";
+  display: none;
+  height: calc(var(--line-preview-thickness) * 3.2);
+  position: absolute;
+  top: 50%;
+  width: calc(var(--line-preview-thickness) * 3.2);
+}
+
+.board-canvas__line-preview[data-start-arrow="true"]::before {
+  border-width: 0 0 var(--line-preview-thickness) var(--line-preview-thickness);
+  display: block;
+  left: calc(var(--line-preview-thickness) * 0.35);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.board-canvas__line-preview[data-end-arrow="true"]::after {
+  border-width: var(--line-preview-thickness) var(--line-preview-thickness) 0 0;
+  display: block;
+  right: calc(var(--line-preview-thickness) * 0.35);
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .tool-dock {
