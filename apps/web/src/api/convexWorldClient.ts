@@ -48,6 +48,11 @@ const actMutation = makeFunctionReference<
   { envelope: ActionEnvelope; token?: string; production?: boolean },
   ActionResult
 >("actions:act");
+const clearAllCellsMutation = makeFunctionReference<
+  "mutation",
+  { worldId: string; agentId: string; token?: string; production?: boolean },
+  ActionResult
+>("actions:clearAllCells");
 
 export function readConvexWriteConfig(env: Record<string, string | boolean | undefined>): ConvexWriteConfig | undefined {
   const token = typeof env.VITE_AGARTHA_WRITE_TOKEN === "string" ? env.VITE_AGARTHA_WRITE_TOKEN.trim() : "";
@@ -74,6 +79,10 @@ export function useConvexWorldSnapshot(chunks: readonly ChunkCoord[] = DEFAULT_S
 
 export function useConvexAct() {
   return useMutation(actMutation);
+}
+
+export function useConvexClearAllCells() {
+  return useMutation(clearAllCellsMutation);
 }
 
 export function placeMaterialEnvelope(

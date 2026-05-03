@@ -143,6 +143,62 @@ export const act = mutation({
   },
 });
 
+export const clearAllCells = mutation({
+  args: { worldId: v.string(), agentId: v.string(), token: v.optional(v.string()), production: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const records = await ctx.db
+      .query("serviceTokens")
+      .withIndex("by_prefix", (q) => q.eq("prefix", args.token?.slice(0, 8) ?? ""))
+      .collect();
+    const auth = await authenticateToken(args.token, records, {
+      worldId: args.worldId,
+      agentId: args.agentId,
+      scope: "agent:write",
+      now,
+      production: args.production ?? false,
+    });
+    if (!auth.ok) return rejectedResult(auth.reason);
+
+    const agent = await ctx.db
+      .query("agents")
+      .withIndex("by_world_agent", (q) => q.eq("worldId", args.worldId).eq("agentId", args.agentId))
+      .unique();
+    if (agent === null) return rejectedResult("permission_denied");
+
+    const chunks = await ctx.db.query("chunks").withIndex("by_world_chunk", (q) => q.eq("worldId", args.worldId)).collect();
+    const affectedChunks: string[] = [];
+    for (const chunk of chunks) {
+      if (chunk.cells.length === 0) continue;
+      affectedChunks.push(chunk.chunkKey);
+      await ctx.db.patch(chunk._id, { cells: [], version: chunk.version + 1, updatedAt: now });
+    }
+
+    await ctx.db.patch(agent._id, { energyUpdatedAt: now, updatedAt: now });
+    const id = eventId(now, "clear");
+    await insertPublicEvent(
+      ctx,
+      args.worldId,
+      id,
+      args.agentId,
+      "clear_all_cells",
+      `${args.agentId} cleared all canvas cells`,
+      affectedChunks,
+      [],
+    );
+
+    return {
+      accepted: true,
+      eventId: id,
+      cost: 0,
+      energyRemaining: effectiveEnergy(agent, now),
+      affectedCells: [],
+      affectedChunks,
+      summary: "clear_all_cells accepted",
+    };
+  },
+});
+
 async function hasStaleChunkVersion(ctx: any, envelope: any) {
   for (const key of affectedChunkKeys(envelope)) {
     const chunk = await ctx.db

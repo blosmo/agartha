@@ -32,6 +32,7 @@ import {
   placeMaterialEnvelope,
   readConvexWriteConfig,
   useConvexAct,
+  useConvexClearAllCells,
   useConvexWorldSnapshot,
   type ConvexWorldSnapshot,
 } from "../api/convexWorldClient";
@@ -58,10 +59,8 @@ type WorldSourceState = {
 
 const SERVER_WORLD_CONFIG = readServerWorldConfig(import.meta.env);
 const CONVEX_URL = readConvexUrl(import.meta.env);
-const BACKEND_MODE = typeof import.meta.env.VITE_AGARTHA_BACKEND === "string" ? import.meta.env.VITE_AGARTHA_BACKEND : undefined;
-const EXPLICIT_CONVEX_MODE = BACKEND_MODE === "convex";
 const CONVEX_WRITE_CONFIG = readConvexWriteConfig(import.meta.env);
-const AUTHORITATIVE_MODE = Boolean(CONVEX_URL || SERVER_WORLD_CONFIG || EXPLICIT_CONVEX_MODE);
+const AUTHORITATIVE_MODE = Boolean(CONVEX_URL || SERVER_WORLD_CONFIG);
 const INITIAL_APP_CELLS = AUTHORITATIVE_MODE ? [] : INITIAL_DEMO_CELLS;
 const INITIAL_APP_EVENTS: DemoEvent[] = AUTHORITATIVE_MODE
   ? [{ id: "authoritative-connecting", tick: 0, summary: "Connecting to authoritative world state" }]
@@ -80,11 +79,17 @@ const AGENT_COMMANDS = [
 ];
 
 type ConvexActMutation = ReturnType<typeof useConvexAct>;
+type ConvexClearAllCellsMutation = ReturnType<typeof useConvexClearAllCells>;
 
 export function App({
   convexAct,
+  convexClearAllCells,
   convexSnapshot,
-}: { readonly convexAct?: ConvexActMutation; readonly convexSnapshot?: ConvexWorldSnapshot } = {}) {
+}: {
+  readonly convexAct?: ConvexActMutation;
+  readonly convexClearAllCells?: ConvexClearAllCellsMutation;
+  readonly convexSnapshot?: ConvexWorldSnapshot;
+} = {}) {
   const [uiMode, setUiMode] = useState<UIMode>("human");
   const [cells, setCells] = useState<DemoCell[]>(INITIAL_APP_CELLS);
   const [terrainSeedId, setTerrainSeedId] = useState(DEFAULT_TERRAIN_SEED.id);
@@ -100,20 +105,14 @@ export function App({
   const [events, setEvents] = useState<DemoEvent[]>(INITIAL_APP_EVENTS);
   const [pendingConvexCells, setPendingConvexCells] = useState<DemoCell[]>([]);
   const [worldSource, setWorldSource] = useState<WorldSourceState>(
-    EXPLICIT_CONVEX_MODE && !CONVEX_URL
+    CONVEX_URL
       ? {
-          connection: "error",
-          message: "Convex-backed mode needs VITE_CONVEX_URL",
+          apiUrl: CONVEX_URL,
+          connection: "connecting",
+          message: "Connecting to Convex authoritative state",
           mode: "convex_backed",
         }
-      : CONVEX_URL
-        ? {
-            apiUrl: CONVEX_URL,
-            connection: "connecting",
-            message: "Connecting to Convex authoritative state",
-            mode: "convex_backed",
-          }
-        : SERVER_WORLD_CONFIG
+      : SERVER_WORLD_CONFIG
       ? {
           apiUrl: SERVER_WORLD_CONFIG.baseUrl,
           connection: SERVER_WORLD_CONFIG.token ? "connecting" : "missing_token",
@@ -409,6 +408,46 @@ export function App({
     }
   }
 
+  async function submitConvexClearAllCells() {
+    if (!convexClearAllCells || !CONVEX_WRITE_CONFIG) {
+      setWorldSource((current) => ({
+        ...current,
+        message: "Convex clear all needs VITE_AGARTHA_WRITE_TOKEN in the local web app environment.",
+      }));
+      return;
+    }
+
+    if (!window.confirm("Clear all Convex canvas cells for the shared Agartha world?")) return;
+
+    setCells([]);
+    setPendingConvexCells([]);
+    setIsPlaying(false);
+    setWorldSource((current) => ({
+      ...current,
+      message: "Clearing Convex canvas cells",
+    }));
+
+    try {
+      const result: ActionResult = await convexClearAllCells({
+        agentId: CONVEX_WRITE_CONFIG.agentId,
+        token: CONVEX_WRITE_CONFIG.token,
+        worldId: CONVEX_WRITE_CONFIG.worldId,
+      });
+      setWorldSource((current) => ({
+        ...current,
+        message: result.accepted
+          ? `${result.summary}; waiting for Convex realtime state`
+          : `Convex clear all rejected: ${result.reason ?? result.summary}`,
+      }));
+    } catch (error) {
+      setWorldSource((current) => ({
+        ...current,
+        connection: "error",
+        message: error instanceof Error ? error.message : "Unable to clear Convex canvas cells",
+      }));
+    }
+  }
+
   function undoEdit() {
     if (blockServerBackedMutation("Undo is disabled in server-backed mode because state is owned by the server.")) return;
     const previousCells = undoStack[0];
@@ -593,6 +632,10 @@ export function App({
   }
 
   function clearAllCells() {
+    if (CONVEX_URL) {
+      void submitConvexClearAllCells();
+      return;
+    }
     if (blockServerBackedMutation("Local clear all is disabled in server-backed mode.")) return;
     setUndoStack((current) => [cells, ...current].slice(0, 24));
     setRedoStack([]);
@@ -1590,5 +1633,6 @@ function RootApp() {
 function ConvexBackedApp() {
   const convexSnapshot = CONVEX_URL ? useConvexWorldSnapshot() : undefined;
   const convexAct = CONVEX_URL ? useConvexAct() : undefined;
-  return <App convexAct={convexAct} convexSnapshot={convexSnapshot} />;
+  const convexClearAllCells = CONVEX_URL ? useConvexClearAllCells() : undefined;
+  return <App convexAct={convexAct} convexClearAllCells={convexClearAllCells} convexSnapshot={convexSnapshot} />;
 }

@@ -6,3 +6,6 @@ apps/web/dist/
 *.log
 
 .env.local
+.env.openclaw
+.agartha-bin/
+openclaw-e2e-report.json
