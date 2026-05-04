@@ -14,10 +14,10 @@ pub struct EnergyAccount {
 impl EnergyAccount {
     pub fn first_demo() -> Self {
         Self {
-            current: 40,
-            cap: 50,
-            regenerates_every_ticks: 2,
-            regenerates_amount: 1,
+            current: 5_000,
+            cap: 10_000,
+            regenerates_every_ticks: 1,
+            regenerates_amount: 500,
             last_regeneration_tick: 0,
         }
     }

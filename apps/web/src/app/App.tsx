@@ -42,7 +42,7 @@ import {
   type ConvexWriteConfig,
   type ConvexWorldSnapshot,
 } from "../api/convexWorldClient";
-import { fetchServerWorldSnapshot, readServerWorldConfig, type ServerCollaborationContext } from "../api/worldClient";
+import { fetchServerWorldSnapshot, readServerWorldConfig, type ServerAgentTool, type ServerCollaborationContext } from "../api/worldClient";
 import { AgarthaConvexProvider, readConvexUrl } from "./ConvexProvider";
 import { AgentCliBar } from "../controls/AgentCommandPanel";
 import { MaterialEditorPanel, ToolDock } from "../controls/MaterialEditorPanel";
@@ -51,7 +51,6 @@ import { TerrainSeedPanel } from "../controls/TerrainSeedPanel";
 import { TimeControls } from "../controls/TimeControls";
 import { CellInspector } from "../inspector/CellInspector";
 import { EventHistoryPanel } from "../inspector/EventHistoryPanel";
-import { ReplayControls } from "../replay/ReplayControls";
 import "./layout.css";
 
 type UIMode = "human" | "agent";
@@ -61,6 +60,13 @@ type WorldSourceState = {
   readonly connection: "local" | "connecting" | "connected" | "error" | "missing_token";
   readonly message: string;
   readonly mode: "local_demo" | "server_backed" | "convex_backed";
+};
+type AgentRunnerSnapshot = {
+  readonly cells?: readonly DemoCell[];
+  readonly chunkVersions?: Record<string, number>;
+  readonly collaboration?: ServerCollaborationContext;
+  readonly availableTools?: readonly ServerAgentTool[];
+  readonly events?: ReadonlyArray<{ readonly id: string; readonly summary: string; readonly tick: number }>;
 };
 
 const SERVER_WORLD_CONFIG = readServerWorldConfig(import.meta.env);
@@ -77,6 +83,54 @@ const AGENT_COMMANDS = [
   "color slot #rrggbb",
   "object save name x y width height",
   "object stamp name x y [repeat stepX stepY]",
+];
+
+const SCRIPTED_AGENT_ROSTER = [
+  {
+    id: "agent-moss-archivist",
+    name: "Moss Archivist",
+    role: "memory",
+  },
+  {
+    id: "agent-firebreak-builder",
+    name: "Firebreak Builder",
+    role: "buffer",
+  },
+  {
+    id: "agent-stream-gardener",
+    name: "Stream Gardener",
+    role: "growth",
+  },
+  {
+    id: "agent-hermes-cartographer",
+    name: "Hermes Cartographer",
+    role: "mapping",
+  },
+  {
+    id: "agent-hermes-steward",
+    name: "Hermes Steward",
+    role: "review",
+  },
+] as const;
+
+type ScriptedAgentId = (typeof SCRIPTED_AGENT_ROSTER)[number]["id"];
+
+const AGENT_DEPLOY_COMMANDS = [
+  "npm run agents -- --list",
+  "npm run agents -- --agents all --rounds 2",
+  "npm run dev:all",
+  "VITE_AGARTHA_SERVER_URL=http://127.0.0.1:8787 VITE_AGARTHA_READ_TOKEN=token-moss npm --workspace apps/web run dev",
+] as const;
+
+const AGENT_WELCOME_BRIEF =
+  "Goal: work together to make beautiful shared art. When you log on, enter the area, say your plan, update the shared plan when needed, draw only through API actions, then summarize what changed.";
+const DEFAULT_AGENT_TOOLS: readonly ServerAgentTool[] = [
+  {
+    id: "canvas_screenshot",
+    name: "Canvas screenshot",
+    kind: "vision",
+    description: "Request a rendered canvas image for visual critique when structured cell perception is not enough.",
+  },
 ];
 
 type ConvexActMutation = ReturnType<typeof useConvexAct>;
@@ -131,6 +185,8 @@ export function App({
   );
   const [pendingConvexCells, setPendingConvexCells] = useState<DemoCell[]>([]);
   const [collaborationContext, setCollaborationContext] = useState<ServerCollaborationContext | undefined>(initialCollaborationContext);
+  const [availableAgentTools, setAvailableAgentTools] = useState<readonly ServerAgentTool[]>(DEFAULT_AGENT_TOOLS);
+  const cellsRef = useRef(cells);
   const timeMutationPendingRef = useRef(false);
   const [worldSource, setWorldSource] = useState<WorldSourceState>(
     convexUrl
@@ -166,6 +222,53 @@ export function App({
   );
 
   useEffect(() => {
+    cellsRef.current = cells;
+  }, [cells]);
+
+  function applyAgentRunnerSnapshot(snapshot?: AgentRunnerSnapshot) {
+    if (!snapshot) return { changedCells: 0, totalCells: cellsRef.current.length };
+    const changed = snapshot.cells ? changedCoords(cellsRef.current, snapshot.cells) : [];
+    if (snapshot.cells) {
+      setCells([...snapshot.cells]);
+      cellsRef.current = [...snapshot.cells];
+      setUndoStack([]);
+      setRedoStack([]);
+      setSelectedCoord((current) =>
+        snapshot.cells?.some((cell) => cell.id === cellKey(current)) ? current : snapshot.cells?.[0]?.coord ?? current,
+      );
+    }
+    if (snapshot.collaboration) setCollaborationContext(snapshot.collaboration);
+    if (snapshot.availableTools) setAvailableAgentTools(snapshot.availableTools);
+    if (snapshot.events && snapshot.events.length > 0) {
+      const serverEvents = snapshot.events.map((event) => ({
+        id: event.id,
+        summary: event.summary,
+        tick: event.tick,
+      }));
+      const visualEvent =
+        changed.length > 0
+          ? [
+              {
+                id: `agent-visual-${Date.now()}`,
+                summary: `Agents drew ${changed.length} changed cell${changed.length === 1 ? "" : "s"} on canvas`,
+                tick: snapshot.events[0]?.tick ?? tick,
+              },
+            ]
+          : [];
+      setEvents([...visualEvent, ...serverEvents]);
+      setTick(snapshot.events[0]?.tick ?? tick);
+    }
+    setWorldSource((current) => ({
+      ...current,
+      apiUrl: current.apiUrl ?? "http://127.0.0.1:8787",
+      chunkVersions: snapshot.chunkVersions ?? current.chunkVersions,
+      connection: "connected",
+      message: "Updated from local agent API",
+    }));
+    return { changedCells: changed.length, totalCells: snapshot.cells?.length ?? cellsRef.current.length };
+  }
+
+  useEffect(() => {
     if (convexUrl || !SERVER_WORLD_CONFIG) return;
 
     let cancelled = false;
@@ -187,6 +290,7 @@ export function App({
             : [{ id: "server-0000", tick: 0, summary: "Connected to authoritative server state" }],
         );
         setCollaborationContext(snapshot.collaboration);
+        if (snapshot.availableTools) setAvailableAgentTools(snapshot.availableTools);
         setSelectedCoord((current) =>
           snapshot.cells.some((cell) => cell.id === cellKey(current)) ? current : snapshot.cells[0]?.coord ?? current,
         );
@@ -1025,11 +1129,14 @@ export function App({
         Agartha first demo
       </h1>
       <AgentStateBridge
+        availableTools={availableAgentTools}
         cells={cells.length}
         commands={AGENT_COMMANDS}
+        deploymentCommands={AGENT_DEPLOY_COMMANDS}
         latestEvent={latestEvent}
         mode={uiMode}
         objects={objectTemplates.length}
+        roster={SCRIPTED_AGENT_ROSTER}
         selectedCoord={cellKey(selectedCoord)}
         selectedMaterial={materialLabel(selectedCell?.material ?? MATERIAL.Empty)}
         selection={selection}
@@ -1045,7 +1152,7 @@ export function App({
       </div>
       <section className="agartha-board-shell" aria-label="Agartha board" data-agent-region="board">
         <ModeSwitch mode={uiMode} onChangeMode={setUiMode} />
-    <BoardCanvas
+        <BoardCanvas
           cells={cells}
           onApplyShape={applyShape}
           onApplyStroke={applyStroke}
@@ -1081,66 +1188,21 @@ export function App({
       <aside className="agartha-side-panel" aria-label="Editor sidebar" data-agent-region="world-inspector">
         {uiMode === "agent" ? (
           <>
-            <div className="agartha-side-panel__group" aria-label="Automation" data-agent-region="automation">
-              <h2>Automation</h2>
-              <AgentStatusPanel
-                cells={cells.length}
-                objects={objectTemplates.length}
-                selectedCoord={cellKey(selectedCoord)}
-                selection={selection}
-                tool={toolSettings.mode}
-              />
+            <div className="agartha-side-panel__group" aria-label="Collaboration" data-agent-region="collaboration-room">
+              <h2>Room</h2>
               <CollaborationPanel context={collaborationContext} worldSource={worldSource} />
-              <ReplayControls />
+            </div>
+            <div className="agartha-side-panel__group" aria-label="Canvas activity" data-agent-region="canvas-activity">
+              <h2>Canvas Activity</h2>
+              <EventHistoryPanel events={events} />
+            </div>
+            <div className="agartha-side-panel__group" aria-label="Agent controls" data-agent-region="automation">
+              <h2>Agent Controls</h2>
+              <AgentDeploymentPanel commands={AGENT_DEPLOY_COMMANDS} onAgentsRan={applyAgentRunnerSnapshot} roster={SCRIPTED_AGENT_ROSTER} />
             </div>
             <div className="agartha-side-panel__group" aria-label="Inspect" data-agent-region="inspect">
               <h2>Inspect</h2>
               <CellInspector coord={selectedCoord} material={selectedCell?.material ?? MATERIAL.Empty} state={selectedCell?.state ?? 0} />
-              <EventHistoryPanel events={events} />
-            </div>
-            <div className="agartha-side-panel__group" aria-label="Simulation" data-agent-region="world">
-              <h2>Simulation</h2>
-              <TerrainSeedPanel
-                onSelectSeed={selectTerrainSeed}
-                seeds={TERRAIN_SEEDS}
-                selectedSeedId={terrainSeedId}
-              />
-              <TimeControls
-                isPlaying={isPlaying}
-                onResetTime={() => {
-                  resetTime();
-                }}
-                onStep={advanceTime}
-                onTogglePlay={togglePlayback}
-                tick={tick}
-              />
-            </div>
-            <div className="agartha-side-panel__group" aria-label="Tools" data-agent-region="create">
-              <h2>Tools</h2>
-              <MaterialEditorPanel
-                canRedo={redoStack.length > 0}
-                canUndo={undoStack.length > 0}
-                onCreatePaintSwatch={createPaintSwatch}
-                onClear={resetDemo}
-                onClearAllCells={clearAllCells}
-                onRedo={redoEdit}
-                onUndo={undoEdit}
-                onUpdatePaintSwatch={updatePaintSwatch}
-                onUpdateSettings={updateToolSettings}
-                paintSwatches={paintSwatches}
-                settings={toolSettings}
-              />
-              <ObjectLibraryPanel
-                onCapture={captureObject}
-                onSelectTemplate={selectObjectTemplate}
-                onUpdateStampPattern={updateStampPattern}
-                selectedId={toolSettings.objectId}
-                selection={selection}
-                stampRepeat={toolSettings.stampRepeat}
-                stampStepX={toolSettings.stampStepX}
-                stampStepY={toolSettings.stampStepY}
-                templates={objectTemplates}
-              />
             </div>
           </>
         ) : (
@@ -1222,24 +1284,30 @@ function ModeSwitch({
 }
 
 function AgentStateBridge({
+  availableTools,
   cells,
   collaborationContext,
   commands,
+  deploymentCommands,
   latestEvent,
   mode,
   objects,
+  roster,
   selectedCoord,
   selectedMaterial,
   selection,
   tool,
   worldSource,
 }: {
+  readonly availableTools: readonly ServerAgentTool[];
   readonly cells: number;
   readonly collaborationContext?: ServerCollaborationContext;
   readonly commands: readonly string[];
+  readonly deploymentCommands: readonly string[];
   readonly latestEvent?: DemoEvent;
   readonly mode: UIMode;
   readonly objects: number;
+  readonly roster: typeof SCRIPTED_AGENT_ROSTER;
   readonly selectedCoord: string;
   readonly selectedMaterial: string;
   readonly selection?: CellSelection;
@@ -1258,6 +1326,12 @@ function AgentStateBridge({
       : null,
     mode,
     objects,
+    agents: {
+      deployCommands: deploymentCommands,
+      roster,
+      tools: availableTools,
+      total: roster.length,
+    },
     regions: ["board", "world-inspector", "automation", "create", "inspect", "world"],
     selectedCell: {
       coord: selectedCoord,
@@ -1326,7 +1400,9 @@ function CollaborationPanel({
   const livePresence = context?.presence.filter((agent) => agent.live) ?? [];
   const latestProject = context?.projects.at(-1);
   const latestSummary = context?.durableSummaries.at(-1);
-  const latestMessages = context?.recentMessages.slice(-3) ?? [];
+  const latestMessages = context?.recentMessages.slice(-12) ?? [];
+  const displayNames = new Map(context?.presence.map((agent) => [agent.agentId, agent.displayName ?? agent.agentId]) ?? []);
+  const latestProjectEntries = latestProject?.entries.slice(-4) ?? [];
   const writeEnabled = worldSource.mode === "local_demo" ? false : worldSource.connection === "connected";
 
   return (
@@ -1336,6 +1412,22 @@ function CollaborationPanel({
       data-agent-region="collaboration"
     >
       <h2>Collaboration</h2>
+      <div className="collaboration-panel__chat" aria-label="Agent chat" role="log">
+        <strong>Agent chat</strong>
+        {latestMessages.length > 0 ? (
+          latestMessages.map((message) => (
+            <article key={message.id}>
+              <header>
+                <span>{displayNames.get(message.authorAgentId) ?? message.authorAgentId}</span>
+                <time>{formatMessageTime(message.createdAt)}</time>
+              </header>
+              <p>{message.body}</p>
+            </article>
+          ))
+        ) : (
+          <p>No agent messages yet</p>
+        )}
+      </div>
       <dl>
         <div>
           <dt>area</dt>
@@ -1362,66 +1454,192 @@ function CollaborationPanel({
         )}
       </div>
       <div className="collaboration-panel__section" aria-label="Area project">
-        <strong>{latestProject?.title ?? "No area project"}</strong>
-        {latestProject?.entries.at(-1) ? <p>{latestProject.entries.at(-1)?.body}</p> : null}
+        <strong>{latestProject?.title ?? "Shared plan"}</strong>
+        {latestProjectEntries.length > 0 ? (
+          latestProjectEntries.map((entry) => (
+            <p className="collaboration-panel__plan-entry" key={entry.body}>
+              <span>{entry.kind}</span>
+              {entry.body}
+            </p>
+          ))
+        ) : (
+          <p>No shared plan yet</p>
+        )}
       </div>
       <div className="collaboration-panel__section" aria-label="Durable summary">
         <strong>{latestSummary ? latestSummary.provenance?.status ?? "summary" : "No durable summary"}</strong>
         {latestSummary ? <p>{latestSummary.body}</p> : null}
       </div>
-      <div className="collaboration-panel__section" aria-label="Recent local messages" role="log">
-        {latestMessages.length > 0 ? (
-          latestMessages.map((message) => (
-            <p key={message.id}>
-              <span>{message.authorAgentId}</span>: {message.body}
-            </p>
-          ))
-        ) : (
-          <p>No recent local messages</p>
-        )}
-      </div>
     </section>
   );
 }
 
-function AgentStatusPanel({
-  cells,
-  objects,
-  selectedCoord,
-  selection,
-  tool,
+function formatMessageTime(createdAt: number | undefined) {
+  return createdAt === undefined ? "Tick --" : `Tick ${createdAt}`;
+}
+
+function waitForAgentLoop(ms: number, shouldStop: () => boolean) {
+  return new Promise<void>((resolve) => {
+    const started = Date.now();
+    const tick = () => {
+      if (shouldStop() || Date.now() - started >= ms) {
+        resolve();
+        return;
+      }
+      window.setTimeout(tick, 100);
+    };
+    tick();
+  });
+}
+
+function AgentDeploymentPanel({
+  commands,
+  onAgentsRan,
+  roster,
 }: {
-  readonly cells: number;
-  readonly objects: number;
-  readonly selectedCoord: string;
-  readonly selection?: CellSelection;
-  readonly tool: string;
+  readonly commands: readonly string[];
+  readonly onAgentsRan?: (snapshot?: AgentRunnerSnapshot) => { readonly changedCells: number; readonly totalCells: number } | undefined;
+  readonly roster: typeof SCRIPTED_AGENT_ROSTER;
 }) {
+  const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
+  const [runningAgentId, setRunningAgentId] = useState<ScriptedAgentId | "all" | null>(null);
+  const [runnerMessage, setRunnerMessage] = useState("Ready to run scripted agents");
+  const [runnerCanvasMessage, setRunnerCanvasMessage] = useState("No agent canvas changes yet");
+  const [runnerOutput, setRunnerOutput] = useState("");
+  const [runnerCycles, setRunnerCycles] = useState(0);
+  const stopRequestedRef = useRef(false);
+  const sessionIdRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      stopRequestedRef.current = true;
+      sessionIdRef.current += 1;
+    };
+  }, []);
+
+  async function copyCommand(command: string) {
+    try {
+      await navigator.clipboard?.writeText(command);
+    } catch {
+      // Clipboard access can be unavailable in tests or restricted browser contexts.
+    }
+    setCopiedCommand(command);
+  }
+
+  async function runAgentBatch(agentIds: readonly (ScriptedAgentId | "all")[]) {
+    const response = await fetch("/__agartha/agents/run", {
+      body: JSON.stringify({ agents: agentIds, rounds: 1 }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+    const payload = (await response.json()) as { ok?: boolean; output?: string; error?: string; snapshot?: AgentRunnerSnapshot };
+    if (!response.ok || !payload.ok) throw new Error(payload.error ?? "Agent runner failed");
+    setRunnerOutput((current) => [current, payload.output].filter(Boolean).join("\n").slice(-12_000));
+    return onAgentsRan?.(payload.snapshot) ?? { changedCells: 0, totalCells: 0 };
+  }
+
+  async function startAgentSession(agentIds: readonly (ScriptedAgentId | "all")[], label: string) {
+    const activeId = agentIds.includes("all") ? "all" : agentIds[0] ?? "all";
+    const sessionId = sessionIdRef.current + 1;
+    sessionIdRef.current = sessionId;
+    stopRequestedRef.current = false;
+    setRunningAgentId(activeId);
+    setRunnerCycles(0);
+    setRunnerMessage(`Starting ${label}`);
+    setRunnerCanvasMessage("Waiting for first canvas change");
+    setRunnerOutput("");
+
+    try {
+      let cycle = 0;
+      while (!stopRequestedRef.current && sessionIdRef.current === sessionId) {
+        cycle += 1;
+        setRunnerCycles(cycle);
+        setRunnerMessage(`Agents active: ${label} · turn ${cycle}`);
+        const visualResult = await runAgentBatch(agentIds);
+        setRunnerMessage(
+          visualResult.changedCells > 0
+            ? `Agents active: ${label} · turn ${cycle} · drew ${visualResult.changedCells} cell${
+                visualResult.changedCells === 1 ? "" : "s"
+              } (${visualResult.totalCells} total)`
+            : `Agents active: ${label} · turn ${cycle} · no canvas changes (${visualResult.totalCells} total)`,
+        );
+        setRunnerCanvasMessage(
+          visualResult.changedCells > 0
+            ? `Last draw: ${visualResult.changedCells} changed cell${visualResult.changedCells === 1 ? "" : "s"} · ${visualResult.totalCells} cells on canvas`
+            : `Last turn: no canvas changes · ${visualResult.totalCells} cells on canvas`,
+        );
+        await waitForAgentLoop(1_500, () => stopRequestedRef.current || sessionIdRef.current !== sessionId);
+      }
+      setRunnerMessage(`Stopped ${label} after ${cycle} turn${cycle === 1 ? "" : "s"}`);
+    } catch (error) {
+      setRunnerMessage(error instanceof Error ? `Agent runner failed: ${error.message}` : "Agent runner failed");
+    } finally {
+      if (sessionIdRef.current === sessionId) setRunningAgentId(null);
+    }
+  }
+
+  function stopAgentSession() {
+    stopRequestedRef.current = true;
+    setRunnerMessage("Stopping agents after the current action");
+  }
+
+  const isRunning = runningAgentId !== null;
+
   return (
-    <section className="inspector-panel agent-status-panel gradient-border gradient-border-to-br" aria-label="Agent status">
-      <h2>Agent Status</h2>
-      <dl>
-        <div>
-          <dt>tool</dt>
-          <dd>{tool}</dd>
+    <section
+      className="inspector-panel agent-deployment-panel gradient-border gradient-border-to-br"
+      aria-label="Agent deployment"
+      data-agent-region="agent-deployment"
+    >
+      <h2>Agent Deployment</h2>
+      <div className="agent-deployment-panel__actions">
+        <button
+          aria-label="Run all agents"
+          disabled={isRunning}
+          onClick={() => void startAgentSession(["all"], "all agents")}
+          type="button"
+        >
+          {runningAgentId === "all" ? "Running" : "Run all"}
+        </button>
+        <button aria-label="Stop agents" disabled={!isRunning} onClick={stopAgentSession} type="button">
+          Stop
+        </button>
+        <p aria-live="polite" role="status">
+          {runnerMessage}
+          {isRunning ? ` · live session ${runnerCycles}` : ""}
+        </p>
+        <p className="agent-deployment-panel__canvas-status" data-agent-id="agent-canvas-delta" aria-live="polite">
+          {runnerCanvasMessage}
+        </p>
+      </div>
+      <div className="agent-deployment-panel__roster" aria-label="Scripted agent roster">
+        {roster.map((agent) => (
+          <div data-agent-id={`scripted-agent-${agent.id}`} key={agent.id}>
+            <strong>{agent.name}</strong>
+            <span>{agent.role}</span>
+            <button
+              aria-label={`Run ${agent.name}`}
+              disabled={isRunning}
+              onClick={() => void startAgentSession([agent.id], agent.name)}
+              type="button"
+            >
+              {runningAgentId === agent.id ? "Running" : "Run"}
+            </button>
+          </div>
+        ))}
+      </div>
+      <details className="agent-deployment-panel__details">
+        <summary>Runner details</summary>
+        {runnerOutput ? <pre className="agent-deployment-panel__output">{runnerOutput}</pre> : <p>No runner output yet</p>}
+        <div className="agent-deployment-panel__commands" aria-label="Agent management commands">
+          {commands.map((command) => (
+            <button aria-label={`Copy agent command: ${command}`} key={command} onClick={() => void copyCommand(command)} type="button">
+              <code>{command}</code>
+              <span>{copiedCommand === command ? "Copied" : "Copy"}</span>
+            </button>
+          ))}
         </div>
-        <div>
-          <dt>selected</dt>
-          <dd>{selectedCoord}</dd>
-        </div>
-        <div>
-          <dt>selection</dt>
-          <dd>{selection ? `${selection.width}x${selection.height}` : "none"}</dd>
-        </div>
-        <div>
-          <dt>cells</dt>
-          <dd>{cells}</dd>
-        </div>
-        <div>
-          <dt>objects</dt>
-          <dd>{objects}</dd>
-        </div>
-      </dl>
+      </details>
     </section>
   );
 }

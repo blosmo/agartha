@@ -4,6 +4,13 @@ import type {
   ActionType,
   AgentPerception,
 } from "@agartha/protocol/actions";
+import type {
+  CollaborationEnvelope,
+  CollaborationResponseEnvelope,
+  DurableCollaborationStatus,
+  ProjectEntryKind,
+} from "@agartha/protocol/collaboration";
+import type { WorldCoord } from "@agartha/protocol/world";
 
 export interface CostQuote {
   readonly quoteId: string;
@@ -19,7 +26,7 @@ export interface AgentTransport {
 }
 
 export interface AgentTurnRecord {
-  readonly actionType: ActionType;
+  readonly actionType: ActionType | `collab_${CollaborationEnvelope["operation"]}`;
   readonly accepted: boolean;
   readonly summary: string;
   readonly rejection?: string;
@@ -86,6 +93,39 @@ export class AgentClient {
     });
   }
 
+  collaborate<TPayload = unknown>(operation: CollaborationEnvelope<TPayload>["operation"], payload?: TPayload) {
+    return this.transport.request<CollaborationResponseEnvelope>("/collaboration", {
+      method: "POST",
+      token: this.token,
+      body: {
+        operation,
+        worldId: "origin",
+        agentId: this.agentId,
+        payload,
+      } satisfies CollaborationEnvelope<TPayload>,
+    });
+  }
+
+  enterCollaboration(position: WorldCoord, displayName?: string) {
+    return this.collaborate("enter", { position, displayName });
+  }
+
+  say(body: string) {
+    return this.collaborate("say", { body });
+  }
+
+  updateProject(body: string, options: { readonly title?: string; readonly kind?: ProjectEntryKind } = {}) {
+    return this.collaborate("project", {
+      body,
+      kind: options.kind ?? "update",
+      title: options.title,
+    });
+  }
+
+  summarize(body: string, status: DurableCollaborationStatus = "decision") {
+    return this.collaborate("summary", { body, status });
+  }
+
   private envelope(action: Omit<ActionEnvelope, "worldId" | "agentId">): ActionEnvelope {
     return {
       worldId: "origin",
@@ -102,4 +142,24 @@ export function recordTurn(actionType: ActionType, result: ActionResult): AgentT
     summary: result.summary,
     rejection: result.reason,
   };
+}
+
+export function recordCollaborationTurn(
+  operation: CollaborationEnvelope["operation"],
+  result: CollaborationResponseEnvelope,
+): AgentTurnRecord {
+  return {
+    actionType: `collab_${operation}`,
+    accepted: result.ok,
+    summary: result.ok ? collaborationSummary(operation, result) : result.error?.message ?? "collaboration rejected",
+    rejection: result.error?.reason,
+  };
+}
+
+function collaborationSummary(operation: CollaborationEnvelope["operation"], result: CollaborationResponseEnvelope) {
+  if (operation === "say") return `message accepted in ${result.areaId ?? "local area"}`;
+  if (operation === "enter") return `entered ${result.areaId ?? "local area"}`;
+  if (operation === "project") return `project updated in ${result.areaId ?? "local area"}`;
+  if (operation === "summary") return `summary recorded in ${result.areaId ?? "local area"}`;
+  return `${operation} accepted`;
 }

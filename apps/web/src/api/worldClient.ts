@@ -12,8 +12,16 @@ export interface ServerWorldConfig {
 export interface ServerWorldSnapshot {
   readonly cells: DemoCell[];
   readonly collaboration?: ServerCollaborationContext;
+  readonly availableTools?: readonly ServerAgentTool[];
   readonly events: DemoEvent[];
   readonly chunkVersions: Record<string, number>;
+}
+
+export interface ServerAgentTool {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: string;
+  readonly description: string;
 }
 
 export interface WorldEventDto {
@@ -25,7 +33,7 @@ export interface WorldEventDto {
 export interface ServerCollaborationContext {
   readonly area: { readonly id: string; readonly centerX?: number; readonly centerY?: number; readonly radius: number };
   readonly presence: ReadonlyArray<{ readonly agentId: string; readonly displayName?: string; readonly live: boolean }>;
-  readonly recentMessages: ReadonlyArray<{ readonly id: string; readonly authorAgentId: string; readonly body: string }>;
+  readonly recentMessages: ReadonlyArray<{ readonly id: string; readonly authorAgentId: string; readonly body: string; readonly createdAt?: number }>;
   readonly projects: ReadonlyArray<{ readonly id: string; readonly title: string; readonly version: number; readonly entries: ReadonlyArray<{ readonly kind: string; readonly body: string }> }>;
   readonly durableSummaries: ReadonlyArray<{ readonly id: string; readonly body: string; readonly provenance?: { readonly status?: string; readonly authorAgentId?: string } }>;
 }
@@ -59,7 +67,7 @@ export async function fetchServerWorldSnapshot(
   const chunks = config.chunks ?? DEFAULT_SERVER_CHUNKS;
   const [events, perception, snapshots] = await Promise.all([
     fetchJson<WorldEventDto[]>(`${config.baseUrl}/events`, config.token, fetchImpl),
-    fetchJson<{ readonly collaboration?: ServerCollaborationContext }>(`${config.baseUrl}/observe`, config.token, fetchImpl),
+    fetchJson<{ readonly collaboration?: ServerCollaborationContext; readonly availableTools?: readonly ServerAgentTool[] }>(`${config.baseUrl}/observe`, config.token, fetchImpl),
     Promise.all(
       chunks.map((chunk) =>
         fetchJson<ChunkSnapshot>(`${config.baseUrl}/chunks/${chunk.x}/${chunk.y}`, config.token, fetchImpl),
@@ -74,6 +82,7 @@ export async function fetchServerWorldSnapshot(
 
   return {
     cells,
+    availableTools: perception.availableTools,
     collaboration: perception.collaboration,
     chunkVersions,
     events: events.map((event) => ({

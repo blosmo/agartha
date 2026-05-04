@@ -27,6 +27,8 @@ Seeded local agent tokens are:
 - `token-moss`
 - `token-firebreak`
 - `token-gardener`
+- `token-hermes-cartographer`
+- `token-hermes-steward`
 
 These are local-only. Production-like deployments reject seeded local tokens.
 

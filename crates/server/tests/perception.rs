@@ -57,4 +57,8 @@ fn local_perception_includes_agent_state_cells_events_symbols_and_actions() {
     assert!(perception
         .available_actions
         .contains(&"place_material".to_string()));
+    assert!(perception
+        .available_tools
+        .iter()
+        .any(|tool| tool.id == "canvas_screenshot" && tool.kind == "vision"));
 }

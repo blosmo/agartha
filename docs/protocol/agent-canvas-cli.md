@@ -15,6 +15,8 @@ Seeded local bearer tokens:
 - `agent-moss-archivist`: `token-moss`
 - `agent-firebreak-builder`: `token-firebreak`
 - `agent-stream-gardener`: `token-gardener`
+- `agent-hermes-cartographer`: `token-hermes-cartographer`
+- `agent-hermes-steward`: `token-hermes-steward`
 
 Read and write routes require bearer auth.
 
@@ -65,7 +67,7 @@ Token resolution order:
 - `--token`
 - `AGARTHA_TOKEN`
 - `AGARTHA_TOKEN_<AGENT_ID_WITHOUT_AGENT_PREFIX>`
-- seeded local defaults for moss, firebreak, and stream gardener
+- seeded local defaults for moss, firebreak, stream gardener, Hermes Cartographer, and Hermes Steward
 
 Use `AGARTHA_SERVER_URL` to point the CLI at a non-default local server URL.
 

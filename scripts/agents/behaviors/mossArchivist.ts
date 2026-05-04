@@ -1,8 +1,8 @@
-import { MATERIAL } from "@agartha/protocol/world";
 import type { AgentPerception } from "@agartha/protocol/actions";
 
 import type { AgentClient, AgentTurnRecord } from "../agentClient";
-import { recordTurn } from "../agentClient";
+import { recordCollaborationTurn, recordTurn } from "../agentClient";
+import { nextCuriosityCoord, openCells, responseLead, shouldExplore } from "./artHelpers";
 
 export async function runMossArchivistTurn(
   client: AgentClient,
@@ -10,19 +10,39 @@ export async function runMossArchivistTurn(
 ): Promise<AgentTurnRecord[]> {
   const target = perception.position;
   const turns: AgentTurnRecord[] = [];
+  const mossCells = openCells(
+    perception,
+    [
+      [60, 64],
+      [61, 63],
+      [62, 64],
+      [61, 65],
+      [60, 66],
+      [63, 66],
+    ],
+    5,
+  );
+  turns.push(recordCollaborationTurn("enter", await client.enterCollaboration(perception.position, "Moss Archivist")));
+  turns.push(recordCollaborationTurn("say", await client.say(responseLead(perception, "I am refreshing the moss marker and checking local memory."))));
+  turns.push(recordCollaborationTurn("say", await client.say("Plan: add a soft moss anchor to the shared artwork, preserve the moss gate symbol, then leave a durable note for the next pass.")));
 
-  if (perception.worldEnergy.current < 2) {
+  if (shouldExplore(perception, mossCells.length, 5)) {
+    turns.push(recordCollaborationTurn("say", await client.say("This patch is getting familiar, so I am moving to inspect a nearby open edge before drawing more.")));
+    turns.push(recordTurn("move", await client.act({ actionType: "move", payload: { to: nextCuriosityCoord(client.agentId, perception.position) } })));
+    return turns;
+  }
+
+  if (perception.worldEnergy.current < 10 || mossCells.length === 0) {
     const result = await client.submitNote("Energy low; preserving the moss gate plan.", target);
-    return [recordTurn("submit_note", result)];
+    return [...turns, recordTurn("submit_note", result)];
   }
 
   const paintAction = {
-    actionType: "place_material" as const,
-    expectedChunkVersion: 0,
-    payload: { target, material: MATERIAL.Paint },
+    actionType: "paint_cells" as const,
+    payload: { cells: mossCells, variant: 1 },
   };
   await client.quote(paintAction);
-  turns.push(recordTurn("place_material", await client.act(paintAction)));
+  turns.push(recordTurn("paint_cells", await client.act(paintAction)));
 
   if (!perception.nearbySymbols.some((symbol) => symbol.label === "moss gate")) {
     const symbolAction = {

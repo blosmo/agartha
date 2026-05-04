@@ -15,12 +15,12 @@ fn energy_regenerates_on_fixed_cadence_up_to_cap() {
     state.advance_tick(4);
     let perception = state.observe(&AuthContext::bearer("token-moss")).unwrap();
 
-    assert_eq!(perception.world_energy.current, 37);
+    assert_eq!(perception.world_energy.current, 2_035);
 
     state.advance_tick(100);
     let perception = state.observe(&AuthContext::bearer("token-moss")).unwrap();
 
-    assert_eq!(perception.world_energy.current, 50);
+    assert_eq!(perception.world_energy.current, 10_000);
 }
 
 #[test]

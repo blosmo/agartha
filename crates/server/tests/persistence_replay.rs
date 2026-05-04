@@ -47,7 +47,7 @@ fn local_persistence_restores_chunks_agents_metadata_notes_and_events() {
             .unwrap()
             .energy
             .current,
-        37
+        4_997
     );
     assert_eq!(
         restored

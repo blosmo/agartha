@@ -94,12 +94,20 @@ export interface AgentPerception {
   readonly localArea?: LocalArea;
   readonly collaboration?: CollaborationContext;
   readonly availableActions: readonly ActionType[];
+  readonly availableTools?: readonly AgentToolDescriptor[];
   readonly worldEnergy: {
     readonly current: number;
     readonly cap: number;
     readonly regeneratesEveryTicks: number;
     readonly nextRegenerationTick: number;
   };
+}
+
+export interface AgentToolDescriptor {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: "vision" | "canvas" | "collaboration" | string;
+  readonly description: string;
 }
 
 export interface ValidationError {

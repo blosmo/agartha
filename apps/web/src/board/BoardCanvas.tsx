@@ -267,7 +267,14 @@ export function BoardCanvas({
           return;
         }
         if (drag.mode === "line" && drag.startCoord) {
-          setLinePreview({ end: screenToCoord(event.clientX, event.clientY, event.currentTarget, cameraRef.current), start: drag.startCoord });
+          setLinePreview({
+            end: lineEndFromPointer(
+              drag.startCoord,
+              screenToCoord(event.clientX, event.clientY, event.currentTarget, cameraRef.current),
+              event.shiftKey,
+            ),
+            start: drag.startCoord,
+          });
           return;
         }
         applyCamera(
@@ -325,10 +332,11 @@ export function BoardCanvas({
             return;
           }
           if (drag.mode === "line" && drag.startCoord) {
-            const finalCoord = screenToCoord(event.clientX, event.clientY, hostRef.current, cameraRef.current);
+            const pointerCoord = screenToCoord(event.clientX, event.clientY, hostRef.current, cameraRef.current);
+            const finalCoord = lineEndFromPointer(drag.startCoord, pointerCoord, event.shiftKey);
             if (moved < 4) {
-              onSelectCell(finalCoord);
-              onApplyTool(finalCoord);
+              onSelectCell(pointerCoord);
+              onApplyTool(pointerCoord);
             } else {
               const lineCoords = lineCoordsFromEndpoints(drag.startCoord, finalCoord, {
                 endArrow: toolSettings.lineEndArrow,
@@ -590,6 +598,23 @@ function shapeSelectionFromPointer(start: WorldCoord, end: WorldCoord, constrain
   );
 
   return selectionFromCoords(start, constrainedEnd);
+}
+
+function lineEndFromPointer(start: WorldCoord, end: WorldCoord, snapToFortyFiveDegrees: boolean): WorldCoord {
+  if (!snapToFortyFiveDegrees) return end;
+
+  const startAbsolute = absoluteCoord(start);
+  const endAbsolute = absoluteCoord(end);
+  const deltaX = endAbsolute.x - startAbsolute.x;
+  const deltaY = endAbsolute.y - startAbsolute.y;
+  if (deltaX === 0 && deltaY === 0) return end;
+
+  const length = Math.hypot(deltaX, deltaY);
+  const snappedAngle = Math.round(Math.atan2(deltaY, deltaX) / (Math.PI / 4)) * (Math.PI / 4);
+  return screenAbsoluteToCoord(
+    Math.round(startAbsolute.x + Math.cos(snappedAngle) * length),
+    Math.round(startAbsolute.y + Math.sin(snappedAngle) * length),
+  );
 }
 
 function signedDirection(value: number, fallback: 1) {

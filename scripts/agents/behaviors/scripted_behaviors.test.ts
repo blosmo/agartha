@@ -5,6 +5,8 @@ import { MATERIAL, toWorldCoord, type MaterialId } from "@agartha/protocol/world
 
 import { AgentClient, type AgentTransport } from "../agentClient";
 import { runFirebreakBuilderTurn } from "./firebreakBuilder";
+import { runHermesCartographerTurn } from "./hermesCartographer";
+import { runHermesStewardTurn } from "./hermesSteward";
 import { runMossArchivistTurn } from "./mossArchivist";
 import { runStreamGardenerTurn } from "./streamGardener";
 
@@ -19,6 +21,10 @@ class BehaviorTransport implements AgentTransport {
     if (path === "/quote") {
       return { quoteId: "quote-0001", cost: 2 } as TResponse;
     }
+    if (path === "/collaboration") {
+      const body = init.body as { operation: string };
+      return { ok: true, operation: body.operation, worldId: "origin", agentId: "agent", areaId: "origin:64:64:r32", result: {}, next: [] } as TResponse;
+    }
     return accepted(path) as TResponse;
   }
 }
@@ -29,11 +35,7 @@ describe("scripted behaviors", () => {
     const client = new AgentClient("agent-moss-archivist", "token-moss", transport);
     const turns = await runMossArchivistTurn(client, perception({ energy: 40 }));
 
-    expect(turns.map((turn) => turn.actionType)).toEqual([
-      "place_material",
-      "register_symbol",
-      "submit_note",
-    ]);
+    expect(turns.map((turn) => turn.actionType)).toEqual(["collab_enter", "collab_say", "collab_say", "paint_cells", "register_symbol", "submit_note"]);
     expect(transport.paths).toContain("/quote");
   });
 
@@ -51,8 +53,8 @@ describe("scripted behaviors", () => {
       }),
     );
 
-    expect(turns).toHaveLength(1);
-    expect(turns[0].actionType).toBe("place_material");
+    expect(turns.map((turn) => turn.actionType)).toContain("place_material");
+    expect(turns.map((turn) => turn.actionType)).toContain("collab_summary");
   });
 
   it("stream gardener waits when energy is low instead of forcing dynamic placement", async () => {
@@ -63,9 +65,34 @@ describe("scripted behaviors", () => {
       perception({ energy: 3, cells: [cell(64, 64, MATERIAL.Water)] }),
     );
 
-    expect(turns).toHaveLength(1);
-    expect(turns[0].actionType).toBe("submit_note");
-    expect(transport.paths).toEqual(["/act"]);
+    expect(turns.map((turn) => turn.actionType)).toEqual(["collab_enter", "collab_say", "collab_say", "submit_note"]);
+    expect(transport.paths).toEqual(["/collaboration", "/collaboration", "/collaboration", "/act"]);
+  });
+
+  it("Hermes cartographer communicates a map plan and paints guide marks", async () => {
+    const transport = new BehaviorTransport();
+    const client = new AgentClient("agent-hermes-cartographer", "token-hermes-cartographer", transport);
+    const turns = await runHermesCartographerTurn(client, perception({ energy: 40 }));
+
+    expect(turns.map((turn) => turn.actionType)).toEqual(["collab_enter", "collab_say", "collab_say", "collab_project", "paint_cells", "collab_summary"]);
+    expect(transport.paths).toContain("/quote");
+  });
+
+  it("Hermes steward records a review and reinforces a buffer when fire and plants are present", async () => {
+    const transport = new BehaviorTransport();
+    const client = new AgentClient("agent-hermes-steward", "token-hermes-steward", transport);
+    const turns = await runHermesStewardTurn(
+      client,
+      perception({
+        energy: 40,
+        cells: [
+          cell(65, 64, MATERIAL.Fire),
+          cell(66, 64, MATERIAL.Plant),
+        ],
+      }),
+    );
+
+    expect(turns.map((turn) => turn.actionType)).toEqual(["collab_enter", "collab_say", "collab_say", "place_material", "collab_summary"]);
   });
 });
 

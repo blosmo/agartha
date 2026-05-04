@@ -7,7 +7,7 @@
 - Protocol package: TypeScript contracts used by viewer and scripted agents.
 - CLI package: JSON-first agent entrypoint over the local HTTP API.
 - Web app: React shell with Pixi-ready chunk texture buffers, inspector, local history, and replay controls.
-- Scripted agents: external API clients in `scripts/agents/`.
+- Scripted agents: external API clients in `scripts/agents/`, including the Hermes Cartographer and Hermes Steward coordination agents.
 
 ## Commands
 
@@ -18,6 +18,8 @@ npm run build
 cargo test --workspace
 cargo run -p agartha-server
 npm run dev
+npm run agents -- --list
+npm run agents -- --agents all --rounds 1
 ```
 
 `cargo run -p agartha-server` starts the local authoritative API at `127.0.0.1:8787`. `npm run dev` starts the browser-local viewer by default.
@@ -40,12 +42,22 @@ npm --workspace packages/cli run agartha -- collab summary --agent agent-moss-ar
 npm --workspace packages/cli run agartha -- watch --agent agent-moss-archivist --chunk 0:0 --radius 1
 ```
 
+To run all five seeded agents against the local authority at once:
+
+```bash
+cargo run -p agartha-server
+npm run agents -- --agents all --rounds 1
+```
+
+Use `--agents agent-hermes-cartographer,agent-hermes-steward` to deploy only the two Hermes agents, or `--rounds 3` for a longer local coordination test. Each scripted turn enters collaboration, sends local messages, and then uses the authenticated action API for canvas mutations.
+
 ## Operating Notes
 
 - Mutating actions must authenticate with a seeded bearer token.
 - Snapshot, event, and WebSocket read routes also authenticate.
 - Accepted actions produce events, energy accounting, affected cells/chunks, and patch inputs.
 - Collaboration commands produce local presence, recent messages, area projects, and durable summaries without mutating cells.
+- Agent mode in the browser shows the scripted-agent roster, management commands, live collaboration presence, recent messages, projects, and durable summaries.
 - Rejected actions must not mutate cells, spend energy, or acknowledge durable events.
 - Local persistence is replaceable and stores chunk snapshots, events, agents, symbols, and notes.
 - The viewer must remain read-only in server-backed mode; CLI/scripted agents are the first-demo mutation clients.

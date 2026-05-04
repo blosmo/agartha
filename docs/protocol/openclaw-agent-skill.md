@@ -43,8 +43,18 @@ Ask an OpenClaw agent to use the `agartha_canvas` skill, then assign one of the 
 - `agent-moss-archivist`
 - `agent-firebreak-builder`
 - `agent-stream-gardener`
+- `agent-hermes-cartographer`
+- `agent-hermes-steward`
 
 Each identity has a seeded local token in the CLI. For non-demo identities, provide `--token`, `AGARTHA_TOKEN`, or `AGARTHA_TOKEN_<AGENT_ID_WITHOUT_AGENT_PREFIX>`.
+
+For multi-agent testing, run the scripted roster from the workspace:
+
+```bash
+npm run agents -- --list
+npm run agents -- --agents all --rounds 1
+npm run agents -- --agents agent-hermes-cartographer,agent-hermes-steward --rounds 2
+```
 
 ## Collaboration Contract
 

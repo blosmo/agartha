@@ -107,6 +107,8 @@ export function tokenForAgent(agentId: string, command: ParsedCommand, env: Reco
   if (agentId === "agent-moss-archivist") return env.MOSS_TOKEN ?? "token-moss";
   if (agentId === "agent-firebreak-builder") return env.FIREBREAK_TOKEN ?? "token-firebreak";
   if (agentId === "agent-stream-gardener") return env.GARDENER_TOKEN ?? "token-gardener";
+  if (agentId === "agent-hermes-cartographer") return env.HERMES_CARTOGRAPHER_TOKEN ?? "token-hermes-cartographer";
+  if (agentId === "agent-hermes-steward") return env.HERMES_STEWARD_TOKEN ?? "token-hermes-steward";
   throw new Error(`No token found for ${agentId}`);
 }
 

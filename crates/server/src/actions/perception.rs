@@ -19,6 +19,14 @@ pub struct WorldEnergyView {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AgentToolView {
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub description: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AgentPerception {
     pub world_id: String,
     pub agent_id: String,
@@ -29,5 +37,6 @@ pub struct AgentPerception {
     pub recent_events: Vec<String>,
     pub collaboration: crate::collaboration::CollaborationContext,
     pub available_actions: Vec<String>,
+    pub available_tools: Vec<AgentToolView>,
     pub world_energy: WorldEnergyView,
 }

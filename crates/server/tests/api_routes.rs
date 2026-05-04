@@ -285,14 +285,14 @@ async fn admin_refill_energy_requires_admin_token_and_caps_at_agent_cap() {
     assert_eq!(response.status(), StatusCode::OK);
     let result = json_body(response).await;
     assert_eq!(result["agentId"], "agent-moss-archivist");
-    assert_eq!(result["worldEnergy"]["current"], 50);
+    assert_eq!(result["worldEnergy"]["current"], 10_000);
 
     let observe = request(Method::GET, "/observe", None)
         .header(header::AUTHORIZATION, "Bearer token-moss")
         .body(Body::empty())
         .unwrap();
     let response = app.oneshot(observe).await.unwrap();
-    assert_eq!(json_body(response).await["worldEnergy"]["current"], 50);
+    assert_eq!(json_body(response).await["worldEnergy"]["current"], 10_000);
 }
 
 #[tokio::test]

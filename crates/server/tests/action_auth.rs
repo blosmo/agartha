@@ -51,7 +51,7 @@ fn mismatched_claimed_agent_cannot_spend_another_agent_energy() {
     assert_eq!(result.reason, Some(RejectionReason::PermissionDenied));
     assert_eq!(
         state.agent("agent-moss-archivist").unwrap().energy.current,
-        40
+        5_000
     );
     assert_eq!(
         state
@@ -59,6 +59,6 @@ fn mismatched_claimed_agent_cannot_spend_another_agent_energy() {
             .unwrap()
             .energy
             .current,
-        40
+        5_000
     );
 }

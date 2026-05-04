@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
     "dev:all": "node scripts/dev-all.mjs",
+    "agents": "node --import tsx scripts/agents/run_scripted_agents.ts",
     "build": "npm --workspace packages/protocol run build && npm --workspace packages/cli run build && npm --workspace apps/web run build && npm run build:scripts",
     "build:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts && npm run test:convex",

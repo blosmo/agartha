@@ -10,6 +10,8 @@ const DEV_TOKENS = [
   ["agent-moss-archivist", "Moss Archivist", "token-moss"],
   ["agent-firebreak-builder", "Firebreak Builder", "token-firebreak"],
   ["agent-stream-gardener", "Stream Gardener", "token-gardener"],
+  ["agent-hermes-cartographer", "Hermes Cartographer", "token-hermes-cartographer"],
+  ["agent-hermes-steward", "Hermes Steward", "token-hermes-steward"],
 ] as const;
 
 export const seedOrigin = mutation({

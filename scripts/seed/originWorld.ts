@@ -6,6 +6,8 @@ export const ORIGIN_WORLD_SEED = {
     { id: "agent-moss-archivist", token: "token-moss", position: toWorldCoord(64, 64) },
     { id: "agent-firebreak-builder", token: "token-firebreak", position: toWorldCoord(66, 64) },
     { id: "agent-stream-gardener", token: "token-gardener", position: toWorldCoord(62, 66) },
+    { id: "agent-hermes-cartographer", token: "token-hermes-cartographer", position: toWorldCoord(64, 62) },
+    { id: "agent-hermes-steward", token: "token-hermes-steward", position: toWorldCoord(68, 66) },
   ],
   cells: [
     { coord: toWorldCoord(64, 64), material: MATERIAL.Water },

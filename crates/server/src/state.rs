@@ -5,7 +5,7 @@ use agartha_sim::materials::Material;
 use agartha_sim::world::{Chunk, ChunkCoord, WorldCoord};
 
 use crate::actions::energy::action_cost;
-use crate::actions::perception::{AgentPerception, VisibleCell, WorldEnergyView};
+use crate::actions::perception::{AgentPerception, AgentToolView, VisibleCell, WorldEnergyView};
 use crate::actions::validation::{primary_target, within_action_range};
 use crate::actions::{
     ActionKind, ActionRequest, ActionResult, AuthContext, CostQuote, RejectionReason,
@@ -65,6 +65,24 @@ impl ServerState {
                 "Stream Gardener",
                 "token-gardener",
                 WorldCoord::from_absolute(62, 66),
+            ),
+        );
+        agents.insert(
+            "agent-hermes-cartographer".to_string(),
+            AgentRecord::first_demo(
+                "agent-hermes-cartographer",
+                "Hermes Cartographer",
+                "token-hermes-cartographer",
+                WorldCoord::from_absolute(64, 62),
+            ),
+        );
+        agents.insert(
+            "agent-hermes-steward".to_string(),
+            AgentRecord::first_demo(
+                "agent-hermes-steward",
+                "Hermes Steward",
+                "token-hermes-steward",
+                WorldCoord::from_absolute(68, 66),
             ),
         );
 
@@ -305,6 +323,12 @@ impl ServerState {
                 "submit_note".to_string(),
                 "collab".to_string(),
             ],
+            available_tools: vec![AgentToolView {
+                id: "canvas_screenshot".to_string(),
+                name: "Canvas screenshot".to_string(),
+                kind: "vision".to_string(),
+                description: "Request a rendered canvas image for visual critique when structured cell perception is not enough.".to_string(),
+            }],
             world_energy: WorldEnergyView {
                 current: agent.energy.current,
                 cap: agent.energy.cap,

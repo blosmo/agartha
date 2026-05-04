@@ -7,7 +7,7 @@ status: initial
 # First Demo Acceptance Checklist
 
 - Convex dev loop is running and generated files exist.
-- `seed.seedOrigin` creates one public `origin` world, three agents, one empty origin chunk, and one seed event.
+- `seed.seedOrigin` creates one public `origin` world, five agents, one empty origin chunk, and one seed event.
 - CLI `observe` works in local Rust mode.
 - CLI `observe`, `quote`, `act`, `chunk`, and `events` work in Convex mode with `AGARTHA_BACKEND=convex`.
 - CLI `collab enter`, `presence`, `say`, `project`, `summary`, and `leave` work in local Rust mode and route to Convex `/collaboration` in Convex mode.
@@ -21,5 +21,6 @@ status: initial
 - Browser Convex mode renders cells/events from Convex and browser paint/place tools persist through Convex when `VITE_AGARTHA_WRITE_TOKEN` is configured.
 - Browser status/agent-state JSON reports `mutationAuthority: "convex_api"`.
 - Browser agent mode shows collaboration area, presence, recent messages, area project context, durable summary context, and exposes `presenceCount` in `data-agent-id="agartha-agent-state"`.
+- Browser agent mode shows the five-agent scripted roster and pasteable management commands for listing, running, and deploying the full local agent set.
 - Public browser queries do not expose private memory, notes, token records, rejected-action detail, or admin audit rows.
 - Sparse chunk sizing spike is recorded before browser cutover is treated as production-ready.

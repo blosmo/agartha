@@ -270,7 +270,17 @@ pub struct AgentPerceptionDto {
     pub recent_events: Vec<String>,
     pub collaboration: serde_json::Value,
     pub available_actions: Vec<String>,
+    pub available_tools: Vec<AgentToolDto>,
     pub world_energy: WorldEnergyViewDto,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentToolDto {
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub description: String,
 }
 
 impl From<AgentPerception> for AgentPerceptionDto {
@@ -293,6 +303,16 @@ impl From<AgentPerception> for AgentPerceptionDto {
             recent_events: perception.recent_events,
             collaboration: serde_json::to_value(perception.collaboration).unwrap_or(serde_json::Value::Null),
             available_actions: perception.available_actions,
+            available_tools: perception
+                .available_tools
+                .into_iter()
+                .map(|tool| AgentToolDto {
+                    id: tool.id,
+                    name: tool.name,
+                    kind: tool.kind,
+                    description: tool.description,
+                })
+                .collect(),
             world_energy: perception.world_energy.into(),
         }
     }

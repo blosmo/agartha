@@ -42,7 +42,7 @@ fn accepted_place_material_spends_energy_mutates_cells_and_records_event() {
     );
     assert_eq!(
         state.agent("agent-moss-archivist").unwrap().energy.current,
-        38
+        4_998
     );
 }
 
@@ -67,7 +67,7 @@ fn stale_expected_chunk_version_rejects_without_spending_or_mutating() {
     assert_eq!(result.reason, Some(RejectionReason::StaleChunkVersion));
     assert_eq!(
         state.agent("agent-moss-archivist").unwrap().energy.current,
-        40
+        5_000
     );
     assert_eq!(
         state

@@ -1,10 +1,72 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "./App";
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("first demo viewer smoke", () => {
-  it("renders board, inspector, local history, and replay controls", () => {
+  it("renders board, inspector, local history, and replay controls", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({
+        ok: true,
+        output: "agent round completed",
+        snapshot: {
+          cells: [
+            {
+              coord: { chunk: { x: 0, y: 0 }, cell: { x: 64, y: 63 } },
+              flags: 0,
+              id: "64:63",
+              material: 1,
+              state: 0,
+              variant: 1,
+            },
+          ],
+          chunkVersions: { "0:0": 1 },
+          availableTools: [
+            {
+              id: "canvas_screenshot",
+              name: "Canvas screenshot",
+              kind: "vision",
+              description: "Request a rendered canvas image.",
+            },
+          ],
+          collaboration: {
+            area: { id: "origin:64:64:r32", centerX: 64, centerY: 64, radius: 32 },
+            durableSummaries: [
+              {
+                id: "summary-runner",
+                body: "Runner summary: all agents checked in.",
+                provenance: { authorAgentId: "agent-hermes-steward", status: "decision" },
+              },
+            ],
+            presence: [
+              { agentId: "agent-moss-archivist", displayName: "Moss Archivist", live: true },
+              { agentId: "agent-firebreak-builder", displayName: "Firebreak Builder", live: true },
+              { agentId: "agent-stream-gardener", displayName: "Stream Gardener", live: true },
+              { agentId: "agent-hermes-cartographer", displayName: "Hermes Cartographer", live: true },
+              { agentId: "agent-hermes-steward", displayName: "Hermes Steward", live: true },
+            ],
+            projects: [],
+            recentMessages: [
+              {
+                id: "message-runner",
+                authorAgentId: "agent-hermes-cartographer",
+                body: "Runner refreshed the collaboration snapshot.",
+              },
+            ],
+          },
+          events: [{ id: "event-runner", tick: 2, summary: "Runner refreshed events" }],
+        },
+      }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
     render(
       <App
         convexUrl={null}
@@ -17,7 +79,11 @@ describe("first demo viewer smoke", () => {
               provenance: { authorAgentId: "agent-moss-archivist", status: "decision" },
             },
           ],
-          presence: [{ agentId: "agent-moss-archivist", displayName: "Moss Archivist", live: true }],
+          presence: [
+            { agentId: "agent-moss-archivist", displayName: "Moss Archivist", live: true },
+            { agentId: "agent-hermes-cartographer", displayName: "Hermes Cartographer", live: true },
+            { agentId: "agent-hermes-steward", displayName: "Hermes Steward", live: true },
+          ],
           projects: [
             {
               id: "project-0001",
@@ -98,11 +164,38 @@ describe("first demo viewer smoke", () => {
 
     expect(screen.queryByLabelText("Agent command input")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Agent" }));
+    expect(screen.getByRole("heading", { name: "Agent Deployment" })).toBeInTheDocument();
+    expect(screen.getAllByText("Hermes Cartographer").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Hermes Steward").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Run all agents" })).toBeInTheDocument();
+    expect(screen.queryByText("Canvas screenshot")).not.toBeInTheDocument();
+    expect(document.querySelector('[data-agent-id="agartha-agent-state"]')).toHaveTextContent("canvas_screenshot");
+    expect(screen.getByRole("button", { name: "Run Moss Archivist" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Run all agents" }));
+    await waitFor(() => expect(screen.getByText("Agents active: all agents", { exact: false })).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/__agartha/agents/run",
+      expect.objectContaining({
+        body: JSON.stringify({ agents: ["all"], rounds: 1 }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Stop agents" }));
+    await waitFor(() => expect(screen.getByText("Stopped all agents", { exact: false })).toBeInTheDocument());
+    expect(screen.getByText("agent round completed")).toBeInTheDocument();
+    expect(screen.getByText("Runner refreshed the collaboration snapshot.", { exact: false })).toBeInTheDocument();
+    expect(document.querySelector('[data-agent-id="latest-event-status"]')).toHaveTextContent("Agents drew");
+    expect(screen.getByTestId("board-cells")).toHaveAttribute("data-active-cells", "1");
+    expect(screen.getByText("npm run agents -- --agents all --rounds 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Copy agent command: npm run agents -- --agents all --rounds 2" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Copy agent command: npm run agents -- --agents all --rounds 2" })).toHaveTextContent("Copied"));
     expect(screen.getByRole("heading", { name: "Collaboration" })).toBeInTheDocument();
-    expect(screen.getByText("Moss Archivist")).toBeInTheDocument();
-    expect(screen.getByText("Shared boundary")).toBeInTheDocument();
-    expect(screen.getByText("Decision: keep a buffer between moss and fire.")).toBeInTheDocument();
-    expect(document.querySelector('[data-agent-id="agartha-agent-state"]')).toHaveTextContent('"presenceCount":1');
+    expect(screen.getAllByText("Moss Archivist").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Shared boundary")).not.toBeInTheDocument();
+    expect(screen.getByText("Runner summary: all agents checked in.")).toBeInTheDocument();
+    expect(document.querySelector('[data-agent-id="agartha-agent-state"]')).toHaveTextContent('"presenceCount":5');
+    expect(document.querySelector('[data-agent-id="agartha-agent-state"]')).toHaveTextContent('"total":5');
     fireEvent.change(screen.getByLabelText("Agent CLI input"), { target: { value: "flower 70 52" } });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: built flower", { exact: false }).length).toBeGreaterThan(0);
@@ -110,21 +203,18 @@ describe("first demo viewer smoke", () => {
     fireEvent.change(screen.getByLabelText("Agent CLI input"), { target: { value: "masterpiece phoenix 94 84 0.75" } });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: rendered phoenix masterpiece", { exact: false }).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Reset demo cells" }));
-    expect(screen.getByRole("heading", { name: "Replay" })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Agent CLI input"), {
       target: { value: "object save house 66 48 18 16" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
-    expect(screen.getByRole("radio", { name: "house" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getAllByText("Agent command: saved object house", { exact: false }).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText("Agent CLI input"), {
       target: { value: "object stamp house 92 52" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: stamped object house", { exact: false }).length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("Stamp repeat")).toHaveValue(1);
 
     fireEvent.change(screen.getByLabelText("Agent CLI input"), {
       target: { value: "object stamp house 112 52 3 18 0" },
@@ -207,10 +297,11 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByRole("button", { name: "Start arrow" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "End arrow" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.pointerDown(board, { clientX: 488, clientY: 420, pointerId: 4 });
-    fireEvent.pointerMove(board, { clientX: 552, clientY: 452, pointerId: 4 });
+    fireEvent.pointerMove(board, { clientX: 552, clientY: 452, pointerId: 4, shiftKey: true });
     expect(screen.getByTestId("board-line-preview")).toHaveAttribute("data-start-arrow", "true");
     expect(screen.getByTestId("board-line-preview")).toHaveAttribute("data-end-arrow", "true");
-    fireEvent.pointerUp(board, { clientX: 552, clientY: 452, pointerId: 4 });
+    expect(screen.getByTestId("board-line-preview").style.transform).toContain("0.7853981633974483");
+    fireEvent.pointerUp(board, { clientX: 552, clientY: 452, pointerId: 4, shiftKey: true });
     expect(screen.getAllByText("Line drag:", { exact: false }).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("radio", { name: "Eraser" }));
@@ -228,13 +319,6 @@ describe("first demo viewer smoke", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Step time" }));
     expect(screen.getByText("Tick 1")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("radio", { name: "Agent" }));
-    fireEvent.click(screen.getByRole("button", { name: "Step" }));
-    expect(screen.getByText("Replay step 1")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Live" }));
-    expect(screen.getByText("Live view")).toBeInTheDocument();
   }, 60000);
 });
 
