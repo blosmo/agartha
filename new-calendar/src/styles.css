@@ -21,6 +21,7 @@
   --ember: #ff8763;
   --green: #a8f0a0;
   --violet: #c7a7ff;
+  --dashboard-current-width: 16.5rem;
 }
 
 * {
@@ -108,7 +109,7 @@ input:focus-visible {
   top: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: max-content 208px minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -123,24 +124,23 @@ input:focus-visible {
 
 .dashboard-current {
   display: flex;
-  min-width: 0;
-  width: 208px;
-  height: 50px;
+  flex: 0 0 var(--dashboard-current-width);
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  border: 1px solid rgba(255, 244, 218, 0.14);
-  border-radius: 8px;
-  padding: 0 10px;
-  background: rgba(255, 255, 255, 0.045);
+  justify-content: flex-start;
+  gap: 6px;
+  width: var(--dashboard-current-width);
+  min-width: var(--dashboard-current-width);
+  height: 42px;
+  padding: 0 12px;
+  border-right: 1px solid rgba(255, 244, 218, 0.12);
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 720;
-  font-variant-numeric: tabular-nums;
 }
 
 .dashboard-current span,
 .dashboard-current strong {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -148,38 +148,40 @@ input:focus-visible {
 }
 
 .dashboard-current span {
-  flex: 0 0 68px;
+  flex-shrink: 0;
 }
 
 .dashboard-current strong {
-  flex: 0 0 108px;
-  text-align: right;
   color: var(--text);
   font-weight: 760;
+  font-variant-numeric: tabular-nums;
 }
 
 .global-control-row {
   display: grid;
-  grid-template-columns: minmax(410px, 1fr) auto;
-  align-items: stretch;
+  grid-template-columns: var(--dashboard-current-width) minmax(410px, 1fr) auto;
+  align-items: center;
   justify-self: end;
   gap: 8px;
   min-width: 0;
   width: 100%;
+  height: 42px;
+  border: 1px solid rgba(255, 244, 218, 0.14);
+  border-radius: 8px;
+  padding: 0 6px 0 0;
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .dashboard-grid {
   display: grid;
   grid-template-areas:
-    "scene lines rings comparison"
-    "scene tree tree comparison"
-    "months months months comparison";
+    "scene comparison comparison"
+    "tree  comparison comparison";
   grid-template-columns:
-    minmax(300px, 0.95fr)
-    minmax(330px, 1.06fr)
-    minmax(280px, 0.86fr)
-    minmax(330px, 0.95fr);
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.92fr);
+    minmax(240px, 1fr)
+    minmax(320px, 1fr)
+    minmax(320px, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
   height: 100%;
@@ -190,8 +192,13 @@ input:focus-visible {
 .scene-wrap {
   position: relative;
   inset: auto;
-  min-height: 270px;
-  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  min-height: 200px;
+  max-height: 100%;
+  height: auto;
+  justify-self: center;
   overflow: hidden;
   border-radius: 7px;
   background:
@@ -210,7 +217,8 @@ input:focus-visible {
   display: grid;
   width: 100%;
   height: 100%;
-  min-height: 270px;
+  min-height: 200px;
+  aspect-ratio: 1;
   place-items: center;
   color: rgba(248, 243, 232, 0.58);
   font-size: 0.78rem;
@@ -231,6 +239,13 @@ input:focus-visible {
   text-align: center;
 }
 
+.dashboard-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .brand-mark {
   position: relative;
   top: auto;
@@ -241,6 +256,119 @@ input:focus-visible {
   gap: 12px;
   letter-spacing: 0;
   pointer-events: none;
+}
+
+.about-nav-button {
+  min-height: 32px;
+  padding: 0 12px;
+  border-color: rgba(255, 244, 218, 0.14);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 640;
+  letter-spacing: 0.02em;
+}
+
+.about-nav-button:hover {
+  color: var(--text);
+}
+
+.about-dialog-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(10px);
+}
+
+.about-dialog {
+  width: min(560px, 100%);
+  max-height: min(82dvh, 720px);
+  margin: 0;
+  border: 1px solid rgba(255, 244, 218, 0.16);
+  border-radius: 14px;
+  padding: 0;
+  color: var(--text);
+  background: var(--panel-strong);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.about-dialog::backdrop {
+  background: transparent;
+}
+
+.about-dialog-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: start;
+  padding: 18px 18px 0;
+}
+
+.about-dialog-header .eyeline {
+  grid-column: 1 / -1;
+}
+
+.about-dialog-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.about-dialog-close {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+}
+
+.about-dialog-body {
+  padding: 12px 18px 20px;
+  overflow: auto;
+  max-height: calc(min(82dvh, 720px) - 88px);
+}
+
+.about-section + .about-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 244, 218, 0.08);
+}
+
+.about-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  font-weight: 720;
+  color: var(--amber);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.about-section p,
+.about-section li {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.about-section a {
+  color: var(--cyan);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.about-section a:hover {
+  color: #9dfff0;
+}
+
+.about-structure-list,
+.about-sources-list {
+  margin: 10px 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 6px;
 }
 
 .brand-mark span {
@@ -276,9 +404,8 @@ input:focus-visible {
 .date-readout,
 .explainer-panel,
 .comparison-panel,
-.month-structure-panel,
 .sunlight-chart-panel,
-.progress-rings-panel,
+.season-clock-panel,
 .season-tree-panel,
 .scene-panel {
   position: relative;
@@ -323,9 +450,10 @@ body.bento-faux-fullscreen-active {
   grid-area: scene;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
-  min-height: 360px;
+  min-height: 0;
   overflow: hidden;
   padding: 14px;
+  align-content: start;
 }
 
 .season-tree-panel {
@@ -335,12 +463,18 @@ body.bento-faux-fullscreen-active {
   min-height: 0;
   overflow: hidden;
   padding: 14px;
+  align-content: start;
 }
 
 .tree-scene-wrap {
   position: relative;
-  min-height: 220px;
-  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  min-height: 200px;
+  max-height: 100%;
+  height: auto;
+  justify-self: center;
   overflow: hidden;
   border-radius: 7px;
   background:
@@ -376,10 +510,10 @@ body.bento-faux-fullscreen-active {
   height: 31px;
   min-height: 31px;
   place-items: center;
-  border-color: rgba(255, 244, 218, 0.14);
+  border: 1px solid transparent;
   padding: 0;
   color: rgba(248, 243, 232, 0.72);
-  background: rgba(255, 255, 255, 0.04);
+  background: transparent;
 }
 
 .fullscreen-button svg {
@@ -392,8 +526,11 @@ body.bento-faux-fullscreen-active {
   stroke-linejoin: round;
 }
 
-.fullscreen-button:hover {
+.fullscreen-button:hover,
+.fullscreen-button:focus-visible {
   color: var(--cyan);
+  border-color: rgba(110, 255, 232, 0.55);
+  background: rgba(110, 255, 232, 0.12);
 }
 
 .panel-title-row h2 {
@@ -420,20 +557,11 @@ body.bento-faux-fullscreen-active {
 
 .comparison-panel {
   grid-area: comparison;
-  align-self: start;
-}
-
-.month-structure-panel {
-  grid-area: months;
-}
-
-.sunlight-chart-panel {
-  grid-area: lines;
-  position: relative;
-}
-
-.progress-rings-panel {
-  grid-area: rings;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .season-tree-panel {
@@ -516,8 +644,7 @@ body.bento-faux-fullscreen-active {
   color: var(--text);
 }
 
-.sunlight-chart-panel,
-.progress-rings-panel {
+.sunlight-chart-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   padding: 14px 14px 10px;
@@ -755,13 +882,11 @@ body.bento-faux-fullscreen-active {
 }
 
 .chart-axis-labels {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: -6px;
+  margin-top: -14px;
   color: rgba(248, 243, 232, 0.52);
   font-size: 0.68rem;
   font-weight: 680;
+  text-align: center;
 }
 
 .sunlight-y-axis-label {
@@ -773,10 +898,10 @@ body.bento-faux-fullscreen-active {
 }
 
 .sunlight-x-axis-label {
-  margin-left: auto;
+  display: block;
 }
 
-.progress-ring-view {
+.season-clock-view {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
@@ -788,14 +913,27 @@ body.bento-faux-fullscreen-active {
   padding-top: 8px;
 }
 
-.progress-ring-view.compare-rings {
+.season-clock-view.compare-clocks {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   justify-items: stretch;
   gap: 10px;
 }
 
-.progress-ring-card {
+.season-clock-view--focused {
+  align-items: stretch;
+  justify-items: stretch;
+}
+
+.season-clock-view--focused .season-clock-card {
+  border: 1px solid rgba(255, 244, 218, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  min-height: 0;
+}
+
+.season-clock-card {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   justify-items: center;
@@ -804,14 +942,18 @@ body.bento-faux-fullscreen-active {
   width: 100%;
 }
 
-.progress-ring-view.compare-rings .progress-ring-card {
+.season-clock-card.no-card-title {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.season-clock-view.compare-clocks .season-clock-card {
   border: 1px solid rgba(255, 244, 218, 0.1);
   border-radius: 8px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.035);
 }
 
-.progress-ring-card h3 {
+.season-clock-card h3 {
   justify-self: stretch;
   margin: 0;
   color: rgba(248, 243, 232, 0.72);
@@ -821,21 +963,58 @@ body.bento-faux-fullscreen-active {
   text-transform: uppercase;
 }
 
-.gregorian-ring-card {
+.new-calendar-season-clock-card {
+  border-color: rgba(110, 255, 232, 0.18);
+}
+
+.new-calendar-season-clock-card h3 {
+  color: var(--new-calendar);
+}
+
+.gregorian-season-clock-card {
   border-color: var(--gregorian-line);
   background:
     linear-gradient(135deg, var(--gregorian-soft), rgba(255, 255, 255, 0.025));
 }
 
-.gregorian-ring-card h3 {
+.gregorian-season-clock-card h3 {
   color: var(--gregorian);
 }
 
-.gregorian-ring-card .ring-metrics div {
+.gregorian-season-clock-card .ring-metrics div {
   border-left-color: var(--gregorian);
 }
 
-.progress-rings {
+.season-clock-card .ring-metrics.season-clock-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.season-clock-card .ring-metrics div.daylight-metric {
+  border-left-color: color-mix(in srgb, var(--amber) 72%, transparent);
+}
+
+.season-clock-card .ring-metrics div.daylight-metric dd {
+  display: inline-block;
+  width: fit-content;
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  border-radius: 8px;
+  padding: 4px 7px;
+  color: var(--amber);
+  background: rgba(255, 209, 102, 0.08);
+  font-size: 1rem;
+}
+
+.gregorian-season-clock-card .ring-metrics div.daylight-metric {
+  border-left-color: color-mix(in srgb, var(--gregorian) 72%, transparent);
+}
+
+.gregorian-season-clock-card .ring-metrics div.daylight-metric dd {
+  border-color: rgba(255, 143, 177, 0.28);
+  color: var(--gregorian);
+  background: rgba(255, 143, 177, 0.08);
+}
+
+.season-clock-chart {
   display: block;
   width: 100%;
   max-width: 210px;
@@ -846,69 +1025,95 @@ body.bento-faux-fullscreen-active {
   user-select: none;
 }
 
-.gregorian-ring-card .progress-rings {
+.muted-season-clock-card .season-clock-chart {
   cursor: default;
 }
 
-.progress-rings:active {
+.season-clock-chart:active {
   cursor: grabbing;
 }
 
-.progress-track,
-.progress-value {
+.season-clock-orbit-ring {
   fill: none;
-  stroke-width: 14;
-}
-
-.progress-track {
   stroke: rgba(255, 244, 218, 0.11);
+  stroke-width: 1.5;
 }
 
-.progress-track.inner {
-  stroke: rgba(255, 244, 218, 0.08);
-  stroke-width: 11;
-}
-
-.progress-track.gregorian-year-track {
-  stroke: rgba(248, 243, 232, 0.06);
-  stroke-width: 6;
-}
-
-.progress-track.gregorian-track {
-  stroke: rgba(248, 243, 232, 0.07);
-  stroke-width: 8;
-}
-
-.progress-value {
+.season-clock-tick {
+  stroke: rgba(255, 244, 218, 0.18);
+  stroke-width: 1.2;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 6px rgba(110, 255, 232, 0.22));
 }
 
-.progress-value.gregorian-year-value {
-  stroke-width: 6;
-  filter: drop-shadow(0 0 5px rgba(248, 243, 232, 0.16));
+.season-clock-year-fill {
+  fill: rgba(110, 255, 232, 0.22);
+  stroke: rgba(110, 255, 232, 0.42);
+  stroke-width: 0.8;
 }
 
-.progress-value.gregorian-value {
-  stroke-width: 8;
-  filter: drop-shadow(0 0 5px rgba(248, 243, 232, 0.16));
+.season-clock-chart--gregorian .season-clock-year-fill {
+  fill: rgba(217, 173, 194, 0.18);
+  stroke: rgba(217, 173, 194, 0.34);
 }
 
-.ring-center-copy text {
-  text-anchor: middle;
+.season-clock-pie-track {
+  fill: rgba(255, 244, 218, 0.06);
+  stroke: none;
 }
 
-.ring-center-copy text:first-child {
-  fill: var(--text);
-  font-size: 30px;
-  font-weight: 820;
+.season-clock-pie-light {
+  fill: rgba(255, 209, 102, 0.82);
+  stroke: none;
+  filter: drop-shadow(0 0 8px rgba(255, 209, 102, 0.24));
 }
 
-.ring-center-copy text:last-child {
-  fill: rgba(248, 243, 232, 0.54);
-  font-size: 12px;
-  font-weight: 760;
-  text-transform: uppercase;
+.season-clock-chart--gregorian .season-clock-pie-light {
+  fill: rgba(168, 240, 160, 0.72);
+  filter: drop-shadow(0 0 6px rgba(168, 240, 160, 0.18));
+}
+
+.season-clock-pie-ring {
+  fill: none;
+  stroke: rgba(255, 244, 218, 0.24);
+  stroke-width: 1.5;
+}
+
+.season-clock-star-shape {
+  fill: rgba(255, 207, 90, 0.95);
+  stroke: rgba(255, 244, 218, 0.35);
+  stroke-width: 0.8;
+  filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.35));
+}
+
+.season-clock-orbit-marker-halo {
+  fill: rgba(255, 209, 102, 0.14);
+  stroke: none;
+}
+
+.season-clock-orbit-marker-dot {
+  fill: var(--amber);
+  stroke: rgba(5, 5, 5, 0.55);
+  stroke-width: 1;
+  filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.45));
+}
+
+.season-clock-chart--gregorian .season-clock-orbit-marker-dot {
+  fill: var(--gregorian);
+  filter: drop-shadow(0 0 5px rgba(217, 173, 194, 0.35));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .season-clock-year-fill,
+  .season-clock-pie-light,
+  .season-clock-orbit-marker-dot,
+  .season-clock-orbit-marker-halo {
+    transition: none;
+  }
+}
+
+.calendar-charts-column .season-clock-view--focused {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .ring-metrics {
@@ -946,22 +1151,127 @@ body.bento-faux-fullscreen-active {
   line-height: 1;
 }
 
-.month-structure-panel {
-  padding: 14px;
+.comparison-panel {
+  padding: 16px;
 }
 
-.structure-heading {
+.calendar-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  margin-top: 14px;
+  overflow: auto;
+}
+
+.calendar-panel-months {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 2px;
+  border-top: 1px solid rgba(255, 244, 218, 0.1);
+}
+
+.calendar-panel-months .month-system-grid {
+  margin-top: 0;
+}
+
+.calendar-charts-stack,
+.calendar-charts-compare {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 244, 218, 0.1);
+}
+
+.calendar-charts-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.calendar-charts-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.calendar-charts-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.calendar-charts-column .calendar-chart-subsection {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.calendar-charts-column .sunlight-system-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.calendar-charts-stack .calendar-chart-subsection {
+  min-height: 0;
+}
+
+.calendar-chart-subsection {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(255, 244, 218, 0.12);
+  border-radius: 8px;
+  padding: 12px 12px 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.calendar-sunlight-subsection {
+  border-color: rgba(255, 209, 102, 0.18);
+  background: rgba(255, 209, 102, 0.035);
+}
+
+.calendar-season-clock-subsection {
+  border-color: rgba(255, 209, 102, 0.18);
+  background: rgba(255, 209, 102, 0.035);
+}
+
+.calendar-subsection-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.structure-heading h2 {
+.calendar-subsection-heading h3 {
   margin: 0;
   color: var(--text);
-  font-size: 1rem;
-  line-height: 1.12;
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.calendar-subsection-heading strong {
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  border-radius: 8px;
+  padding: 5px 7px;
+  color: var(--amber);
+  background: rgba(255, 209, 102, 0.08);
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.comparison-panel h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.08rem;
+  line-height: 1.18;
 }
 
 .month-system-grid {
@@ -972,10 +1282,6 @@ body.bento-faux-fullscreen-active {
 }
 
 .month-system-grid.single-month-system {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.month-system-grid.compare-overlay {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -996,12 +1302,10 @@ body.bento-faux-fullscreen-active {
   background: var(--gregorian-soft);
 }
 
-.new-calendar-months .month-system-heading span,
 .new-calendar-month-strip .month-strip-heading span {
   color: var(--new-calendar);
 }
 
-.gregorian-months .month-system-heading span,
 .gregorian-month-strip .month-strip-heading span {
   color: var(--gregorian);
 }
@@ -1011,12 +1315,9 @@ body.bento-faux-fullscreen-active {
 }
 
 .month-system-heading {
-  display: grid;
-  gap: 4px;
   margin-bottom: 10px;
 }
 
-.month-system-heading span,
 .month-strip-heading span {
   color: rgba(248, 243, 232, 0.56);
   font-size: 0.66rem;
@@ -1029,13 +1330,6 @@ body.bento-faux-fullscreen-active {
   color: var(--text);
   font-size: 0.96rem;
   line-height: 1;
-}
-
-.month-system-heading em {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-style: normal;
-  font-weight: 660;
 }
 
 .month-grid {
@@ -1070,6 +1364,7 @@ body.bento-faux-fullscreen-active {
 button.month-day-cell {
   min-height: 0;
   padding: 0;
+  transition: transform 140ms ease;
 }
 
 .new-month-grid .month-day-cell {
@@ -1115,6 +1410,11 @@ button.month-day-cell {
   display: grid;
   gap: 12px;
   margin-top: 14px;
+}
+
+.month-strip-comparison.is-comparing {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
 }
 
 .month-strip {
@@ -1234,26 +1534,18 @@ button.month-day-cell {
   font-size: 0.74rem;
 }
 
-.comparison-panel {
-  padding: 16px;
-}
-
-.comparison-panel h2 {
-  margin: 0;
-  color: var(--text);
-  font-size: 1.08rem;
-  line-height: 1.18;
-}
-
 .calendar-readout-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 0;
 }
 
 .calendar-readout-columns.is-comparing {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto repeat(8, minmax(66px, auto)) auto;
+  column-gap: 12px;
+  row-gap: 0;
 }
 
 .calendar-readout-column {
@@ -1268,7 +1560,11 @@ button.month-day-cell {
 }
 
 .calendar-readout-columns.is-comparing .calendar-readout-column {
-  grid-template-rows: 13px minmax(46px, auto) auto minmax(42px, auto);
+  display: grid;
+  grid-row: 1 / -1;
+  grid-template-rows: subgrid;
+  gap: 12px;
+  align-content: start;
 }
 
 .new-calendar-readout-column {
@@ -1307,9 +1603,10 @@ button.month-day-cell {
 }
 
 .calendar-readout-columns.is-comparing .calendar-readout-column h3 {
+  margin: 0;
   display: flex;
-  align-items: start;
-  min-height: 46px;
+  align-items: flex-start;
+  min-height: 2.5rem;
 }
 
 .calendar-readout-columns:not(.is-comparing) .new-calendar-readout-column h3 {
@@ -1328,8 +1625,12 @@ button.month-day-cell {
 }
 
 .calendar-readout-columns.is-comparing .calendar-readout-column .readout-grid {
-  grid-template-rows: repeat(4, minmax(66px, auto));
-  grid-auto-rows: unset;
+  display: grid;
+  grid-row: 2 / span 8;
+  grid-template-rows: subgrid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
 }
 
 .calendar-readout-columns:not(.is-comparing) .calendar-readout-column .readout-grid {
@@ -1411,113 +1712,83 @@ button.month-day-cell {
 .global-comparison-control {
   display: grid;
   grid-template-columns: auto auto;
-  align-items: stretch;
+  align-items: center;
   gap: 6px;
   min-width: 0;
 }
 
-.calendar-layer-toggle {
-  display: grid;
-  grid-template-columns: 0.74fr 1fr;
-  gap: 3px;
-  min-width: 154px;
-  border: 1px solid rgba(255, 244, 218, 0.13);
-  border-radius: 8px;
-  padding: 3px;
-  background: rgba(5, 5, 5, 0.28);
-}
-
-.calendar-layer-toggle label {
-  position: relative;
+.global-comparison-control > button {
   display: flex;
+  min-width: 0;
+  height: 42px;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-height: 28px;
-  border-radius: 6px;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 244, 218, 0.13);
+  border-radius: 8px;
   color: rgba(248, 243, 232, 0.62);
   font-size: 0.68rem;
   font-weight: 800;
   cursor: pointer;
+  background: rgba(5, 5, 5, 0.28);
 }
 
-.calendar-layer-check {
-  width: 10px;
-  height: 10px;
+.calendar-layer-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 18px;
+  border: 1px solid rgba(255, 244, 218, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
 }
 
-.calendar-layer-toggle label.is-active .calendar-layer-check::after {
-  display: block;
-  width: 4px;
-  height: 7px;
-  margin: 0 0 0 2px;
-  border: solid currentColor;
-  border-width: 0 2px 2px 0;
-  content: "";
-  transform: rotate(45deg);
-}
-
-.calendar-layer-toggle input {
+.calendar-layer-switch::after {
   position: absolute;
-  opacity: 0;
-  pointer-events: none;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(248, 243, 232, 0.72);
+  content: "";
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
 }
 
-.calendar-layer-toggle label.is-active {
-  color: #03110f;
-  background: var(--cyan);
+.global-comparison-control > button.is-active .calendar-layer-switch {
+  border-color: var(--gregorian-line);
+  background: rgba(217, 173, 194, 0.16);
 }
 
-.calendar-layer-toggle label.gregorian-active {
+.global-comparison-control > button.is-active .calendar-layer-switch::after {
+  background: var(--gregorian);
+  transform: translateX(14px);
+}
+
+.global-comparison-control > button.gregorian-active {
   color: #171113;
   background: var(--gregorian);
 }
 
-.calendar-layer-toggle label:has(input:focus-visible) {
+.global-comparison-control > button.gregorian-active .calendar-layer-switch {
+  border-color: rgba(23, 17, 19, 0.22);
+  background: rgba(23, 17, 19, 0.1);
+}
+
+.global-comparison-control > button.gregorian-active .calendar-layer-switch::after {
+  background: #171113;
+  transform: translateX(14px);
+}
+
+.global-comparison-control > button:focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
-}
-
-.compare-mode-control {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  min-width: 0;
-  border: 1px solid rgba(255, 244, 218, 0.14);
-  border-radius: 8px;
-  padding: 3px;
-  background: rgba(255, 255, 255, 0.045);
-  transition:
-    border-color 140ms ease,
-    opacity 140ms ease;
-}
-
-.compare-mode-control.is-disabled {
-  opacity: 0.42;
-}
-
-.compare-mode-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  min-width: 112px;
-}
-
-.compare-mode-buttons button {
-  min-width: 0;
-  min-height: 28px;
-  border: 0;
-  border-radius: 5px;
-  padding: 0 6px;
-  color: rgba(248, 243, 232, 0.68);
-  background: transparent;
-  font-size: 0.66rem;
-  font-weight: 780;
-}
-
-.compare-mode-buttons button.is-active {
-  color: #050505;
-  background: var(--gregorian);
 }
 
 .overlay-toggle span,
@@ -1625,8 +1896,7 @@ button.month-day-cell {
   color: var(--gregorian);
 }
 
-.comparison-summary span,
-.season-bar-heading span {
+.comparison-summary span {
   display: block;
   color: rgba(248, 243, 232, 0.56);
   font-size: 0.66rem;
@@ -1667,34 +1937,13 @@ button.month-day-cell {
   margin-top: 2px;
 }
 
-.new-calendar-season-bar .season-bar-heading span {
-  color: var(--new-calendar);
-}
-
 .gregorian-season-bar {
   border-left: 2px solid var(--gregorian);
   padding-left: 8px;
 }
 
-.gregorian-season-bar .season-bar-heading span,
-.gregorian-season-bar .season-bar-heading strong {
-  color: var(--gregorian);
-}
-
 .gregorian-season-bar .season-track {
   filter: drop-shadow(0 0 8px rgba(217, 173, 194, 0.08));
-}
-
-.season-bar-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.season-bar-heading strong {
-  color: var(--text);
-  font-size: 0.78rem;
 }
 
 .season-track {
@@ -1740,15 +1989,21 @@ button.month-day-cell {
 
 .time-controls {
   display: grid;
-  grid-template-columns: 92px 76px minmax(86px, 0.52fr) minmax(122px, 1fr);
+  grid-template-columns: auto auto 74px minmax(168px, 1fr);
   align-items: center;
   gap: 6px;
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 6px;
-  background: rgba(18, 18, 16, 0.68);
-  backdrop-filter: blur(18px);
+  height: 100%;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.global-control-row .global-comparison-control {
+  align-self: center;
+  padding-right: 2px;
 }
 
 .transport-row {
@@ -1847,36 +2102,85 @@ button.month-day-cell {
   background: var(--amber);
 }
 
-.slider-label {
+.speed-stepper {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 4px 8px;
+  grid-template-columns: 22px minmax(28px, 1fr) 22px;
+  align-items: center;
+  justify-items: center;
+  height: 30px;
+  min-width: 74px;
+  border: 1px solid rgba(255, 244, 218, 0.16);
+  border-radius: 8px;
+  padding: 0 2px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.speed-stepper-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
-  margin-top: 0;
+  line-height: 1;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 780;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.speed-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  border: 0;
+  border-radius: 5px;
+  color: rgba(248, 243, 232, 0.72);
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 780;
+  line-height: 1;
+  padding: 0;
+}
+
+.speed-step:hover:not(:disabled) {
+  color: var(--amber);
+  background: rgba(255, 214, 122, 0.1);
+}
+
+.speed-step:disabled {
+  opacity: 0.34;
+  cursor: not-allowed;
+}
+
+.day-scrubber {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  min-width: 0;
+  max-width: 50%;
+  justify-self: start;
   color: var(--muted);
   font-size: 0.64rem;
   font-weight: 720;
 }
 
-.slider-label output {
-  min-width: 48px;
+.day-scrubber output {
+  min-width: 52px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
-.speed-label output {
-  min-width: 24px;
-}
-
-.slider-label input {
-  grid-column: 1 / -1;
+.day-scrubber input {
   width: 100%;
+  margin: 0;
   accent-color: var(--cyan);
-}
-
-.speed-label input {
-  accent-color: var(--amber);
 }
 
 .bento-fullscreenable:is(:fullscreen, .is-faux-fullscreen) .scene-wrap {
@@ -1892,24 +2196,8 @@ button.month-day-cell {
   margin-inline: auto;
 }
 
-.progress-rings-panel:is(:fullscreen, .is-faux-fullscreen) .progress-ring-view {
-  grid-template-columns: minmax(320px, 0.72fr) minmax(240px, 0.36fr);
-  gap: 24px;
+.calendar-sunlight-subsection:is(:fullscreen, .is-faux-fullscreen) .sunlight-system-card {
   min-height: calc(100dvh - 112px);
-}
-
-.progress-rings-panel:is(:fullscreen, .is-faux-fullscreen) .progress-rings {
-  max-width: min(58vw, 680px);
-  max-height: calc(100dvh - 150px);
-}
-
-.progress-rings-panel:is(:fullscreen, .is-faux-fullscreen) .ring-metrics {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-}
-
-.progress-rings-panel:is(:fullscreen, .is-faux-fullscreen) .ring-metrics dd {
-  font-size: 2.2rem;
 }
 
 @media (max-width: 1240px) {
@@ -1928,42 +2216,34 @@ button.month-day-cell {
   }
 
   .dashboard-header {
-    grid-template-columns: max-content 208px minmax(0, 1fr);
-  }
-
-  .dashboard-current {
-    width: 208px;
+    grid-template-columns: max-content minmax(0, 1fr);
   }
 
   .global-control-row {
-    grid-template-columns: minmax(398px, 1fr) auto;
+    grid-template-columns: var(--dashboard-current-width) minmax(398px, 1fr) auto;
   }
 
   .time-controls {
-    grid-template-columns: 90px 74px minmax(82px, 0.48fr) minmax(118px, 1fr);
+    grid-template-columns: auto auto 74px minmax(150px, 1fr);
   }
 
   .dashboard-grid {
     grid-template-areas:
-      "scene comparison"
-      "scene rings"
-      "tree rings"
-      "tree lines"
-      "months months";
-    grid-template-columns: minmax(0, 1fr) minmax(340px, 0.9fr);
-    grid-template-rows: auto auto auto auto auto;
+      "scene scene"
+      "tree  tree"
+      "comparison comparison";
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
   }
 
-  .scene-panel {
-    min-height: 460px;
+  .scene-panel,
+  .season-tree-panel {
+    min-height: 0;
   }
 
-  .scene-wrap {
-    min-height: 360px;
-  }
-
+  .scene-wrap,
   .tree-scene-wrap {
-    min-height: 340px;
+    min-height: 220px;
   }
 }
 
@@ -1981,14 +2261,36 @@ button.month-day-cell {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .dashboard-current {
-    width: 100%;
-    justify-content: space-between;
-  }
-
   .global-control-row {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    height: auto;
+    padding: 6px;
+    gap: 6px;
     width: 100%;
+  }
+
+  .dashboard-current {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 42px;
+    justify-content: flex-start;
+    padding: 0 8px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 244, 218, 0.12);
+  }
+
+  .global-control-row .time-controls {
+    grid-column: 1 / -1;
+  }
+
+  .global-control-row .global-comparison-control {
+    grid-column: 1 / -1;
+    width: 100%;
+    padding-right: 0;
   }
 
   .global-overlay-toggle {
@@ -2000,37 +2302,41 @@ button.month-day-cell {
   }
 
   .time-controls {
-    grid-template-columns: minmax(128px, 0.7fr) minmax(94px, 0.42fr) minmax(0, 1fr);
+    grid-template-columns: auto auto 74px;
   }
 
-  .time-controls .slider-label:last-child {
+  .day-scrubber {
     grid-column: 1 / -1;
+    max-width: none;
   }
 
   .dashboard-grid {
     grid-template-areas:
       "scene"
       "comparison"
-      "tree"
-      "lines"
-      "rings"
-      "months";
+      "tree";
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .scene-panel {
-    min-height: 430px;
+  .calendar-charts-compare {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .scene-wrap {
-    min-height: 330px;
+  .scene-panel,
+  .season-tree-panel {
+    min-height: 0;
   }
 
+  .scene-wrap,
   .tree-scene-wrap {
-    min-height: 320px;
+    min-height: 240px;
   }
 
   .month-system-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .month-strip-comparison.is-comparing {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2061,34 +2367,28 @@ button.month-day-cell {
     align-items: flex-start;
     flex-direction: column;
     gap: 4px;
-    height: auto;
+    min-height: 0;
     padding: 8px 10px;
   }
 
-  .time-controls {
+  .global-control-row .time-controls {
     grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    padding: 0;
   }
 
-  .time-controls .slider-label:last-child {
+  .day-scrubber {
     grid-column: auto;
   }
 
-  .scene-panel {
-    min-height: 390px;
-  }
-
-  .scene-wrap {
-    min-height: 292px;
-  }
-
+  .scene-wrap,
   .tree-scene-wrap {
-    min-height: 286px;
+    min-height: 200px;
   }
 
   .comparison-summary,
   .calendar-readout-columns:not(.is-comparing) .calendar-readout-column .readout-grid,
-  .readout-grid,
-  .progress-ring-view {
+  .readout-grid {
     grid-template-columns: 1fr;
   }
 

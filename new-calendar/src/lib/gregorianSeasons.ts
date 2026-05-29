@@ -87,6 +87,29 @@ export function gregorianYearProgress(date: Date): number {
   return (current - start) / (nextYear - start);
 }
 
+export function daysInGregorianYear(year: number): number {
+  return new Date(year, 1, 29).getDate() === 29 ? 366 : 365;
+}
+
+export function dayOfGregorianYear(date: Date): number {
+  const current = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const yearStart = Date.UTC(date.getFullYear(), 0, 1);
+  return Math.floor((current - yearStart) / MS_PER_DAY) + 1;
+}
+
+export interface GregorianYearDay {
+  day: number;
+  daysInYear: number;
+}
+
+export function describeGregorianYearDay(date: Date): GregorianYearDay {
+  const year = date.getFullYear();
+  return {
+    day: dayOfGregorianYear(date),
+    daysInYear: daysInGregorianYear(year),
+  };
+}
+
 function seasonStartFor(date: Date): { season: GregorianSeasonName; date: Date } {
   const year = date.getFullYear();
   const starts = SEASON_BOUNDARIES.map((boundary) => ({

@@ -1,20 +1,8 @@
-import {
-  memo,
-  type CSSProperties,
-  type PointerEvent,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import { memo, type PointerEvent, useCallback, useMemo, useRef } from "react";
 import { FullscreenButton } from "./FullscreenButton";
-import type { ComparisonMode } from "../lib/comparisonMode";
-import {
-  GREGORIAN_SEASON_COLORS,
-  describeGregorianSeason,
-  gregorianYearProgress,
-} from "../lib/gregorianSeasons";
+import { GREGORIAN_SEASON_COLORS, describeGregorianSeason } from "../lib/gregorianSeasons";
 import { SEASON_COLORS } from "../visualization/calendarGeometry";
-import { DAYS_PER_SEASON, DAYS_PER_YEAR, type NewCalendarDate } from "../lib/newCalendar";
+import { DAYS_PER_YEAR, type NewCalendarDate } from "../lib/newCalendar";
 import {
   makeGregorianSunlightSeries,
   makeSunlightSeries,
@@ -27,8 +15,10 @@ interface SunlightChartProps {
   calendarDate: NewCalendarDate;
   showNewCalendar: boolean;
   showGregorianOverlay: boolean;
-  comparisonMode: ComparisonMode;
   onSelectIndex: (index: number) => void;
+  embedded?: boolean;
+  /** When set, render a single calendar system (used for aligned calendar compare columns). */
+  focusSystem?: "new" | "gregorian";
 }
 
 const chart = {
@@ -40,15 +30,6 @@ const chart = {
   padBottom: 38,
   minHours: 9,
   maxHours: 15,
-};
-
-const rings = {
-  size: 246,
-  center: 123,
-  gregorianYearRadius: 111,
-  outerRadius: 96,
-  innerRadius: 65,
-  gregorianRadius: 44,
 };
 
 const gridHours = [9, 11, 13, 15];
@@ -71,8 +52,9 @@ export const SunlightLinesPanel = memo(function SunlightLinesPanel({
   calendarDate,
   showNewCalendar,
   showGregorianOverlay,
-  comparisonMode,
   onSelectIndex,
+  embedded = false,
+  focusSystem,
 }: SunlightChartProps) {
   const panelRef = useRef<HTMLElement | null>(null);
   const draggingRef = useRef(false);
@@ -99,53 +81,100 @@ export const SunlightLinesPanel = memo(function SunlightLinesPanel({
     () => makeGregorianSeasonLabels(gregorianSeries),
     [gregorianSeries],
   );
-  const compareInSplit = showNewCalendar && showGregorianOverlay && comparisonMode === "split";
-  const compareInOverlay = showNewCalendar && showGregorianOverlay && comparisonMode === "overlay";
-  const selectFromPointer = useCallback(
-    (event: PointerEvent<SVGSVGElement>) => {
-      onSelectIndex(indexFromLinePointer(event, calendarDate.seasonIndex));
+  const compareSideBySide =
+    showNewCalendar && showGregorianOverlay && !focusSystem;
+  const showNewSunlight = focusSystem === "new" || (showNewCalendar && focusSystem !== "gregorian");
+  const showGregorianSunlight =
+    focusSystem === "gregorian" || (showGregorianOverlay && focusSystem !== "new");
+  const dragSvgRef = useRef<SVGSVGElement | null>(null);
+  const lineDragHandlersRef = useRef<{
+    move: (event: globalThis.PointerEvent) => void;
+    up: (event: globalThis.PointerEvent) => void;
+  } | null>(null);
+  const selectFromClientX = useCallback(
+    (clientX: number, svg: SVGSVGElement) => {
+      onSelectIndex(yearIndexFromChartClientX(clientX, svg.getBoundingClientRect()));
     },
-    [calendarDate.seasonIndex, onSelectIndex],
+    [onSelectIndex],
   );
+  const finishLineDrag = useCallback((event?: globalThis.PointerEvent) => {
+    const svg = dragSvgRef.current;
+    draggingRef.current = false;
+    dragSvgRef.current = null;
+    const handlers = lineDragHandlersRef.current;
+    if (handlers) {
+      window.removeEventListener("pointermove", handlers.move);
+      window.removeEventListener("pointerup", handlers.up);
+      window.removeEventListener("pointercancel", handlers.up);
+      lineDragHandlersRef.current = null;
+    }
+    if (svg && event?.pointerId !== undefined && svg.hasPointerCapture(event.pointerId)) {
+      svg.releasePointerCapture(event.pointerId);
+    }
+  }, []);
   const startDrag = useCallback(
     (event: PointerEvent<SVGSVGElement>) => {
+      finishLineDrag();
       draggingRef.current = true;
+      dragSvgRef.current = event.currentTarget;
       event.currentTarget.setPointerCapture(event.pointerId);
       event.preventDefault();
-      selectFromPointer(event);
+      selectFromClientX(event.clientX, event.currentTarget);
+
+      const move = (pointerEvent: globalThis.PointerEvent) => {
+        const svg = dragSvgRef.current;
+        if (!draggingRef.current || !svg) return;
+        pointerEvent.preventDefault();
+        selectFromClientX(pointerEvent.clientX, svg);
+      };
+      const up = (pointerEvent: globalThis.PointerEvent) => {
+        if (!draggingRef.current) return;
+        finishLineDrag(pointerEvent);
+      };
+
+      lineDragHandlersRef.current = { move, up };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
     },
-    [selectFromPointer],
+    [finishLineDrag, selectFromClientX],
   );
   const continueDrag = useCallback(
     (event: PointerEvent<SVGSVGElement>) => {
       if (!draggingRef.current) return;
       event.preventDefault();
-      selectFromPointer(event);
+      selectFromClientX(event.clientX, event.currentTarget);
     },
-    [selectFromPointer],
+    [selectFromClientX],
   );
-  const stopDrag = useCallback((event: PointerEvent<SVGSVGElement>) => {
-    draggingRef.current = false;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  }, []);
+  const stopDrag = useCallback(
+    (event: PointerEvent<SVGSVGElement>) => {
+      finishLineDrag(event.nativeEvent);
+    },
+    [finishLineDrag],
+  );
+
+  const TitleTag = embedded ? "h3" : "h2";
 
   return (
     <section
       ref={panelRef}
-      className="sunlight-chart-panel sunlight-lines-panel bento-fullscreenable"
-      aria-label="Sunlight panel"
+      className={
+        embedded
+          ? "calendar-chart-subsection calendar-sunlight-subsection bento-fullscreenable"
+          : "sunlight-chart-panel sunlight-lines-panel bento-fullscreenable"
+      }
+      aria-label={embedded ? "Sunlight chart" : "Sunlight panel"}
     >
-      <div className="chart-heading">
-        <h2>Sunlight</h2>
+      <div className={embedded ? "calendar-subsection-heading" : "chart-heading"}>
+        <TitleTag>Sunlight</TitleTag>
         <div className="panel-actions">
           <strong>{activePoint.hours.toFixed(1)}h</strong>
           <FullscreenButton label="Full screen sunlight" targetRef={panelRef} />
         </div>
       </div>
 
-      {compareInSplit ? (
+      {compareSideBySide ? (
         <div className="sunlight-split-view">
           <article className="sunlight-system-card new-calendar-sunlight-card">
             <h3>New Calendar</h3>
@@ -179,7 +208,39 @@ export const SunlightLinesPanel = memo(function SunlightLinesPanel({
             />
           </article>
         </div>
-      ) : showGregorianOverlay && !showNewCalendar ? (
+      ) : focusSystem === "new" ? (
+        <article className="sunlight-system-card new-calendar-sunlight-card">
+          <h3>New Calendar</h3>
+          <SunlightSystemChart
+            ariaLabel="New Calendar sunlight by day of season"
+            paths={seasonPaths}
+            labels={seasonLabels}
+            colors={SEASON_COLORS}
+            activeSeasonIndex={calendarDate.seasonIndex}
+            activePosition={activePosition}
+            dot="new"
+            onPointerDown={startDrag}
+            onPointerMove={continueDrag}
+            onPointerUp={stopDrag}
+            onPointerCancel={stopDrag}
+          />
+        </article>
+      ) : focusSystem === "gregorian" ? (
+        <article className="sunlight-system-card gregorian-sunlight-card">
+          <h3>Gregorian</h3>
+          <SunlightSystemChart
+            ariaLabel="Gregorian sunlight by day of season"
+            paths={gregorianSeasonPaths}
+            labels={gregorianSeasonLabels}
+            colors={GREGORIAN_SEASON_COLORS}
+            activeSeasonIndex={gregorianSeason.seasonIndex}
+            activePosition={gregorianPosition}
+            dot="gregorian"
+            labelPrefix="G "
+            gregorian
+          />
+        </article>
+      ) : showGregorianSunlight && !showNewSunlight ? (
         <SunlightSystemChart
           ariaLabel="Gregorian sunlight by day of season"
           paths={gregorianSeasonPaths}
@@ -201,7 +262,7 @@ export const SunlightLinesPanel = memo(function SunlightLinesPanel({
           gregorianActiveSeasonIndex={gregorianSeason.seasonIndex}
           activePosition={activePosition}
           gregorianPosition={gregorianPosition}
-          showGregorianOverlay={compareInOverlay}
+          showGregorianOverlay={false}
           onPointerDown={startDrag}
           onPointerMove={continueDrag}
           onPointerUp={stopDrag}
@@ -480,286 +541,6 @@ function SunlightDot({
   );
 }
 
-export const ProgressRingsPanel = memo(function ProgressRingsPanel({
-  calendarDate,
-  showNewCalendar,
-  showGregorianOverlay,
-  comparisonMode,
-  onSelectIndex,
-}: SunlightChartProps) {
-  const panelRef = useRef<HTMLElement | null>(null);
-  const draggingRef = useRef(false);
-  const gregorianSeason = describeGregorianSeason(calendarDate.gregorianDate);
-  const yearProgress = (calendarDate.index + 1) / DAYS_PER_YEAR;
-  const gregorianYearProgressValue = gregorianYearProgress(calendarDate.gregorianDate);
-  const seasonProgress = calendarDate.dayOfSeason / DAYS_PER_SEASON;
-  const innerColor = SEASON_COLORS[calendarDate.seasonIndex];
-  const gregorianColor = GREGORIAN_SEASON_COLORS[gregorianSeason.seasonIndex];
-  const compareInSplit = showNewCalendar && showGregorianOverlay && comparisonMode === "split";
-  const compareInOverlay = showNewCalendar && showGregorianOverlay && comparisonMode === "overlay";
-  const selectFromPointer = useCallback(
-    (event: PointerEvent<SVGSVGElement>) => {
-      onSelectIndex(indexFromRingPointer(event, calendarDate.seasonIndex));
-    },
-    [calendarDate.seasonIndex, onSelectIndex],
-  );
-  const startDrag = useCallback(
-    (event: PointerEvent<SVGSVGElement>) => {
-      draggingRef.current = true;
-      event.currentTarget.setPointerCapture(event.pointerId);
-      event.preventDefault();
-      selectFromPointer(event);
-    },
-    [selectFromPointer],
-  );
-  const continueDrag = useCallback(
-    (event: PointerEvent<SVGSVGElement>) => {
-      if (!draggingRef.current) return;
-      event.preventDefault();
-      selectFromPointer(event);
-    },
-    [selectFromPointer],
-  );
-  const stopDrag = useCallback((event: PointerEvent<SVGSVGElement>) => {
-    draggingRef.current = false;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  }, []);
-
-  return (
-    <section
-      ref={panelRef}
-      className="progress-rings-panel bento-fullscreenable"
-      aria-label="Progress panel"
-    >
-      <div className="chart-heading">
-        <h2>Progress</h2>
-        <div className="panel-actions">
-          <FullscreenButton label="Full screen progress" targetRef={panelRef} />
-        </div>
-      </div>
-
-      <div className={`progress-ring-view ${compareInSplit ? "compare-rings" : ""}`.trim()}>
-        {showNewCalendar ? (
-          <ProgressRingCard
-            title="New Calendar"
-            ariaLabel={
-              compareInSplit
-                ? "New Calendar year and season progress rings"
-                : "Progress rings"
-            }
-            yearProgress={yearProgress}
-            seasonProgress={seasonProgress}
-            yearStroke="var(--cyan)"
-            seasonStroke={innerColor}
-            seasonName={calendarDate.season}
-            gregorianOverlay={
-              compareInOverlay
-                ? {
-                    yearProgress: gregorianYearProgressValue,
-                    seasonProgress: gregorianSeason.progress,
-                    yearStroke: "var(--gregorian)",
-                    seasonStroke: gregorianColor,
-                    seasonName: gregorianSeason.season,
-                  }
-                : undefined
-            }
-            onPointerDown={startDrag}
-            onPointerMove={continueDrag}
-            onPointerUp={stopDrag}
-            onPointerCancel={stopDrag}
-          />
-        ) : (
-          <ProgressRingCard
-            title="Gregorian"
-            ariaLabel="Gregorian year and season progress rings"
-            yearProgress={gregorianYearProgressValue}
-            seasonProgress={gregorianSeason.progress}
-            yearStroke="var(--gregorian)"
-            seasonStroke={gregorianColor}
-            seasonName={gregorianSeason.season}
-            muted
-          />
-        )}
-
-        {compareInSplit && (
-          <ProgressRingCard
-            title="Gregorian"
-            ariaLabel="Gregorian year and season progress rings"
-            yearProgress={gregorianYearProgressValue}
-            seasonProgress={gregorianSeason.progress}
-            yearStroke="var(--gregorian)"
-            seasonStroke={gregorianColor}
-            seasonName={gregorianSeason.season}
-            muted
-          />
-        )}
-      </div>
-    </section>
-  );
-});
-
-function ProgressRingCard({
-  title,
-  ariaLabel,
-  yearProgress,
-  seasonProgress,
-  yearStroke,
-  seasonStroke,
-  seasonName,
-  gregorianOverlay,
-  muted = false,
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-  onPointerCancel,
-}: {
-  title: string;
-  ariaLabel: string;
-  yearProgress: number;
-  seasonProgress: number;
-  yearStroke: string;
-  seasonStroke: string;
-  seasonName: string;
-  gregorianOverlay?: {
-    yearProgress: number;
-    seasonProgress: number;
-    yearStroke: string;
-    seasonStroke: string;
-    seasonName: string;
-  };
-  muted?: boolean;
-  onPointerDown?: (event: PointerEvent<SVGSVGElement>) => void;
-  onPointerMove?: (event: PointerEvent<SVGSVGElement>) => void;
-  onPointerUp?: (event: PointerEvent<SVGSVGElement>) => void;
-  onPointerCancel?: (event: PointerEvent<SVGSVGElement>) => void;
-}) {
-  return (
-    <article
-      className={`progress-ring-card ${muted ? "gregorian-ring-card" : ""}`.trim()}
-      style={{ "--season-color": seasonStroke } as CSSProperties}
-    >
-      <h3>{title}</h3>
-      <svg
-        className="progress-rings"
-        viewBox={`0 0 ${rings.size} ${rings.size}`}
-        role="img"
-        aria-label={ariaLabel}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-      >
-        <circle
-          className="progress-track"
-          cx={rings.center}
-          cy={rings.center}
-          r={rings.outerRadius}
-        />
-        <circle
-          className="progress-track inner"
-          cx={rings.center}
-          cy={rings.center}
-          r={rings.innerRadius}
-        />
-        {gregorianOverlay && (
-          <>
-            <circle
-              className="progress-track gregorian-year-track"
-              cx={rings.center}
-              cy={rings.center}
-              r={rings.gregorianYearRadius}
-            />
-            <circle
-              className="progress-track gregorian-track"
-              cx={rings.center}
-              cy={rings.center}
-              r={rings.gregorianRadius}
-            />
-          </>
-        )}
-        <ProgressCircle radius={rings.outerRadius} progress={yearProgress} stroke={yearStroke} />
-        <ProgressCircle radius={rings.innerRadius} progress={seasonProgress} stroke={seasonStroke} />
-        {gregorianOverlay && (
-          <>
-            <ProgressCircle
-              radius={rings.gregorianYearRadius}
-              progress={gregorianOverlay.yearProgress}
-              stroke={gregorianOverlay.yearStroke}
-              className="gregorian-year-value"
-            />
-            <ProgressCircle
-              radius={rings.gregorianRadius}
-              progress={gregorianOverlay.seasonProgress}
-              stroke={gregorianOverlay.seasonStroke}
-              className="gregorian-value"
-            />
-          </>
-        )}
-        <g className="ring-center-copy">
-          <text x={rings.center} y={rings.center - 7}>
-            {percentLabel(yearProgress)}
-          </text>
-          <text x={rings.center} y={rings.center + 17}>
-            year
-          </text>
-        </g>
-      </svg>
-
-      <dl className="ring-metrics">
-        <div>
-          <dt>Year progress</dt>
-          <dd>{percentLabel(yearProgress)}</dd>
-        </div>
-        <div className="season-metric">
-          <dt>{seasonName} progress</dt>
-          <dd>{percentLabel(seasonProgress)}</dd>
-        </div>
-        {gregorianOverlay && (
-          <>
-            <div className="gregorian-readout-item">
-              <dt>Gregorian year</dt>
-              <dd>{percentLabel(gregorianOverlay.yearProgress)}</dd>
-            </div>
-            <div className="gregorian-readout-item">
-              <dt>{gregorianOverlay.seasonName} progress</dt>
-              <dd>{percentLabel(gregorianOverlay.seasonProgress)}</dd>
-            </div>
-          </>
-        )}
-      </dl>
-    </article>
-  );
-}
-
-function ProgressCircle({
-  radius,
-  progress,
-  stroke,
-  className = "",
-}: {
-  radius: number;
-  progress: number;
-  stroke: string;
-  className?: string;
-}) {
-  const circumference = 2 * Math.PI * radius;
-  const safeProgress = Math.max(0, Math.min(1, progress));
-
-  return (
-    <circle
-      className={`progress-value ${className}`.trim()}
-      cx={rings.center}
-      cy={rings.center}
-      r={radius}
-      stroke={stroke}
-      transform={`rotate(-90 ${rings.center} ${rings.center})`}
-      strokeDasharray={`${(circumference * safeProgress).toFixed(2)} ${circumference.toFixed(2)}`}
-    />
-  );
-}
-
 function pathForPoints(points: SunlightPoint[]): string {
   return points
     .map((point, index) => {
@@ -834,62 +615,15 @@ function seasonLabelDay(seasonIndex: number): number {
   return [12, 29, 14, 20, 28][seasonIndex];
 }
 
-function percentLabel(progress: number): string {
-  return `${Math.round(progress * 100)}%`;
-}
-
-function indexFromLinePointer(
-  event: PointerEvent<SVGSVGElement>,
-  activeSeasonIndex: number,
+export function yearIndexFromChartClientX(
+  clientX: number,
+  svgBounds: Pick<DOMRect, "left" | "width">,
 ): number {
-  const point = svgPointFromPointer(event, chart.width, chart.height);
-  const dayOfSeason = Math.round(
-    clamp(
-      1 + ((point.x - chart.padLeft) / (chart.width - chart.padLeft - chart.padRight)) * 72,
-      1,
-      DAYS_PER_SEASON,
-    ),
-  );
+  const x = ((clientX - svgBounds.left) / svgBounds.width) * chart.width;
+  const usableWidth = chart.width - chart.padLeft - chart.padRight;
+  const yearProgress = (x - chart.padLeft) / usableWidth;
 
-  return activeSeasonIndex * DAYS_PER_SEASON + dayOfSeason - 1;
-}
-
-function indexFromRingPointer(
-  event: PointerEvent<SVGSVGElement>,
-  activeSeasonIndex: number,
-): number {
-  const point = svgPointFromPointer(event, rings.size, rings.size);
-  const dx = point.x - rings.center;
-  const dy = point.y - rings.center;
-  const distanceFromCenter = Math.hypot(dx, dy);
-  const progress = normalizeProgress(Math.atan2(dy, dx) + Math.PI / 2);
-  const isInnerRing =
-    Math.abs(distanceFromCenter - rings.innerRadius) <
-    Math.abs(distanceFromCenter - rings.outerRadius);
-
-  if (isInnerRing) {
-    const dayOffset = Math.round(progress * (DAYS_PER_SEASON - 1));
-    return activeSeasonIndex * DAYS_PER_SEASON + dayOffset;
-  }
-
-  return Math.round(progress * (DAYS_PER_YEAR - 1));
-}
-
-function svgPointFromPointer(
-  event: PointerEvent<SVGSVGElement>,
-  viewBoxWidth: number,
-  viewBoxHeight: number,
-): { x: number; y: number } {
-  const rect = event.currentTarget.getBoundingClientRect();
-  return {
-    x: ((event.clientX - rect.left) / rect.width) * viewBoxWidth,
-    y: ((event.clientY - rect.top) / rect.height) * viewBoxHeight,
-  };
-}
-
-function normalizeProgress(angle: number): number {
-  const fullTurn = Math.PI * 2;
-  return ((angle % fullTurn) + fullTurn) % fullTurn / fullTurn;
+  return Math.round(clamp(yearProgress * (DAYS_PER_YEAR - 1), 0, DAYS_PER_YEAR - 1));
 }
 
 function clamp(value: number, min: number, max: number): number {

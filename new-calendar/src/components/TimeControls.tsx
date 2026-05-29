@@ -1,8 +1,10 @@
 import { DAYS_PER_YEAR } from "../lib/newCalendar";
+import type { GregorianYearDay } from "../lib/gregorianSeasons";
 import { memo, useCallback, type ReactNode } from "react";
 
 interface TimeControlsProps {
   selectedIndex: number;
+  gregorianYearDay: GregorianYearDay;
   playing: boolean;
   playbackSpeed: number;
   onSelectIndex: (index: number) => void;
@@ -18,6 +20,7 @@ const SPEED_STEP = 1;
 
 export const TimeControls = memo(function TimeControls({
   selectedIndex,
+  gregorianYearDay,
   playing,
   playbackSpeed,
   onSelectIndex,
@@ -29,6 +32,14 @@ export const TimeControls = memo(function TimeControls({
   const previousDay = useCallback(() => onStepTime(-1), [onStepTime]);
   const nextDay = useCallback(() => onStepTime(1), [onStepTime]);
   const togglePlaying = useCallback(() => onPlayingChange(!playing), [onPlayingChange, playing]);
+  const decreaseSpeed = useCallback(
+    () => onPlaybackSpeedChange(playbackSpeed - SPEED_STEP),
+    [onPlaybackSpeedChange, playbackSpeed],
+  );
+  const increaseSpeed = useCallback(
+    () => onPlaybackSpeedChange(playbackSpeed + SPEED_STEP),
+    [onPlaybackSpeedChange, playbackSpeed],
+  );
 
   return (
     <section className="time-controls" aria-label="Time controls">
@@ -55,23 +66,32 @@ export const TimeControls = memo(function TimeControls({
         <span>Today</span>
       </button>
 
-      <div className="slider-label speed-label">
-        <label htmlFor="simulation-speed">Speed</label>
-        <output>{formatSpeed(playbackSpeed)}</output>
-        <input
-          id="simulation-speed"
-          type="range"
-          min={MIN_PLAYBACK_SPEED}
-          max={MAX_PLAYBACK_SPEED}
-          step={SPEED_STEP}
-          value={playbackSpeed}
-          onChange={(event) => onPlaybackSpeedChange(Number(event.target.value))}
-        />
+      <div className="speed-stepper" role="group" aria-label="Speed">
+        <button
+          type="button"
+          className="speed-step"
+          aria-label="Decrease speed"
+          title="Decrease speed"
+          disabled={playbackSpeed <= MIN_PLAYBACK_SPEED}
+          onClick={decreaseSpeed}
+        >
+          −
+        </button>
+        <output className="speed-stepper-value">{formatSpeed(playbackSpeed)}</output>
+        <button
+          type="button"
+          className="speed-step"
+          aria-label="Increase speed"
+          title="Increase speed"
+          disabled={playbackSpeed >= MAX_PLAYBACK_SPEED}
+          onClick={increaseSpeed}
+        >
+          +
+        </button>
       </div>
 
-      <label className="slider-label">
+      <label className="day-scrubber">
         <span>Day</span>
-        <output>{selectedIndex + 1}/365</output>
         <input
           type="range"
           min="0"
@@ -79,6 +99,9 @@ export const TimeControls = memo(function TimeControls({
           value={selectedIndex}
           onChange={(event) => onSelectIndex(Number(event.target.value))}
         />
+        <output>
+          {gregorianYearDay.day}/{gregorianYearDay.daysInYear}
+        </output>
       </label>
     </section>
   );

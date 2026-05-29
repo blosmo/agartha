@@ -8,14 +8,13 @@ import {
   useRef,
   useState,
 } from "react";
+import { AboutPanel } from "./components/AboutPanel";
 import { CalendarComparisonPanel } from "./components/CalendarComparisonPanel";
 import { FullscreenButton } from "./components/FullscreenButton";
 import { GregorianOverlayToggle } from "./components/GregorianOverlayToggle";
-import { MonthStructurePanel } from "./components/MonthStructurePanel";
 import { SeasonTreePanel } from "./components/SeasonTreePanel";
-import { ProgressRingsPanel, SunlightLinesPanel } from "./components/SunlightChart";
 import { TimeControls } from "./components/TimeControls";
-import type { ComparisonMode } from "./lib/comparisonMode";
+import { describeGregorianYearDay } from "./lib/gregorianSeasons";
 import {
   DAYS_PER_YEAR,
   describeNewCalendarIndex,
@@ -36,9 +35,8 @@ export default function App() {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(DEFAULT_PLAYBACK_SPEED);
-  const [showNewCalendar, setShowNewCalendar] = useState(true);
   const [showGregorianOverlay, setShowGregorianOverlay] = useState(false);
-  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("split");
+  const [showAbout, setShowAbout] = useState(false);
   const scenePanelRef = useRef<HTMLElement | null>(null);
   const hoverFrameRef = useRef<number | null>(null);
   const pendingHoverIndexRef = useRef<number | null>(null);
@@ -82,26 +80,6 @@ export default function App() {
     setSelectedIndex(todayIndex());
   }, []);
 
-  const changeNewCalendarVisibility = useCallback(
-    (checked: boolean) => {
-      setShowNewCalendar(checked);
-      if (!checked && !showGregorianOverlay) {
-        setShowGregorianOverlay(true);
-      }
-    },
-    [showGregorianOverlay],
-  );
-
-  const changeGregorianVisibility = useCallback(
-    (checked: boolean) => {
-      setShowGregorianOverlay(checked);
-      if (!checked && !showNewCalendar) {
-        setShowNewCalendar(true);
-      }
-    },
-    [showNewCalendar],
-  );
-
   const scheduleHoverIndex = useCallback((index: number | null) => {
     pendingHoverIndexRef.current = index;
     if (hoverFrameRef.current !== null) return;
@@ -114,26 +92,42 @@ export default function App() {
 
   const activeIndex = hoverIndex ?? selectedIndex;
   const calendarDate = useMemo(() => describeNewCalendarIndex(activeIndex), [activeIndex]);
+  const selectedGregorianYearDay = useMemo(
+    () => describeGregorianYearDay(describeNewCalendarIndex(selectedIndex).gregorianDate),
+    [selectedIndex],
+  );
 
   return (
     <main className="app-shell">
       <div className="dashboard-frame">
         <header className="dashboard-header">
-          <div className="brand-mark" aria-label="New Calendar Timepiece">
-            <span />
-            <div>
-              <strong>New Calendar</strong>
+          <div className="dashboard-brand-row">
+            <div className="brand-mark" aria-label="New Calendar Timepiece">
+              <span />
+              <div>
+                <strong>New Calendar</strong>
+              </div>
             </div>
-          </div>
-
-          <div className="dashboard-current">
-            <span>{calendarDate.season}</span>
-            <strong>{calendarDate.gregorianLabel}</strong>
+            <button
+              type="button"
+              className="about-nav-button"
+              aria-haspopup="dialog"
+              aria-expanded={showAbout}
+              onClick={() => setShowAbout(true)}
+            >
+              About
+            </button>
           </div>
 
           <div className="global-control-row" aria-label="Global calendar controls">
+            <div className="dashboard-current" aria-label="Current calendar date">
+              <span>{calendarDate.season}</span>
+              <strong>{calendarDate.gregorianLabel}</strong>
+            </div>
+
             <TimeControls
               selectedIndex={selectedIndex}
+              gregorianYearDay={selectedGregorianYearDay}
               playing={playing}
               playbackSpeed={playbackSpeed}
               onSelectIndex={selectIndex}
@@ -143,12 +137,8 @@ export default function App() {
               onPlayingChange={setPlaying}
             />
             <GregorianOverlayToggle
-              newChecked={showNewCalendar}
               gregorianChecked={showGregorianOverlay}
-              comparisonMode={comparisonMode}
-              onNewChange={changeNewCalendarVisibility}
-              onGregorianChange={changeGregorianVisibility}
-              onComparisonModeChange={setComparisonMode}
+              onGregorianChange={setShowGregorianOverlay}
             />
           </div>
         </header>
@@ -178,38 +168,16 @@ export default function App() {
 
           <CalendarComparisonPanel
             calendarDate={calendarDate}
-            showNewCalendar={showNewCalendar}
+            showNewCalendar
             showGregorianOverlay={showGregorianOverlay}
-            onSelectIndex={selectIndex}
-          />
-
-          <MonthStructurePanel
-            calendarDate={calendarDate}
-            showNewCalendar={showNewCalendar}
-            showGregorianOverlay={showGregorianOverlay}
-            comparisonMode={comparisonMode}
             onSelectIndex={selectIndex}
           />
 
           <SeasonTreePanel calendarDate={calendarDate} />
-
-          <SunlightLinesPanel
-            calendarDate={calendarDate}
-            showNewCalendar={showNewCalendar}
-            showGregorianOverlay={showGregorianOverlay}
-            comparisonMode={comparisonMode}
-            onSelectIndex={selectIndex}
-          />
-
-          <ProgressRingsPanel
-            calendarDate={calendarDate}
-            showNewCalendar={showNewCalendar}
-            showGregorianOverlay={showGregorianOverlay}
-            comparisonMode={comparisonMode}
-            onSelectIndex={selectIndex}
-          />
         </div>
       </div>
+
+      <AboutPanel open={showAbout} onClose={() => setShowAbout(false)} />
     </main>
   );
 }

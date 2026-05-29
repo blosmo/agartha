@@ -1,6 +1,8 @@
 # New Calendar Timepiece
 
-Interactive 3D visualization of Tom Sherman's New Calendar with a Krystal Spiral mechanics overlay.
+Interactive 3D visualization of [Tom Sherman's New Calendar](https://thenewcalendar.com/) with a Krystal Spiral mechanics overlay.
+
+This is an unofficial fan visualization — not affiliated with or endorsed by [thenewcalendar.com](https://thenewcalendar.com/). Use the **About** button in the app header for attribution, structure notes, and research sources.
 
 ## What It Shows
 
@@ -14,6 +16,12 @@ Interactive 3D visualization of Tom Sherman's New Calendar with a Krystal Spiral
   - `x2` expansion per quadrant.
   - Mirrored clockwise and counter-clockwise paths.
 - A comparison mode that contrasts Krystal `x2` quadrant growth with Golden Mean growth.
+
+## Credits
+
+- **The New Calendar** — Tom Sherman; official site: [thenewcalendar.com](https://thenewcalendar.com/)
+- **Calendar structure research** — Technical.ly and Cape Gazette reporting (see project plan and in-app About)
+- **Krystal Spiral overlay** — Emerald24 / `Spirals of Creation` source material (interpretive layer)
 
 ## Source Framing
 
