@@ -68,10 +68,6 @@ export default function App() {
     setSelectedIndex(clampCalendarIndex(index));
   }, []);
 
-  const stepTime = useCallback((days: number) => {
-    setSelectedIndex((value) => wrapCalendarIndex(value + days));
-  }, []);
-
   const changePlaybackSpeed = useCallback((speed: number) => {
     setPlaybackSpeed(clampPlaybackSpeed(speed));
   }, []);
@@ -131,7 +127,6 @@ export default function App() {
               playing={playing}
               playbackSpeed={playbackSpeed}
               onSelectIndex={selectIndex}
-              onStepTime={stepTime}
               onPlaybackSpeedChange={changePlaybackSpeed}
               onToday={returnToToday}
               onPlayingChange={setPlaying}

@@ -1,4 +1,4 @@
-import { memo, type PointerEvent, useCallback, useMemo, useRef } from "react";
+import { memo, type PointerEvent, type ReactNode, useCallback, useMemo, useRef } from "react";
 import { FullscreenButton } from "./FullscreenButton";
 import { GREGORIAN_SEASON_COLORS, describeGregorianSeason } from "../lib/gregorianSeasons";
 import { SEASON_COLORS } from "../visualization/calendarGeometry";
@@ -269,14 +269,25 @@ export const SunlightLinesPanel = memo(function SunlightLinesPanel({
           onPointerCancel={stopDrag}
         />
       )}
-
-      <div className="chart-axis-labels" aria-hidden="true">
-        <span className="sunlight-y-axis-label">Hours of sunlight</span>
-        <span className="sunlight-x-axis-label">Day of season</span>
-      </div>
     </section>
   );
 });
+
+function SunlightChartFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="sunlight-chart-container">
+      <div className="sunlight-chart-stage">
+        <span className="sunlight-y-axis-label" aria-hidden="true">
+          Hours of sunlight
+        </span>
+        {children}
+      </div>
+      <div className="chart-axis-labels" aria-hidden="true">
+        <span className="sunlight-x-axis-label">Day of season</span>
+      </div>
+    </div>
+  );
+}
 
 interface SunlightPointerHandlers {
   onPointerDown?: (event: PointerEvent<SVGSVGElement>) => void;
@@ -311,55 +322,57 @@ function SunlightOverlayChart({
   showGregorianOverlay: boolean;
 } & SunlightPointerHandlers) {
   return (
-    <svg
-      className="sunlight-chart"
-      viewBox={`0 0 ${chart.width} ${chart.height}`}
-      role="img"
-      aria-label="Hours of sunlight by day of season"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
-    >
-      <SunlightGrid />
+    <SunlightChartFrame>
+      <svg
+        className="sunlight-chart"
+        viewBox={`0 0 ${chart.width} ${chart.height}`}
+        role="img"
+        aria-label="Hours of sunlight by day of season"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+      >
+        <SunlightGrid />
 
-      <SunlightPaths
-        paths={seasonPaths}
-        colors={SEASON_COLORS}
-        activeSeasonIndex={activeSeasonIndex}
-      />
-
-      {showGregorianOverlay && (
         <SunlightPaths
-          paths={gregorianSeasonPaths}
-          colors={GREGORIAN_SEASON_COLORS}
-          activeSeasonIndex={gregorianActiveSeasonIndex}
-          className="gregorian-lines"
+          paths={seasonPaths}
+          colors={SEASON_COLORS}
+          activeSeasonIndex={activeSeasonIndex}
         />
-      )}
 
-      <SunlightLabels
-        labels={seasonLabels}
-        colors={SEASON_COLORS}
-        activeSeasonIndex={activeSeasonIndex}
-      />
+        {showGregorianOverlay && (
+          <SunlightPaths
+            paths={gregorianSeasonPaths}
+            colors={GREGORIAN_SEASON_COLORS}
+            activeSeasonIndex={gregorianActiveSeasonIndex}
+            className="gregorian-lines"
+          />
+        )}
 
-      {showGregorianOverlay && (
         <SunlightLabels
-          labels={gregorianSeasonLabels}
-          colors={GREGORIAN_SEASON_COLORS}
-          activeSeasonIndex={gregorianActiveSeasonIndex}
-          className="gregorian-labels"
-          prefix="G "
+          labels={seasonLabels}
+          colors={SEASON_COLORS}
+          activeSeasonIndex={activeSeasonIndex}
         />
-      )}
 
-      <SunlightDot position={activePosition} dot="new" />
+        {showGregorianOverlay && (
+          <SunlightLabels
+            labels={gregorianSeasonLabels}
+            colors={GREGORIAN_SEASON_COLORS}
+            activeSeasonIndex={gregorianActiveSeasonIndex}
+            className="gregorian-labels"
+            prefix="G "
+          />
+        )}
 
-      {showGregorianOverlay && (
-        <SunlightDot position={gregorianPosition} dot="gregorian" />
-      )}
-    </svg>
+        <SunlightDot position={activePosition} dot="new" />
+
+        {showGregorianOverlay && (
+          <SunlightDot position={gregorianPosition} dot="gregorian" />
+        )}
+      </svg>
+    </SunlightChartFrame>
   );
 }
 
@@ -389,34 +402,36 @@ function SunlightSystemChart({
   labelPrefix?: string;
 } & SunlightPointerHandlers) {
   return (
-    <svg
-      className={`sunlight-chart sunlight-system-chart ${
-        gregorian ? "gregorian-system-chart" : ""
-      }`.trim()}
-      viewBox={`0 0 ${chart.width} ${chart.height}`}
-      role="img"
-      aria-label={ariaLabel}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
-    >
-      <SunlightGrid />
-      <SunlightPaths
-        paths={paths}
-        colors={colors}
-        activeSeasonIndex={activeSeasonIndex}
-        className={gregorian ? "gregorian-lines" : undefined}
-      />
-      <SunlightLabels
-        labels={labels}
-        colors={colors}
-        activeSeasonIndex={activeSeasonIndex}
-        className={gregorian ? "gregorian-labels" : undefined}
-        prefix={labelPrefix}
-      />
-      <SunlightDot position={activePosition} dot={dot} />
-    </svg>
+    <SunlightChartFrame>
+      <svg
+        className={`sunlight-chart sunlight-system-chart ${
+          gregorian ? "gregorian-system-chart" : ""
+        }`.trim()}
+        viewBox={`0 0 ${chart.width} ${chart.height}`}
+        role="img"
+        aria-label={ariaLabel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+      >
+        <SunlightGrid />
+        <SunlightPaths
+          paths={paths}
+          colors={colors}
+          activeSeasonIndex={activeSeasonIndex}
+          className={gregorian ? "gregorian-lines" : undefined}
+        />
+        <SunlightLabels
+          labels={labels}
+          colors={colors}
+          activeSeasonIndex={activeSeasonIndex}
+          className={gregorian ? "gregorian-labels" : undefined}
+          prefix={labelPrefix}
+        />
+        <SunlightDot position={activePosition} dot={dot} />
+      </svg>
+    </SunlightChartFrame>
   );
 }
 

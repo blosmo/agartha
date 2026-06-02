@@ -8,7 +8,6 @@ interface TimeControlsProps {
   playing: boolean;
   playbackSpeed: number;
   onSelectIndex: (index: number) => void;
-  onStepTime: (days: number) => void;
   onPlaybackSpeedChange: (speed: number) => void;
   onToday: () => void;
   onPlayingChange: (playing: boolean) => void;
@@ -24,13 +23,10 @@ export const TimeControls = memo(function TimeControls({
   playing,
   playbackSpeed,
   onSelectIndex,
-  onStepTime,
   onPlaybackSpeedChange,
   onToday,
   onPlayingChange,
 }: TimeControlsProps) {
-  const previousDay = useCallback(() => onStepTime(-1), [onStepTime]);
-  const nextDay = useCallback(() => onStepTime(1), [onStepTime]);
   const togglePlaying = useCallback(() => onPlayingChange(!playing), [onPlayingChange, playing]);
   const decreaseSpeed = useCallback(
     () => onPlaybackSpeedChange(playbackSpeed - SPEED_STEP),
@@ -44,9 +40,6 @@ export const TimeControls = memo(function TimeControls({
   return (
     <section className="time-controls" aria-label="Time controls">
       <div className="transport-row" aria-label="Playback controls">
-        <button type="button" aria-label="Previous day" title="Previous day" onClick={previousDay}>
-          <TransportIcon name="previous" />
-        </button>
         <button
           type="button"
           className="playback-toggle"
@@ -56,9 +49,6 @@ export const TimeControls = memo(function TimeControls({
           title={playing ? "Pause" : "Play"}
         >
           <TransportIcon name={playing ? "pause" : "play"} />
-        </button>
-        <button type="button" aria-label="Next day" title="Next day" onClick={nextDay}>
-          <TransportIcon name="next" />
         </button>
       </div>
 
@@ -107,11 +97,7 @@ export const TimeControls = memo(function TimeControls({
   );
 });
 
-type TransportIconName =
-  | "previous"
-  | "play"
-  | "pause"
-  | "next";
+type TransportIconName = "play" | "pause";
 
 function TransportIcon({ name }: { name: TransportIconName }) {
   return (
@@ -127,7 +113,6 @@ function TransportIcon({ name }: { name: TransportIconName }) {
 }
 
 const iconPaths: Record<TransportIconName, ReactNode> = {
-  previous: <path d="m15 18-6-6 6-6" />,
   play: <path d="M8 5v14l11-7L8 5Z" />,
   pause: (
     <>
@@ -135,7 +120,6 @@ const iconPaths: Record<TransportIconName, ReactNode> = {
       <path d="M16 5v14" />
     </>
   ),
-  next: <path d="m9 18 6-6-6-6" />,
 };
 
 function formatSpeed(speed: number): string {

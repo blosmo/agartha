@@ -13,6 +13,7 @@
   --text: #f8f3e8;
   --muted: #beb5a6;
   --amber: #ffd166;
+  --earth: #2a8ed9;
   --cyan: #6effe8;
   --new-calendar: #6effe8;
   --gregorian: #d9adc2;
@@ -21,7 +22,7 @@
   --ember: #ff8763;
   --green: #a8f0a0;
   --violet: #c7a7ff;
-  --dashboard-current-width: 16.5rem;
+  --dashboard-current-width: 10.375rem;
 }
 
 * {
@@ -97,7 +98,7 @@ input:focus-visible {
 .dashboard-frame {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 16px;
+  gap: 28px;
   width: min(1720px, 100%);
   height: calc(100dvh - 48px);
   min-height: 0;
@@ -113,7 +114,6 @@ input:focus-visible {
   align-items: center;
   gap: 12px;
   min-width: 0;
-  margin: -8px;
   border: 1px solid rgba(255, 244, 218, 0.1);
   border-radius: 10px;
   padding: 8px;
@@ -175,8 +175,8 @@ input:focus-visible {
 .dashboard-grid {
   display: grid;
   grid-template-areas:
-    "scene comparison comparison"
-    "tree  comparison comparison";
+    "comparison comparison scene"
+    "comparison comparison tree";
   grid-template-columns:
     minmax(240px, 1fr)
     minmax(320px, 1fr)
@@ -646,7 +646,7 @@ body.bento-faux-fullscreen-active {
 
 .sunlight-chart-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   padding: 14px 14px 10px;
 }
 
@@ -881,8 +881,25 @@ body.bento-faux-fullscreen-active {
   stroke-width: 1.5;
 }
 
+.sunlight-chart-container {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  align-self: stretch;
+}
+
+.sunlight-chart-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 0;
+}
+
 .chart-axis-labels {
-  margin-top: -14px;
+  margin-top: -6px;
   color: rgba(248, 243, 232, 0.52);
   font-size: 0.68rem;
   font-weight: 680;
@@ -891,8 +908,10 @@ body.bento-faux-fullscreen-active {
 
 .sunlight-y-axis-label {
   position: absolute;
-  left: 16px;
-  top: 54%;
+  left: 0;
+  top: 50%;
+  z-index: 1;
+  pointer-events: none;
   transform: translateY(-50%) rotate(-90deg);
   transform-origin: left center;
 }
@@ -935,15 +954,101 @@ body.bento-faux-fullscreen-active {
 
 .season-clock-card {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  justify-items: center;
-  gap: 8px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
   min-width: 0;
   width: 100%;
 }
 
 .season-clock-card.no-card-title {
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.season-clock-card-body {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.season-clock-metrics-column {
+  display: flex;
+  flex: 0 0 25%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+}
+
+.season-clock-metric {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.season-clock-metric-header,
+.season-clock-daylight-metric {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.season-clock-metric-label {
+  color: rgba(248, 243, 232, 0.52);
+  font-size: 0.64rem;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.season-clock-metric-value {
+  color: rgba(248, 243, 232, 0.82);
+  font-size: 0.68rem;
+  font-weight: 780;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.season-clock-metric-bar {
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 244, 218, 0.08);
+  overflow: hidden;
+}
+
+.season-clock-metric-bar--new .season-clock-metric-fill {
+  background: color-mix(in srgb, var(--new-calendar) 78%, transparent);
+}
+
+.season-clock-metric-bar--gregorian .season-clock-metric-fill {
+  background: color-mix(in srgb, var(--gregorian) 78%, transparent);
+}
+
+.season-clock-metric-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 180ms ease;
+}
+
+.season-clock-daylight-metric {
+  width: 100%;
+}
+
+.new-calendar-season-clock-card .season-clock-daylight-metric .season-clock-metric-value {
+  color: color-mix(in srgb, var(--amber) 82%, var(--text));
+}
+
+.gregorian-season-clock-card .season-clock-daylight-metric .season-clock-metric-value {
+  color: color-mix(in srgb, var(--gregorian) 82%, var(--text));
 }
 
 .season-clock-view.compare-clocks .season-clock-card {
@@ -981,44 +1086,15 @@ body.bento-faux-fullscreen-active {
   color: var(--gregorian);
 }
 
-.gregorian-season-clock-card .ring-metrics div {
-  border-left-color: var(--gregorian);
-}
-
-.season-clock-card .ring-metrics.season-clock-metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.season-clock-card .ring-metrics div.daylight-metric {
-  border-left-color: color-mix(in srgb, var(--amber) 72%, transparent);
-}
-
-.season-clock-card .ring-metrics div.daylight-metric dd {
-  display: inline-block;
-  width: fit-content;
-  border: 1px solid rgba(255, 209, 102, 0.25);
-  border-radius: 8px;
-  padding: 4px 7px;
-  color: var(--amber);
-  background: rgba(255, 209, 102, 0.08);
-  font-size: 1rem;
-}
-
-.gregorian-season-clock-card .ring-metrics div.daylight-metric {
-  border-left-color: color-mix(in srgb, var(--gregorian) 72%, transparent);
-}
-
-.gregorian-season-clock-card .ring-metrics div.daylight-metric dd {
-  border-color: rgba(255, 143, 177, 0.28);
-  color: var(--gregorian);
-  background: rgba(255, 143, 177, 0.08);
-}
-
 .season-clock-chart {
   display: block;
-  width: 100%;
-  max-width: 210px;
-  max-height: 190px;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  aspect-ratio: 1;
   overflow: visible;
   cursor: grab;
   touch-action: none;
@@ -1045,15 +1121,20 @@ body.bento-faux-fullscreen-active {
   stroke-linecap: round;
 }
 
-.season-clock-year-fill {
-  fill: rgba(110, 255, 232, 0.22);
-  stroke: rgba(110, 255, 232, 0.42);
-  stroke-width: 0.8;
+.season-clock-year-ring-track {
+  fill: color-mix(in srgb, var(--text-muted, #888) 8%, transparent);
+  stroke: color-mix(in srgb, var(--text-muted, #888) 14%, transparent);
+  stroke-width: 0.6;
+  pointer-events: none;
 }
 
-.season-clock-chart--gregorian .season-clock-year-fill {
-  fill: rgba(217, 173, 194, 0.18);
-  stroke: rgba(217, 173, 194, 0.34);
+.season-clock-year-segment {
+  fill: color-mix(in srgb, var(--segment-color, var(--cyan)) 22%, transparent);
+  stroke: color-mix(in srgb, var(--segment-color, var(--cyan)) 42%, transparent);
+  stroke-width: 0.8;
+  transition:
+    fill 180ms ease,
+    stroke 180ms ease;
 }
 
 .season-clock-pie-track {
@@ -1085,28 +1166,24 @@ body.bento-faux-fullscreen-active {
   filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.35));
 }
 
-.season-clock-orbit-marker-halo {
-  fill: rgba(255, 209, 102, 0.14);
-  stroke: none;
+.season-clock-orbit-marker.is-dragging .season-clock-orbit-marker-dot {
+  transition: none;
 }
 
 .season-clock-orbit-marker-dot {
-  fill: var(--amber);
+  fill: var(--earth);
   stroke: rgba(5, 5, 5, 0.55);
   stroke-width: 1;
-  filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.45));
 }
 
 .season-clock-chart--gregorian .season-clock-orbit-marker-dot {
-  fill: var(--gregorian);
-  filter: drop-shadow(0 0 5px rgba(217, 173, 194, 0.35));
+  fill: var(--earth);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .season-clock-year-fill,
   .season-clock-pie-light,
   .season-clock-orbit-marker-dot,
-  .season-clock-orbit-marker-halo {
+  .season-clock-metric-fill {
     transition: none;
   }
 }
@@ -1114,41 +1191,6 @@ body.bento-faux-fullscreen-active {
 .calendar-charts-column .season-clock-view--focused {
   flex: 1 1 auto;
   min-height: 0;
-}
-
-.ring-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  gap: 8px;
-  margin: 0;
-}
-
-.ring-metrics div {
-  display: grid;
-  gap: 3px;
-  border-left: 4px solid color-mix(in srgb, var(--new-calendar) 64%, transparent);
-  padding-left: 10px;
-}
-
-.ring-metrics div.season-metric {
-  border-left-color: var(--season-color, var(--amber));
-}
-
-.ring-metrics dt {
-  color: rgba(248, 243, 232, 0.58);
-  font-size: 0.62rem;
-  font-weight: 760;
-  line-height: 1.15;
-  text-transform: uppercase;
-}
-
-.ring-metrics dd {
-  margin: 0;
-  color: var(--text);
-  font-size: 1.18rem;
-  font-weight: 820;
-  line-height: 1;
 }
 
 .comparison-panel {
@@ -1221,7 +1263,7 @@ body.bento-faux-fullscreen-active {
 
 .calendar-chart-subsection {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   border: 1px solid rgba(255, 244, 218, 0.12);
@@ -1231,11 +1273,6 @@ body.bento-faux-fullscreen-active {
 }
 
 .calendar-sunlight-subsection {
-  border-color: rgba(255, 209, 102, 0.18);
-  background: rgba(255, 209, 102, 0.035);
-}
-
-.calendar-season-clock-subsection {
   border-color: rgba(255, 209, 102, 0.18);
   background: rgba(255, 209, 102, 0.035);
 }
@@ -1543,7 +1580,7 @@ button.month-day-cell {
 
 .calendar-readout-columns.is-comparing {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto repeat(8, minmax(66px, auto)) auto;
+  grid-template-rows: auto auto auto repeat(4, minmax(66px, auto));
   column-gap: 12px;
   row-gap: 0;
 }
@@ -1595,7 +1632,7 @@ button.month-day-cell {
 }
 
 .calendar-readout-column h3 {
-  margin: -4px 0 0;
+  margin: 0;
   color: var(--text);
   font-size: clamp(1.5rem, 2vw, 2.15rem);
   line-height: 1;
@@ -1603,14 +1640,10 @@ button.month-day-cell {
 }
 
 .calendar-readout-columns.is-comparing .calendar-readout-column h3 {
-  margin: 0;
+  margin: 0 0 12px;
   display: flex;
   align-items: flex-start;
   min-height: 2.5rem;
-}
-
-.calendar-readout-columns:not(.is-comparing) .new-calendar-readout-column h3 {
-  margin-top: 0;
 }
 
 .gregorian-readout-column h3 {
@@ -1622,15 +1655,103 @@ button.month-day-cell {
   grid-auto-rows: minmax(58px, auto);
   gap: 8px;
   margin: 0;
+  width: 100%;
 }
 
 .calendar-readout-columns.is-comparing .calendar-readout-column .readout-grid {
   display: grid;
-  grid-row: 2 / span 8;
+  grid-row: 4 / span 4;
   grid-template-rows: subgrid;
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin: 0;
+}
+
+.calendar-readout-columns.is-comparing .calendar-readout-column .season-bar-block {
+  grid-row: 3;
+  align-self: start;
+}
+
+.season-bar-block {
+  display: grid;
+  gap: 6px;
+}
+
+.season-bar-block .season-bar {
+  margin-top: 0;
+}
+
+.season-bar-readout {
+  margin: 0;
+}
+
+.season-bar-readout div {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 2px;
+  align-content: start;
+}
+
+.season-bar-readout dt {
+  min-height: 17px;
+  margin: 0;
+  line-height: 1.15;
+  color: rgba(248, 243, 232, 0.56);
+  font-size: 0.66rem;
+  font-weight: 780;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.season-bar-readout dd {
+  display: flex;
+  align-items: flex-start;
+  min-height: 24px;
+  margin: 0;
+  line-height: 1.12;
+  color: var(--text);
+  font-size: clamp(1.05rem, 1.4vw, 1.35rem);
+  font-weight: 700;
+}
+
+.new-calendar-readout-column .season-bar-readout dt {
+  color: color-mix(in srgb, var(--new-calendar) 70%, white);
+}
+
+.new-calendar-readout-column .season-bar-readout dd {
+  color: color-mix(in srgb, var(--new-calendar) 82%, white);
+}
+
+.gregorian-readout-column .season-bar-readout dt {
+  color: color-mix(in srgb, var(--gregorian) 70%, white);
+}
+
+.gregorian-readout-column .season-bar-readout dd {
+  color: color-mix(in srgb, var(--gregorian) 82%, white);
+}
+
+.calendar-readout-season-clock {
+  min-width: 0;
+  width: 100%;
+}
+
+.calendar-readout-season-clock .season-clock-view {
+  padding-top: 0;
+  height: auto;
+  overflow: visible;
+  justify-items: stretch;
+  align-items: start;
+}
+
+.calendar-readout-season-clock .season-clock-view--focused .season-clock-card {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.calendar-readout-season-clock .season-clock-card h3 {
+  display: none;
 }
 
 .calendar-readout-columns:not(.is-comparing) .calendar-readout-column .readout-grid {
@@ -1710,28 +1831,31 @@ button.month-day-cell {
 }
 
 .global-comparison-control {
-  display: grid;
-  grid-template-columns: auto auto;
+  display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
 
 .global-comparison-control > button {
-  display: flex;
+  display: inline-flex;
   min-width: 0;
-  height: 42px;
+  height: 30px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 12px;
-  border: 1px solid rgba(255, 244, 218, 0.13);
-  border-radius: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   color: rgba(248, 243, 232, 0.62);
   font-size: 0.68rem;
   font-weight: 800;
   cursor: pointer;
-  background: rgba(5, 5, 5, 0.28);
+  background: transparent;
+}
+
+.global-comparison-control > button:hover {
+  color: var(--gregorian);
 }
 
 .calendar-layer-switch {
@@ -1771,19 +1895,9 @@ button.month-day-cell {
   transform: translateX(14px);
 }
 
+.global-comparison-control > button.is-active,
 .global-comparison-control > button.gregorian-active {
-  color: #171113;
-  background: var(--gregorian);
-}
-
-.global-comparison-control > button.gregorian-active .calendar-layer-switch {
-  border-color: rgba(23, 17, 19, 0.22);
-  background: rgba(23, 17, 19, 0.1);
-}
-
-.global-comparison-control > button.gregorian-active .calendar-layer-switch::after {
-  background: #171113;
-  transform: translateX(14px);
+  color: var(--gregorian);
 }
 
 .global-comparison-control > button:focus-visible {
@@ -1934,12 +2048,12 @@ button.month-day-cell {
 }
 
 .calendar-readout-column .season-bar {
-  margin-top: 2px;
+  margin-top: 0;
 }
 
-.gregorian-season-bar {
-  border-left: 2px solid var(--gregorian);
-  padding-left: 8px;
+.calendar-readout-column .calendar-readout-season-clock {
+  margin: 0;
+  width: 100%;
 }
 
 .gregorian-season-bar .season-track {
@@ -1994,7 +2108,7 @@ button.month-day-cell {
   gap: 6px;
   min-width: 0;
   height: 100%;
-  padding: 0 6px;
+  padding: 6px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -2007,10 +2121,9 @@ button.month-day-cell {
 }
 
 .transport-row {
-  display: grid;
-  grid-template-columns: 1fr 1.18fr 1fr;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
 }
 
 .transport-row button,
@@ -2018,11 +2131,12 @@ button.month-day-cell {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 0;
+  height: 30px;
 }
 
 .transport-row button {
   min-width: 0;
-  height: 30px;
   border-color: rgba(255, 244, 218, 0.16);
   color: rgba(248, 243, 232, 0.78);
   background: rgba(255, 255, 255, 0.045);
@@ -2068,9 +2182,9 @@ button.month-day-cell {
 
 .today-button {
   width: 100%;
-  height: 30px;
   gap: 8px;
   margin-top: 0;
+  padding: 0 10px;
   font-size: 0.78rem;
   font-weight: 780;
 }
@@ -2229,9 +2343,9 @@ button.month-day-cell {
 
   .dashboard-grid {
     grid-template-areas:
+      "comparison comparison"
       "scene scene"
-      "tree  tree"
-      "comparison comparison";
+      "tree  tree";
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto auto auto;
   }
@@ -2298,7 +2412,12 @@ button.month-day-cell {
   }
 
   .global-comparison-control {
-    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .global-comparison-control > button {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .time-controls {
@@ -2312,8 +2431,8 @@ button.month-day-cell {
 
   .dashboard-grid {
     grid-template-areas:
-      "scene"
       "comparison"
+      "scene"
       "tree";
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2359,7 +2478,7 @@ button.month-day-cell {
   }
 
   .dashboard-frame {
-    gap: 12px;
+    gap: 20px;
     min-height: calc(100dvh - 24px);
   }
 

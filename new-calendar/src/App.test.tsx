@@ -36,8 +36,8 @@ describe("App", () => {
       expect(within(screen.getByLabelText("Calendar panel")).queryByLabelText("Progress chart")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Today" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Previous day" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Next day" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Previous day" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Next day" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Forward 9 days" })).not.toBeInTheDocument();
       expect(screen.getByRole("group", { name: "Speed" })).toBeInTheDocument();
       expect(screen.getByRole("group", { name: "Speed" })).toHaveTextContent("5x");
@@ -62,7 +62,7 @@ describe("App", () => {
       expect(screen.getByRole("button", { name: "Full screen tree" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Full screen sunlight" })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Full screen progress" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Full screen season clock" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Full screen season clock" })).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Full screen calendar" })).toBeInTheDocument();
       expect(screen.queryByText(/Krystal/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Overlay mode")).not.toBeInTheDocument();
@@ -110,11 +110,11 @@ describe("App", () => {
     expect(screen.getByRole("img", { name: "Hours of sunlight by day of season" })).toBeInTheDocument();
     expect(within(calendarPanel).queryByLabelText("Progress chart")).not.toBeInTheDocument();
     expect(within(calendarPanel).getByLabelText("Season clock chart")).toBeInTheDocument();
-    expect(within(calendarPanel).getByText("Year progress")).toBeInTheDocument();
+    expect(within(calendarPanel).getByText("Year")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Rings" })).not.toBeInTheDocument();
   });
 
-  it("shows the same gregorian year day on the header scrubber and calendar panel", async () => {
+  it("shows the gregorian year day on the header scrubber", async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -126,12 +126,6 @@ describe("App", () => {
 
     const dayScrubberOutput = screen.getByLabelText("Day").parentElement!.querySelector("output");
     expect(dayScrubberOutput).toHaveTextContent(expectedText);
-
-    const calendarPanel = screen.getByLabelText("Calendar panel");
-    const yearDayRow = Array.from(calendarPanel.querySelectorAll(".readout-grid > div")).find(
-      (row) => row.querySelector("dt")?.textContent === "Year day",
-    );
-    expect(yearDayRow?.querySelector("dd")?.textContent).toBe(expectedText);
   });
 
   it("scrubs the sunlight chart across the full year", async () => {
@@ -139,7 +133,7 @@ describe("App", () => {
     render(<App />);
 
     await user.click(await screen.findByTestId("mock-scene"));
-    await user.click(screen.getByRole("button", { name: "Previous day" }));
+    fireEvent.change(screen.getByLabelText("Day"), { target: { value: "35" } });
     expect(screen.getByDisplayValue("35")).toBeInTheDocument();
 
     const sunlightChart = screen.getByRole("img", { name: "Hours of sunlight by day of season" });
@@ -279,7 +273,7 @@ describe("App", () => {
   });
 
   it(
-    "changes simulation speed and steps through time with transport buttons",
+    "changes simulation speed with the speed stepper",
     async () => {
     const user = userEvent.setup({ delay: null });
     render(<App />);
@@ -296,12 +290,6 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Increase speed" })).toBeDisabled();
 
     await user.click(await screen.findByTestId("mock-scene"));
-    expect(screen.getByDisplayValue("36")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Previous day" }));
-    expect(screen.getByDisplayValue("35")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Next day" }));
     expect(screen.getByDisplayValue("36")).toBeInTheDocument();
   },
     10_000,

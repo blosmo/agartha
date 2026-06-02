@@ -7,7 +7,13 @@ import {
   gregorianForIndex,
   type NewCalendarDate,
 } from "./newCalendar";
-import { describeGregorianSeason, gregorianYearProgress } from "./gregorianSeasons";
+import {
+  daysInGregorianYear,
+  describeGregorianSeason,
+  GREGORIAN_SEASON_COLORS,
+  gregorianYearProgress,
+} from "./gregorianSeasons";
+import { SEASON_COLORS } from "../visualization/calendarGeometry";
 import { daylightHours } from "./sunlight";
 
 export type SeasonClockSystem = "new" | "gregorian";
@@ -24,6 +30,13 @@ export interface SeasonClockTick {
   label: string;
 }
 
+export interface YearRingSegment {
+  seasonIndex: number;
+  startAngleDeg: number;
+  endAngleDeg: number;
+  color: string;
+}
+
 export interface SeasonProgressPieModel {
   yearProgress: number;
   seasonProgress: number;
@@ -31,8 +44,7 @@ export interface SeasonProgressPieModel {
   daylightHours: number;
   pie: DaylightPieSegment;
   orbitAngleDeg: number;
-  yearFillStartAngleDeg: number;
-  yearFillEndAngleDeg: number;
+  yearRingSegments: YearRingSegment[];
   ticks: SeasonClockTick[];
   starPoints: number;
 }
@@ -55,6 +67,12 @@ export const SEASON_CLOCK_SOLSTICE_ANGLE_DEG = -90;
 export const SEASON_CLOCK_MONTH_ARC_DEG = 36;
 export const SEASON_CLOCK_SEASON_ARC_DEG = SEASON_CLOCK_MONTH_ARC_DEG * 2;
 
+/** Equal visual arcs for the year ring (five New Calendar seasons). */
+export const SEASON_CLOCK_YEAR_SEGMENT_ARC_DEG = 360 / 5;
+
+/** Equal visual arcs for the Gregorian year ring (four astronomical seasons). */
+export const GREGORIAN_CLOCK_YEAR_SEGMENT_ARC_DEG = 360 / 4;
+
 /** Orbit angle in degrees, matching `angleForIndex` in calendarGeometry. */
 export function orbitAngleDegForIndex(index: number): number {
   return (index / DAYS_PER_YEAR) * 360 + SEASON_CLOCK_SOLSTICE_ANGLE_DEG;
@@ -70,27 +88,121 @@ export function yearProgressForIndex(index: number): number {
   return (index + 1) / DAYS_PER_YEAR;
 }
 
-export function yearFillAngles(yearProgress: number): {
-  startAngleDeg: number;
-  endAngleDeg: number;
-} {
-  const safeProgress = clamp(yearProgress, 0, 1);
-  return {
-    startAngleDeg: SEASON_CLOCK_SOLSTICE_ANGLE_DEG,
-    endAngleDeg: SEASON_CLOCK_SOLSTICE_ANGLE_DEG + safeProgress * 360,
-  };
+/** Fixed annular segments around the year ring, starting at the solstice anchor. */
+export function yearRingSegments(
+  colors: readonly string[],
+  segmentArcDeg: number,
+  startAngleDeg = SEASON_CLOCK_SOLSTICE_ANGLE_DEG,
+): YearRingSegment[] {
+  return colors.map((color, seasonIndex) => ({
+    seasonIndex,
+    startAngleDeg: startAngleDeg + seasonIndex * segmentArcDeg,
+    endAngleDeg: startAngleDeg + (seasonIndex + 1) * segmentArcDeg,
+    color,
+  }));
 }
 
-/** Derive the daylight wedge geometry for a point in the year. */
-export function daylightPieSegment(
-  hours: number,
+/** Clockwise year-progress boundary in degrees (solstice + progress × 360°). */
+export function yearProgressEndAngleDeg(
   yearProgress: number,
-): DaylightPieSegment {
+  startAngleDeg = SEASON_CLOCK_SOLSTICE_ANGLE_DEG,
+): number {
+  return startAngleDeg + clamp(yearProgress, 0, 1) * 360;
+}
+
+/** Normalized year progress [0, 1] from an orbit angle in degrees. */
+export function yearProgressFromOrbitAngleDeg(
+  orbitAngleDeg: number,
+  startAngleDeg = SEASON_CLOCK_SOLSTICE_ANGLE_DEG,
+): number {
+  const span = normalizeAngle(orbitAngleDeg - startAngleDeg);
+  return span / 360;
+}
+
+/** Continuous New Calendar season progress from pointer-based year progress. */
+export function newCalendarSeasonProgressFromYearProgress(
+  yearProgress: number,
+): number {
+  const continuousIndex = clamp(yearProgress * DAYS_PER_YEAR, 0, DAYS_PER_YEAR);
+  const dayZeroInSeason = continuousIndex % DAYS_PER_SEASON;
+  return (dayZeroInSeason + 1) / DAYS_PER_SEASON;
+}
+
+/** Continuous Gregorian season progress from pointer-based year progress. */
+export function gregorianSeasonProgressFromYearProgress(
+  referenceDate: Date,
+  yearProgress: number,
+): number {
+  const year = referenceDate.getFullYear();
+  const daysInYear = daysInGregorianYear(year);
+  const dayFloat = clamp(yearProgress * daysInYear, 0, daysInYear);
+  const wholeDays = Math.floor(dayFloat);
+  const withinDay = dayFloat - wholeDays;
+  const progressAtDay = describeGregorianSeason(
+    dateFromDayOfGregorianYear(year, wholeDays),
+  ).progress;
+
+  if (withinDay <= 0.001 || wholeDays >= daysInYear - 1) {
+    return progressAtDay;
+  }
+
+  const progressAtNextDay = describeGregorianSeason(
+    dateFromDayOfGregorianYear(year, wholeDays + 1),
+  ).progress;
+
+  return progressAtDay + (progressAtNextDay - progressAtDay) * withinDay;
+}
+
+/** Live season progress while scrubbing the clock orbit. */
+export function seasonProgressFromYearProgress(
+  system: SeasonClockSystem,
+  yearProgress: number,
+  referenceDate: Date,
+): number {
+  return system === "gregorian"
+    ? gregorianSeasonProgressFromYearProgress(referenceDate, yearProgress)
+    : newCalendarSeasonProgressFromYearProgress(yearProgress);
+}
+
+/**
+ * Clip fixed season zones to the filled portion of the year ring (solstice → progress).
+ * Unfilled arcs are omitted so season colors stack clockwise as the year advances.
+ */
+export function yearRingFilledSegments(
+  segments: readonly YearRingSegment[],
+  yearProgress: number,
+  startAngleDeg = SEASON_CLOCK_SOLSTICE_ANGLE_DEG,
+): YearRingSegment[] {
+  const progressEnd = yearProgressEndAngleDeg(yearProgress, startAngleDeg);
+  const filled: YearRingSegment[] = [];
+
+  for (const segment of segments) {
+    if (progressEnd <= segment.startAngleDeg) continue;
+
+    filled.push({
+      ...segment,
+      startAngleDeg: segment.startAngleDeg,
+      endAngleDeg: Math.min(segment.endAngleDeg, progressEnd),
+    });
+  }
+
+  return filled;
+}
+
+/**
+ * Fixed anchor for the inner daylight wedge (6 o'clock in SVG polar coords).
+ * The wedge grows clockwise from this point as daylight hours increase — only
+ * the arc span changes, so users can read growth/shrink without both endpoints
+ * wandering with year phase.
+ */
+export const DAYLIGHT_PIE_ANCHOR_ANGLE_DEG = 90;
+
+/** Derive the daylight wedge geometry from hours alone (year-independent anchor). */
+export function daylightPieSegment(hours: number): DaylightPieSegment {
   const daylightFraction = clamp(hours / 24, 0, 1);
   const arcSpan = daylightFraction * 360;
-  const centerAngle = 180 - 90 * Math.cos(normalizeProgress(yearProgress) * Math.PI * 2);
-  const lightStartAngle = centerAngle - arcSpan / 2;
-  const lightEndAngle = centerAngle + arcSpan / 2;
+  const lightStartAngle = DAYLIGHT_PIE_ANCHOR_ANGLE_DEG;
+  const lightEndAngle = DAYLIGHT_PIE_ANCHOR_ANGLE_DEG + arcSpan;
 
   return {
     lightStartAngle,
@@ -106,17 +218,15 @@ export function makeNewCalendarProgressPie(
   const date = gregorianForIndex(calendarDate.index, calendarDate.cycleStartYear);
   const hours = daylightHours(date);
   const yearProgress = yearProgressForIndex(calendarDate.index);
-  const fill = yearFillAngles(yearProgress);
 
   return {
     yearProgress,
     seasonProgress: calendarDate.dayOfSeason / DAYS_PER_SEASON,
     seasonName: calendarDate.season,
     daylightHours: hours,
-    pie: daylightPieSegment(hours, calendarDate.index / DAYS_PER_YEAR),
+    pie: daylightPieSegment(hours),
     orbitAngleDeg: orbitAngleDegForIndex(calendarDate.index),
-    yearFillStartAngleDeg: fill.startAngleDeg,
-    yearFillEndAngleDeg: fill.endAngleDeg,
+    yearRingSegments: yearRingSegments(SEASON_COLORS, SEASON_CLOCK_YEAR_SEGMENT_ARC_DEG),
     ticks: makeNewCalendarTicks(calendarDate.cycleStartYear),
     starPoints: 10,
   };
@@ -129,17 +239,18 @@ export function makeGregorianProgressPie(
   const gregorianSeason = describeGregorianSeason(gregorianDate);
   const hours = daylightHours(gregorianDate);
   const yearProgress = gregorianYearProgress(gregorianDate);
-  const fill = yearFillAngles(yearProgress);
 
   return {
     yearProgress,
     seasonProgress: gregorianSeason.progress,
     seasonName: gregorianSeason.season,
     daylightHours: hours,
-    pie: daylightPieSegment(hours, yearProgress),
+    pie: daylightPieSegment(hours),
     orbitAngleDeg: SEASON_CLOCK_SOLSTICE_ANGLE_DEG + yearProgress * 360,
-    yearFillStartAngleDeg: fill.startAngleDeg,
-    yearFillEndAngleDeg: fill.endAngleDeg,
+    yearRingSegments: yearRingSegments(
+      GREGORIAN_SEASON_COLORS,
+      GREGORIAN_CLOCK_YEAR_SEGMENT_ARC_DEG,
+    ),
     ticks: makeGregorianTicks(calendarDate.cycleStartYear),
     starPoints: 12,
   };
@@ -154,11 +265,35 @@ export function makeSeasonProgressPie(
     : makeNewCalendarProgressPie(calendarDate);
 }
 
+/** Normalized year progress [0, 1) from pointer position on the clock SVG. */
+export function pointerYearProgress(
+  clientX: number,
+  clientY: number,
+  svgRect: Pick<DOMRect, "left" | "top" | "width" | "height">,
+): number {
+  const { size, center } = seasonClockLayout;
+  const x = ((clientX - svgRect.left) / svgRect.width) * size;
+  const y = ((clientY - svgRect.top) / svgRect.height) * size;
+  const dx = x - center;
+  const dy = y - center;
+  return normalizePointerProgress(Math.atan2(dy, dx) + Math.PI / 2);
+}
+
+/** Continuous orbit angle (degrees) for the scrub marker while dragging. */
+export function orbitAngleDegFromPointer(
+  clientX: number,
+  clientY: number,
+  svgRect: Pick<DOMRect, "left" | "top" | "width" | "height">,
+): number {
+  return pointerYearProgress(clientX, clientY, svgRect) * 360 + SEASON_CLOCK_SOLSTICE_ANGLE_DEG;
+}
+
 export function indexFromClockPointer(
   clientX: number,
   clientY: number,
   svgRect: Pick<DOMRect, "left" | "top" | "width" | "height">,
   activeSeasonIndex: number,
+  options?: { yearScrub?: boolean },
 ): number {
   const { size, center, orbitRadius } = seasonClockLayout;
   const innerRadius = orbitRadius * 0.68;
@@ -167,10 +302,11 @@ export function indexFromClockPointer(
   const dx = x - center;
   const dy = y - center;
   const distanceFromCenter = Math.hypot(dx, dy);
-  const progress = normalizePointerProgress(Math.atan2(dy, dx) + Math.PI / 2);
+  const progress = pointerYearProgress(clientX, clientY, svgRect);
   const isInnerRing =
+    !options?.yearScrub &&
     Math.abs(distanceFromCenter - innerRadius) <
-    Math.abs(distanceFromCenter - orbitRadius);
+      Math.abs(distanceFromCenter - orbitRadius);
 
   if (isInnerRing) {
     const dayOffset = Math.round(progress * (DAYS_PER_SEASON - 1));
@@ -323,10 +459,6 @@ function normalizeAngle(angleDeg: number): number {
   return ((angleDeg % 360) + 360) % 360;
 }
 
-function normalizeProgress(progress: number): number {
-  return ((progress % 1) + 1) % 1;
-}
-
 function normalizePointerProgress(angle: number): number {
   const fullTurn = Math.PI * 2;
   return (((angle % fullTurn) + fullTurn) % fullTurn) / fullTurn;
@@ -334,4 +466,10 @@ function normalizePointerProgress(angle: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function dateFromDayOfGregorianYear(year: number, dayIndex: number): Date {
+  const date = new Date(year, 0, 1);
+  date.setDate(date.getDate() + dayIndex);
+  return date;
 }

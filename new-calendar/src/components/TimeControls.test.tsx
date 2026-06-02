@@ -19,7 +19,6 @@ describe("TimeControls day scrubber", () => {
         playing={false}
         playbackSpeed={5}
         onSelectIndex={() => {}}
-        onStepTime={() => {}}
         onPlaybackSpeedChange={() => {}}
         onToday={() => {}}
         onPlayingChange={() => {}}
@@ -45,7 +44,6 @@ describe("TimeControls day scrubber", () => {
         playing={false}
         playbackSpeed={5}
         onSelectIndex={() => {}}
-        onStepTime={() => {}}
         onPlaybackSpeedChange={() => {}}
         onToday={() => {}}
         onPlayingChange={() => {}}
@@ -66,7 +64,6 @@ describe("TimeControls day scrubber", () => {
         playing={false}
         playbackSpeed={5}
         onSelectIndex={onSelectIndex}
-        onStepTime={() => {}}
         onPlaybackSpeedChange={() => {}}
         onToday={() => {}}
         onPlayingChange={() => {}}

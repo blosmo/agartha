@@ -27,7 +27,6 @@ import {
   GREGORIAN_SEASONS,
   GREGORIAN_SEASON_COLORS,
   describeGregorianSeason,
-  describeGregorianYearDay,
   gregorianYearProgress,
 } from "../lib/gregorianSeasons";
 import { SEASON_COLORS } from "../visualization/calendarGeometry";
@@ -61,7 +60,6 @@ export const CalendarComparisonPanel = memo(function CalendarComparisonPanel({
 }: CalendarComparisonPanelProps) {
   const panelRef = useRef<HTMLElement | null>(null);
   const gregorianSeason = describeGregorianSeason(calendarDate.gregorianDate);
-  const gregorianYearDay = describeGregorianYearDay(calendarDate.gregorianDate);
   const normalDate = !calendarDate.isReflectionDay;
   const gregorianYear = calendarDate.gregorianDate.getFullYear();
   const gregorianMonthIndex = calendarDate.gregorianDate.getMonth();
@@ -98,18 +96,12 @@ export const CalendarComparisonPanel = memo(function CalendarComparisonPanel({
     [calendarDate.monthName],
   );
   const newCalendarReadoutRows = useMemo(
-    () => buildNewCalendarReadoutRows(calendarDate, normalDate, gregorianYearDay),
-    [calendarDate, gregorianYearDay, normalDate],
+    () => buildNewCalendarReadoutRows(calendarDate, normalDate),
+    [calendarDate, normalDate],
   );
   const gregorianReadoutRows = useMemo(
-    () =>
-      buildGregorianReadoutRows(
-        calendarDate,
-        gregorianSeason,
-        gregorianYearDay,
-        gregorianMonth.label,
-      ),
-    [calendarDate, gregorianMonth.label, gregorianSeason, gregorianYearDay],
+    () => buildGregorianReadoutRows(calendarDate, gregorianMonth.label),
+    [calendarDate, gregorianMonth.label],
   );
   const compareSideBySide = showNewCalendar && showGregorianOverlay;
   const chartPanelProps = {
@@ -117,7 +109,10 @@ export const CalendarComparisonPanel = memo(function CalendarComparisonPanel({
     showNewCalendar,
     showGregorianOverlay,
     onSelectIndex,
-    embedded: true as const,
+  };
+  const seasonClockProps = {
+    ...chartPanelProps,
+    integrated: true as const,
   };
 
   return (
@@ -140,31 +135,49 @@ export const CalendarComparisonPanel = memo(function CalendarComparisonPanel({
           {showNewCalendar && (
             <div className="calendar-readout-column new-calendar-readout-column">
               <h3>New Calendar</h3>
-              <ComparisonReadoutGrid rows={newCalendarReadoutRows} />
-              <SeasonBar
-                label="New Calendar"
-                count={5}
-                activeIndex={calendarDate.seasonIndex}
-                progress={(calendarDate.index + 1) / DAYS_PER_YEAR}
-                names={SEASONS}
-                colors={SEASON_COLORS}
-                onSelectIndex={onSelectIndex}
+              <SeasonalYearClockPanel
+                {...seasonClockProps}
+                focusSystem={compareSideBySide ? "new" : undefined}
               />
+              <SeasonBarBlock
+                season={calendarDate.season}
+                seasonBar={
+                  <SeasonBar
+                    label="New Calendar"
+                    count={5}
+                    activeIndex={calendarDate.seasonIndex}
+                    progress={(calendarDate.index + 1) / DAYS_PER_YEAR}
+                    names={SEASONS}
+                    colors={SEASON_COLORS}
+                    onSelectIndex={onSelectIndex}
+                  />
+                }
+              />
+              <ComparisonReadoutGrid rows={newCalendarReadoutRows} />
             </div>
           )}
 
           {showGregorianOverlay && (
             <div className="calendar-readout-column gregorian-readout-column">
               <h3>Gregorian</h3>
-              <ComparisonReadoutGrid rows={gregorianReadoutRows} />
-              <SeasonBar
-                label="Gregorian"
-                count={4}
-                activeIndex={gregorianSeason.seasonIndex}
-                progress={gregorianYearProgress(calendarDate.gregorianDate)}
-                names={GREGORIAN_SEASONS}
-                colors={GREGORIAN_SEASON_COLORS}
+              <SeasonalYearClockPanel
+                {...seasonClockProps}
+                focusSystem={compareSideBySide ? "gregorian" : undefined}
               />
+              <SeasonBarBlock
+                season={gregorianSeason.season}
+                seasonBar={
+                  <SeasonBar
+                    label="Gregorian"
+                    count={4}
+                    activeIndex={gregorianSeason.seasonIndex}
+                    progress={gregorianYearProgress(calendarDate.gregorianDate)}
+                    names={GREGORIAN_SEASONS}
+                    colors={GREGORIAN_SEASON_COLORS}
+                  />
+                }
+              />
+              <ComparisonReadoutGrid rows={gregorianReadoutRows} />
             </div>
           )}
         </div>
@@ -230,31 +243,23 @@ export const CalendarComparisonPanel = memo(function CalendarComparisonPanel({
         </div>
 
         {compareSideBySide ? (
-          <div
-            className="calendar-charts-compare"
-            aria-label="Sunlight and season clock comparison"
-          >
+          <div className="calendar-charts-compare" aria-label="Sunlight comparison">
             {showNewCalendar && (
               <div className="calendar-charts-column new-calendar-charts-column">
-                <SunlightLinesPanel {...chartPanelProps} focusSystem="new" />
-                <SeasonalYearClockPanel {...chartPanelProps} focusSystem="new" />
+                <SunlightLinesPanel {...chartPanelProps} embedded focusSystem="new" />
               </div>
             )}
             {showGregorianOverlay && (
               <div className="calendar-charts-column gregorian-charts-column">
-                <SunlightLinesPanel {...chartPanelProps} focusSystem="gregorian" />
-                <SeasonalYearClockPanel {...chartPanelProps} focusSystem="gregorian" />
+                <SunlightLinesPanel {...chartPanelProps} embedded focusSystem="gregorian" />
               </div>
             )}
           </div>
         ) : (
           <div className="calendar-charts-stack">
-            {showNewCalendar && <SunlightLinesPanel {...chartPanelProps} />}
+            {showNewCalendar && <SunlightLinesPanel {...chartPanelProps} embedded />}
             {showGregorianOverlay && !showNewCalendar && (
-              <SunlightLinesPanel {...chartPanelProps} />
-            )}
-            {(showNewCalendar || showGregorianOverlay) && (
-              <SeasonalYearClockPanel {...chartPanelProps} />
+              <SunlightLinesPanel {...chartPanelProps} embedded />
             )}
           </div>
         )}
@@ -281,52 +286,45 @@ function ComparisonReadoutGrid({ rows }: { rows: ComparisonReadoutRow[] }) {
   );
 }
 
+function SeasonBarBlock({
+  season,
+  seasonBar,
+}: {
+  season: string;
+  seasonBar: ReactNode;
+}) {
+  return (
+    <div className="season-bar-block">
+      {seasonBar}
+      <dl className="season-bar-readout">
+        <div>
+          <dt>Season</dt>
+          <dd>{season}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 function buildNewCalendarReadoutRows(
   calendarDate: NewCalendarDate,
   normalDate: boolean,
-  gregorianYearDay: ReturnType<typeof describeGregorianYearDay>,
 ): ComparisonReadoutRow[] {
   return [
     {
-      label: "Date",
-      value: calendarDate.gregorianLabel,
-    },
-    {
-      label: "Year day",
-      value: (
-        <>
-          {gregorianYearDay.day}
-          <span>/{gregorianYearDay.daysInYear}</span>
-        </>
-      ),
-    },
-    {
-      label: "Season",
-      value: calendarDate.season,
-    },
-    {
-      label: "Season day",
-      value: (
-        <>
-          {calendarDate.dayOfSeason}
-          <span>/{DAYS_PER_SEASON}</span>
-        </>
-      ),
+      label: "Month",
+      value: calendarDate.isReflectionDay ? "Reflection" : calendarDate.monthName,
     },
     {
       label: "Season count",
       value: "5 seasons",
     },
     {
-      label: "Month",
-      value: calendarDate.isReflectionDay ? "Reflection" : calendarDate.monthName,
-    },
-    {
-      label: "Number of days in the month",
+      label: "Days per month",
       value: normalDate ? DAYS_PER_MONTH : "Midpoint",
     },
     {
-      label: "Number of days in the week",
+      label: "Days per week",
       value: DAYS_PER_WEEK,
     },
   ];
@@ -334,8 +332,6 @@ function buildNewCalendarReadoutRows(
 
 function buildGregorianReadoutRows(
   calendarDate: NewCalendarDate,
-  gregorianSeason: ReturnType<typeof describeGregorianSeason>,
-  gregorianYearDay: ReturnType<typeof describeGregorianYearDay>,
   gregorianMonthLabel: string,
 ): ComparisonReadoutRow[] {
   const daysInMonth = daysInGregorianMonth(
@@ -345,45 +341,19 @@ function buildGregorianReadoutRows(
 
   return [
     {
-      label: "Date",
-      value: calendarDate.gregorianLabel,
-    },
-    {
-      label: "Year day",
-      value: (
-        <>
-          {gregorianYearDay.day}
-          <span>/{gregorianYearDay.daysInYear}</span>
-        </>
-      ),
-    },
-    {
-      label: "Season",
-      value: gregorianSeason.season,
-    },
-    {
-      label: "Season day",
-      value: (
-        <>
-          {gregorianSeason.dayOfSeason}
-          <span>/{gregorianSeason.daysInSeason}</span>
-        </>
-      ),
+      label: "Month",
+      value: gregorianMonthLabel,
     },
     {
       label: "Season count",
       value: "4 seasons",
     },
     {
-      label: "Month",
-      value: gregorianMonthLabel,
-    },
-    {
-      label: "Number of days in the month",
+      label: "Days per month",
       value: daysInMonth,
     },
     {
-      label: "Number of days in the week",
+      label: "Days per week",
       value: 7,
     },
   ];
