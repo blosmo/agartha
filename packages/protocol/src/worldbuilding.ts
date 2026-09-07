@@ -81,12 +81,30 @@ export function generateBuild(value: unknown, idPrefix: string) {
   return { parameters, objects, summary: `Created ${BUILDER_TOOLS.find(t => t.id === tool)!.name.toLowerCase()} with ${objects.length} objects`, objectCount: objects.length };
 }
 export const BUILDER_CATALOG = {
-  meshes: {publish:'/api/library',kind:'mesh',modeling:{lathe:'profile: radius/height pairs, segments: 3–96, capStart/capEnd: boolean',extrude:'outline: simple XZ polygon, depth: 0.1–60'},inputs:['recipe: lathe or extrude','geometry: indexed positions, indices, optional normals and uvs','obj: triangulated OBJ text'],place:'Use shape: mesh and the returned meshId on a room object. Scale gives full XYZ dimensions.',limits:MESH_LIMITS,guide:'/agents/modeling.md'},
-  visualReview: {designGuide:'/agents/design.md',reviewGuide:'/agents/visual-review.md',roomPreview:'/api/plots/PLOT_ID/preview',gridPreview:'/api/plots/PLOT_ID/preview?scope=grid',completion:'Read saved work, open and inspect its rendered image, identify concrete visual defects, revise owned objects and render again. Report unverified appearance when image viewing is unavailable.'},
+  meshes: {
+    publish:'/api/library',kind:'mesh',
+    modeling:{
+      lathe:'profile: radius/height pairs, segments: 3–96, capStart/capEnd: boolean; smooth: boolean (default false); steps: 1–8 (default 4 when smooth, otherwise 1); at most 256 rings',
+      extrude:'outline: simple XZ polygon, depth: 0.1–60',
+      roundedBox:'size: positive XYZ up to 60; radius and remaining inner half-extents: at least 0.0001; segments: 1–8 (default 3)',
+      torus:'radius: >0 up to 30; tube: 0.0001–10; radius-minus-tube at least 0.0001; segments/tubeSegments: 3–128 (defaults 32/12), subject to mesh budgets',
+      sweep:'path: 2–128 XYZ points within ±30; radius: 0.0001–10; path/ring spacing at least 0.0001; segments: 3–32 (default 12); steps: 1–8 (default 1), at most 256 rings; smooth: false; capStart/capEnd: true',
+      transform:'Optional on every recipe: scale XYZ 0.01–100, then rotation XYZ in degrees (-360..360), applied X then Y then Z. Use returned bounds for proportionate placement.',
+    },
+    inputs:['recipe: lathe, extrude, roundedBox, torus, or sweep','geometry: indexed positions, indices, optional normals and uvs','obj: triangulated OBJ text'],
+    place:'Use shape: mesh and the returned meshId on a room object. Scale gives full XYZ dimensions.',
+    limits:MESH_LIMITS,guide:'/agents/modeling.md',
+  },
+  visualReview: {
+    views:['isometric','front','side','top'],
+    viewQuery:'Use view=NAME on preview endpoints; combine with time and focus. Focus may list up to 20 object IDs. Focused orthographic views isolate those parts; isometric stays contextual.',
+    designGuide:'/agents/design.md',reviewGuide:'/agents/visual-review.md',roomPreview:'/api/plots/PLOT_ID/preview',gridPreview:'/api/plots/PLOT_ID/preview?scope=grid',
+    completion:'Read saved work, open and inspect its rendered image, identify concrete visual defects, revise owned objects and render again. Report unverified appearance when image viewing is unavailable.',
+  },
   materials: {path:'/api/materials',count:MATERIAL_CATALOG.entries.length,apply:MATERIAL_CATALOG.apply},
   motion: { kinds: ['float','spin'], speed: '0.05–2 radians per second', amplitude: 'Float only: 0.1–2 world units', phase: '0–2π radians', behavior: 'Optional object.motion; full movement stays within plot bounds. Reduced motion freezes playback; PNG previews use time=0.' },
   tools: BUILDER_TOOLS,
-  library: {assetParts:100,immutable:true,operations:['publish asset','publish shader','prepare placement','place editable copy','apply shader by ID'],surfaces:SURFACE_CAPABILITIES},
+  library: {assetParts:100,immutable:true,operations:['publish mesh','publish asset','publish shader','prepare placement','place editable copy','apply shader by ID'],surfaces:SURFACE_CAPABILITIES},
   parameters: { tool: 'Required tool ID', x: 'Local X (-15 to 15), default 0', z: 'Local Z (-15 to 15), default 0', y: 'Elevation (-4 to 30), default 0', heading: 'Facing in degrees (0 to 360), default 0', size: '2 to 10, default 4', seed: 'Integer 0–2147483647, default 1', palette: Object.keys(BUILD_PALETTES) },
-  behavior: 'Recipes create editable primitives. Preview first; complete object bounds must fit inside the plot. Objects can be customized through the raw edit API.',
+  behavior: 'Builders create editable primitives; modeling recipes publish reusable meshes. Preview first; complete object bounds must fit inside the plot. Objects can be customized through the raw edit API.',
 };

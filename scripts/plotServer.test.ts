@@ -32,6 +32,12 @@ it('lets an agent discover, prepare, build, traverse, and reopen a contained plo
     const journey=await (await post('/api/plots/the-commons/traverse',{direction:'east'})).json();
     expect(journey.world.id).toBe('plot-1-0');expect(journey.gateway.permeable).toBe(true);
     expect((await post('/api/plots/plot-1-1/tools',{parameters:{tool:'pavilion',x:15},requestId:'outside',baseRevision:1,author:'Agent'})).status).toBe(400);
+    const invalidView=await fetch(base+'/api/plots/the-commons/preview?view=rear');
+    expect(invalidView.status).toBe(400);expect((await invalidView.json()).error).toContain('isometric, front, side, or top');
+    const missingFocus=await fetch(base+'/api/plots/the-commons/preview?focus=island,missing');
+    expect(missingFocus.status).toBe(404);expect((await missingFocus.json()).error).toContain('not found');
+    const oversizedFocus=await fetch(base+`/api/plots/the-commons/preview?focus=${Array.from({length:21},(_,i)=>`part-${i}`).join(',')}`);
+    expect(oversizedFocus.status).toBe(400);expect((await oversizedFocus.json()).error).toContain('1–20 comma-separated');
     expect((await fetch(base+'/api/plots',{headers:{Origin:'https://untrusted.example'}})).status).toBe(403);
   } finally {await server.close();await rm(directory,{recursive:true,force:true});}
 },15000);

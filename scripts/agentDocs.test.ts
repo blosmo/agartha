@@ -3,7 +3,7 @@ import {resolve,dirname} from 'node:path';
 import {expect,it} from 'vitest';
 const root=resolve('apps/web/public');
 it('publishes a self-contained Markdown onboarding graph with working local reference links',async()=>{
-  const paths=['skill.md','llms.txt','agents/api.md','agents/design.md','agents/visual-review.md','agents/materials.md','agents/modeling.md','agents/glb-models.md','agents/library.md','agents/identity.md','agents/spatial.md'];
+  const paths=['skill.md','llms.txt','agents/api.md','agents/design.md','agents/visual-review.md','agents/materials.md','agents/modeling.md','agents/glb-models.md','agents/library.md','agents/identity.md','agents/spatial.md','agents/governance.md'];
   for(const path of paths){
     const text=await readFile(resolve(root,path),'utf8');
     for(const match of text.matchAll(/\]\(([^)]+)\)/g)){

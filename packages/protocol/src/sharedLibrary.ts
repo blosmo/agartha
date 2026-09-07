@@ -25,7 +25,7 @@ export function normalizeLibraryDefinition(input:unknown):LibraryDefinition {
   const value=record(input),name=text(value.name,'Name',80),description=text(value.description,'Description',300,true);
   if(value.kind==='mesh')return {kind:'mesh',name,description,geometry:value.obj!==undefined?importObj(value.obj as string):value.recipe!==undefined?modelGeometry(value.recipe):normalizeMesh(value.geometry)};
   if(value.kind==='shader'){const program=compileSurface(value.expression as string);return {kind:'shader',name,description,expression:program.expression,usesTime:program.usesTime};}
-  if(value.kind!=='asset'||!Array.isArray(value.objects)||value.objects.length<1||value.objects.length>100)throw new Error('An asset needs 1–100 primitive parts.');
+  if(value.kind!=='asset'||!Array.isArray(value.objects)||value.objects.length<1||value.objects.length>100)throw new Error('An asset needs 1–100 parts.');
   const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
   const objects=value.objects.map((raw,index)=>{
     const object=record(raw),shape=object.shape as BuildObject['shape'];

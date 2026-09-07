@@ -38,18 +38,36 @@ def service():
             payload = json.loads(raw)
             if not isinstance(payload.get("objects"), list) or len(payload["objects"]) > 10000:
                 raise ValueError("Invalid objects")
+            view = payload.get("view", "isometric")
+            if view not in ("isometric", "front", "side", "top"):
+                return JSONResponse({"error": "Preview view must be isometric, front, side, or top."}, status_code=400)
+            focus = payload.get("focusId")
+            if focus is not None:
+                if not isinstance(focus, str) or len(focus) > 4096:
+                    return JSONResponse({"error": "Preview focus must list 1–20 comma-separated object IDs."}, status_code=400)
+                focus_ids = focus.split(",")
+                if any(not item or len(item) > 160 or not item.isascii() or not all(character.isalnum() or character in "_-" for character in item) for item in focus_ids):
+                    return JSONResponse({"error": "Preview focus must list 1–20 comma-separated object IDs."}, status_code=400)
+                focus_ids = sorted(set(focus_ids))
+                if not focus_ids or len(focus_ids) > 20:
+                    return JSONResponse({"error": "Preview focus must list 1–20 comma-separated object IDs."}, status_code=400)
+                object_ids = {item.get("id") for item in payload["objects"] if isinstance(item, dict)}
+                if any(item not in object_ids for item in focus_ids):
+                    return JSONResponse({"error": "Preview focus object was not found."}, status_code=400)
+                payload["focusId"] = ",".join(focus_ids)
         except (ValueError, TypeError, AttributeError):
             return JSONResponse({"error": "Invalid snapshot"}, status_code=400)
-        key = hashlib.sha256(raw).hexdigest()
+        normalized = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+        key = hashlib.sha256(normalized).hexdigest()
         if key in cache:
-            return Response(cache[key], media_type="image/png", headers={"X-Agartha-Renderer": "vgpu", "X-Agartha-Cache": "hit"})
+            return Response(cache[key], media_type="image/png", headers={"X-Agartha-Renderer": "vgpu", "X-Agartha-Cache": "hit", "X-Agartha-Preview-View": view})
         # A container handles one GPU workload at a time; shared snapshots coalesce through this lock.
         async with lock:
             if key in cache:
-                return Response(cache[key], media_type="image/png", headers={"X-Agartha-Renderer": "vgpu", "X-Agartha-Cache": "hit"})
+                return Response(cache[key], media_type="image/png", headers={"X-Agartha-Renderer": "vgpu", "X-Agartha-Cache": "hit", "X-Agartha-Preview-View": view})
             with tempfile.TemporaryDirectory(prefix="agartha-") as directory:
                 source, target = Path(directory) / "scene.json", Path(directory) / "preview.png"
-                source.write_bytes(raw)
+                source.write_bytes(normalized)
                 process = await asyncio.create_subprocess_exec("node", "--import", "tsx", "/app/packages/renderer/render.ts", str(source), str(target), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 try:
                     _, stderr = await asyncio.wait_for(process.communicate(), timeout=60)
@@ -64,5 +82,5 @@ def service():
                 cache[key] = png
                 while len(cache) > 32:
                     cache.popitem(last=False)
-                return Response(png, media_type="image/png", headers={"X-Agartha-Renderer": "vgpu", "X-Agartha-Cache": "miss"})
+                return Response(png, media_type="image/png", headers={"X-Agartha-Renderer": "vgpu", "X-Agartha-Cache": "miss", "X-Agartha-Preview-View": view})
     return web

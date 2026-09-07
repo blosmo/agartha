@@ -3,6 +3,8 @@ import type {IncomingMessage,ServerResponse} from 'node:http';
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {plotPreviewSnapshot} from '../apps/web/plotPreview.js';
 import type {SharedWorld} from '../apps/web/src/worlds/world.js';
+import {parsePreviewView,type PreviewView} from '../packages/protocol/src/previewView.js';
+import {canonicalPreviewFocus,selectPreviewFocus} from '../packages/protocol/src/previewFocus.js';
 type Request=IncomingMessage&{body?:unknown;query:Record<string,string|string[]|undefined>};
 const cookieName='__Host-agartha_session';
 export default async function handler(req:Request,res:ServerResponse){
@@ -18,7 +20,12 @@ export default async function handler(req:Request,res:ServerResponse){
     const base=process.env.AGARTHA_CONVEX_SITE_URL,key=process.env.AGARTHA_CLOUD_GATEWAY_KEY;
     if(!base||!key){send({error:'Cloud configuration is incomplete'},503);return;}
     if(!['GET','POST'].includes(req.method??'')){send({error:'Method not allowed'},405);return;}
-    if(!/^(session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2})$/.test(path)){send({error:'Not found'},404);return;}
+    const governancePath=/^governance(?:\/(?:voters|proposals(?:\/[a-zA-Z0-9_-]{1,80}(?:\/(?:open|vote|withdraw|finalize|comments|implementation))?)?))?$/.test(path);
+    if(!governancePath&&!/^(session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2})$/.test(path)){send({error:'Not found'},404);return;}
+    let previewView:PreviewView='isometric';
+    if(path.endsWith('/preview')){try{previewView=parsePreviewView(req.query.view);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview view.'},400);return;}}
+    let requestedFocus:string|undefined;
+    if(path.endsWith('/preview')){try{requestedFocus=canonicalPreviewFocus(req.query.focus);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview focus.'},400);return;}}
     let body:Record<string,any>={};
     if(req.method==='POST'){
       if(!req.headers['content-type']?.startsWith('application/json')){send({error:'Use application/json'},415);return;}
@@ -28,7 +35,7 @@ export default async function handler(req:Request,res:ServerResponse){
     const externalRegistration=path==='session'&&typeof body.agentToken==='string';
     if(req.method==='POST'&&origin&&origin!==`https://${req.headers.host}`&&!headerToken&&!externalRegistration){send({error:'Origin not allowed'},403);return;}
     let token=headerToken??req.headers.cookie?.split(';').map(c=>c.trim()).find(c=>c.startsWith(`${cookieName}=`))?.slice(cookieName.length+1);
-    const publicRead=req.method==='GET'&&!path.endsWith('/preview');
+    const publicRead=req.method==='GET'&&!path.endsWith('/preview')&&!governancePath;
     if(publicRead&&!headerToken)token=undefined;
     let setCookie=false;
     if(path==='session'){
@@ -45,9 +52,10 @@ export default async function handler(req:Request,res:ServerResponse){
     if(setCookie)res.setHeader('Set-Cookie',`${cookieName}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`);
     if(data.modelFile){const download=new URL(data.url);if(download.protocol!=='https:')throw new Error('Invalid model download URL');res.statusCode=302;res.setHeader('Location',download.href);res.end();return;}
     if(data.render){
-      const worker=process.env.AGARTHA_RENDER_URL,renderKey=process.env.AGARTHA_RENDER_KEY;if(!worker||!renderKey){send({error:'Cloud renderer is not configured'},503);return;}
       const source=data.source as SharedWorld;
-      const worlds:SharedWorld[]=data.grid?[...data.grid.plots,...data.grid.empty.map((p:any)=>({schema:1,id:p.id,name:'Open ground',brief:'',revision:-1,objects:[],events:[],placement:{x:p.x,z:p.z,size:32}}))]:[source];
+      let focusObjects;try{focusObjects=selectPreviewFocus(source.objects,requestedFocus);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview focus.'},404);return;}
+      const worker=process.env.AGARTHA_RENDER_URL,renderKey=process.env.AGARTHA_RENDER_KEY;if(!worker||!renderKey){send({error:'Cloud renderer is not configured'},503);return;}
+      const worlds:SharedWorld[]=previewView!=='isometric'&&focusObjects?[{...source,objects:focusObjects}]:data.grid?[...data.grid.plots,...data.grid.empty.map((p:any)=>({schema:1,id:p.id,name:'Open ground',brief:'',revision:-1,objects:[],events:[],placement:{x:p.x,z:p.z,size:32}}))]:[source];
       const meshIds=[...new Set(worlds.flatMap(world=>world.objects.flatMap(object=>object.meshId?[object.meshId]:[])))];
       const meshes=await Promise.all(meshIds.map(async id=>{const response=await fetch(new URL(`/cloud/library/${id}`,base),{headers,signal:AbortSignal.timeout(20000)});if(!response.ok)throw new Error('Mesh unavailable for preview');return response.json();}));
       const modelFiles:Record<string,string>={};let modelBytes=0;
@@ -57,12 +65,12 @@ export default async function handler(req:Request,res:ServerResponse){
         const modelResponse=await fetch(file.url,{signal:AbortSignal.timeout(30000)});if(!modelResponse.ok)throw new Error('Model download failed');const bytes=Buffer.from(await modelResponse.arrayBuffer());if(bytes.length!==file.bytes)throw new Error('Model file size changed');modelBytes+=bytes.length;modelFiles[id]=bytes.toString('base64');
       }
       const previewTime=Number(req.query.time??0);if(!Number.isFinite(previewTime)||previewTime<0||previewTime>120){send({error:'Preview time must be 0–120 seconds.'},400);return;}
-      const focusId=typeof req.query.focus==='string'?req.query.focus:undefined;if(req.query.focus!==undefined&&!focusId||focusId&&!source.objects.some(object=>object.id===focusId)){send({error:'Preview focus object was not found.'},404);return;}
-      const rendered=plotPreviewSnapshot(worlds.map(world=>({...world,meshes:meshes.filter(mesh=>world.objects.some(object=>object.meshId===mesh.id))})),source,previewTime,focusId);
-      const image=await fetch(new URL('/render',worker),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${renderKey}`},body:JSON.stringify({objects:rendered.snapshot.objects,shaders:rendered.snapshot.shaders??[],meshes:rendered.snapshot.meshes??[],modelFiles,previewTime,focusId:rendered.snapshot.focusId}),signal:AbortSignal.timeout(80000)});
+      const focusId=requestedFocus;
+      const rendered=plotPreviewSnapshot(worlds.map(world=>({...world,meshes:meshes.filter(mesh=>world.objects.some(object=>object.meshId===mesh.id))})),source,previewTime,focusId,previewView);
+      const image=await fetch(new URL('/render',worker),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${renderKey}`},body:JSON.stringify({objects:rendered.snapshot.objects,shaders:rendered.snapshot.shaders??[],meshes:rendered.snapshot.meshes??[],modelFiles,previewTime,focusId:rendered.snapshot.focusId,view:previewView}),signal:AbortSignal.timeout(80000)});
       if(!image.ok){send({error:'Cloud preview rendering failed. Your saved world is unchanged.'},503);return;}
       if(data.proposal){res.setHeader('X-Agartha-Proposal',data.proposal.proposalId);res.setHeader('X-Agartha-Proposal-Revision',String(data.proposal.revision));res.setHeader('X-Agartha-Base-Snapshot',data.proposal.baseSnapshotVersion);}
-      res.setHeader('Content-Type','image/png');res.setHeader('X-Agartha-Renderer','vgpu-cloud');res.setHeader('X-Agartha-Revision',String(source.revision));res.setHeader('X-Agartha-Snapshot',rendered.digest);res.setHeader('X-Agartha-Plot',source.id);res.setHeader('X-Agartha-Preview-Time',String(previewTime));res.end(Buffer.from(await image.arrayBuffer()));return;
+      res.setHeader('Content-Type','image/png');res.setHeader('X-Agartha-Renderer','vgpu-cloud');res.setHeader('X-Agartha-Revision',String(source.revision));res.setHeader('X-Agartha-Snapshot',rendered.digest);res.setHeader('X-Agartha-Plot',source.id);res.setHeader('X-Agartha-Preview-Time',String(previewTime));res.setHeader('X-Agartha-Preview-View',previewView);res.end(Buffer.from(await image.arrayBuffer()));return;
     }
     send(data);
   }catch(error){console.error('Agartha gateway failure',error instanceof Error?error.name:'unknown');send({error:'Cloud request could not complete. Observe the world before retrying a write.'},503);}

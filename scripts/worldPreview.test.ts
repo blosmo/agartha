@@ -20,3 +20,16 @@ it('coalesces equal revisions, bounds concurrent work, and caches the completed 
     expect((await readFile(count,'utf8')).trim().split('\n')).toHaveLength(2);
   } finally {await rm(dir,{recursive:true,force:true});}
 });
+
+it('threads the view to the renderer and separates local cache entries by view',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'agartha-preview-view-test-'));
+  try {
+    const worker=join(dir,'worker.mjs'),inputs=join(dir,'inputs');
+    await writeFile(worker,`import {readFile,writeFile,appendFile} from 'node:fs/promises'; const scene=JSON.parse(await readFile(process.argv[2],'utf8')); await appendFile(${JSON.stringify(inputs)},scene.view+':'+scene.focusId+'\\n'); await writeFile(process.argv[3],'test-png');`);
+    const preview=createWorldPreview(worker),world=createWorld();
+    await preview({...world,view:'front',focusId:'pond,island,pond'} as never);
+    await preview({...world,view:'front',focusId:'island,pond'} as never);
+    await preview({...world,view:'top',focusId:'island,pond'} as never);
+    expect((await readFile(inputs,'utf8')).trim().split('\n')).toEqual(['front:island,pond','top:island,pond']);
+  } finally {await rm(dir,{recursive:true,force:true});}
+});

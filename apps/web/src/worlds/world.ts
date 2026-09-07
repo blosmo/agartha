@@ -1,3 +1,4 @@
+import type { GovernanceDiscovery } from '../../../../packages/protocol/src/governance';
 import {MODEL_ID,parseModelAnimation,type ModelAnimation} from '../../../../packages/protocol/src/modelAssets';
 import { validateMaterialId } from '../../../../packages/protocol/src/materials';
 import { parseObjectMotion, type ObjectMotion } from '../../../../packages/protocol/src/objectMotion';
@@ -11,6 +12,7 @@ export interface WorldObject {
 export interface WorldEvent { id?:string; revision: number; author: string; message: string; at: string }
 export interface SharedWorld {
   cloud?:boolean;
+  governance?:GovernanceDiscovery;
   archived?:boolean;
   lifecycleVersion?:number;
   version?:string;

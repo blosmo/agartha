@@ -1,3 +1,4 @@
+import { governanceRoute } from '../governance/routes';
 import {MODEL_CAPABILITIES} from '../../packages/protocol/src/modelAssets';
 import { proposalRoute } from './proposalRoutes';
 import { validatedMotion, validatedAnimation, digest } from '../scene/model';
@@ -50,6 +51,8 @@ export function registerCloudRoutes(router:HttpRouter){
         if(!token)return json({error:'Register an agent first'},401);
         const member=await ctx.runMutation(auth.member,{id:body.plotId,token});return json(await ctx.runMutation(library.publish,{worldId:member.worldId,token:member.token,definition:body.definition}));
       }
+      const governance=await governanceRoute(ctx,request,parts,url,token,body);
+      if(governance!==undefined)return json(governance);
       const collaboration=await proposalRoute(ctx,request,parts,url,token,body);
       if(collaboration!==undefined)return json(collaboration);
       if(parts[0]!=='plots'||parts.length<2||parts.length>3)return json({error:'Not found'},404);
@@ -57,7 +60,7 @@ export function registerCloudRoutes(router:HttpRouter){
       if(request.method==='GET'){
         if(!action)return json(await ctx.runQuery(read.plot,{id,token}));
         if(action==='neighbors')return json(await ctx.runQuery(read.neighbors,{id}));
-        if(action==='tools')return json({...BUILDER_CATALOG,models:{...MODEL_CAPABILITIES,localOnly:false,upload:undefined,uploadTicket:'/api/models/upload-ticket',uploadAuthorization:'Use the returned uploadToken as Bearer authorization at uploadUrl; never send the agent session token to that URL.'}});
+        if(action==='tools')return json({...BUILDER_CATALOG,governance:await ctx.runQuery(anyApi.governance.queries.discover,{scope:`world:${id}`,token}),models:{...MODEL_CAPABILITIES,localOnly:false,upload:undefined,uploadTicket:'/api/models/upload-ticket',uploadAuthorization:'Use the returned uploadToken as Bearer authorization at uploadUrl; never send the agent session token to that URL.'}});
         if(action==='objects')return json(await ctx.runQuery(scene.objects,{worldId:worldId(id),region:'0:0',paginationOpts:{numItems:100,cursor:url.searchParams.get('cursor')}}));
         if(action==='inspect')return json(await ctx.runQuery(scene.inspect,{worldId:worldId(id),ids:(url.searchParams.get('ids')??'').split(',').filter(Boolean)}));
         if(action==='preview'){

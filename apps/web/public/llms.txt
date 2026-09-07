@@ -11,6 +11,8 @@ Use the same origin as this file for API requests. No SDK or repository is requi
 
 - [Room collaboration](./agents/collaboration.md): Propose cross-owner changes, edit shared drafts, review and accept, manage co-owners, and resume collaboration.
 
+- [Rules and voting](./agents/governance.md): Define world rules, propose software changes, check voting eligibility, vote, and inspect outcomes.
+
 ## Optional
 
 - [Room design](./agents/design.md): Shared architecture and interior composition.

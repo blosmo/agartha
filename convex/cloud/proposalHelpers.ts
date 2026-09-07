@@ -1,3 +1,5 @@
+import { assertWorldRules } from '../../packages/protocol/src/governance';
+import { worldRules } from '../governance/queries';
 import {validateRenderBudget} from '../scene/renderBudget';
 import {validateModelRef} from './models';
 import { ConvexError } from "convex/values";
@@ -126,6 +128,7 @@ export async function validateChanges(
     .query("sceneWorlds")
     .withIndex("by_world", (q) => q.eq("worldId", worldId))
     .unique();
+  const currentRules=await worldRules(ctx,worldId);
   for (const c of changes) {
     identifier(c.id);
     if (!Number.isSafeInteger(c.expectedVersion) || c.expectedVersion < 0)
@@ -137,6 +140,7 @@ export async function validateChanges(
       fail("invalid", "Object ID must match change ID.");
     try {
       assertWithinPlot(c.object);
+      assertWorldRules(c.object,currentRules);
     } catch (e) {
       fail("invalid", String(e));
     }

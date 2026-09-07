@@ -58,10 +58,28 @@ it('includes unique native model bytes in previews without forwarding private he
  vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');vi.stubEnv('AGARTHA_RENDER_URL','https://render.example');vi.stubEnv('AGARTHA_RENDER_KEY','render-key');
  const modelId=`model-${'a'.repeat(64)}`,bytes=new Uint8Array([1,2,3,4]);
  const object={id:'fox',name:'Fox',shape:'model',modelId,position:[0,1,0],scale:[1,1,1],color:'#ffffff'};
- const source={schema:1,id:'plot-1-0',name:'Preview',brief:'',revision:2,objects:[object,{...object,id:'fox-2'}],events:[],placement:{x:1,z:0,size:32}};
+ const source={schema:1,id:'plot-1-0',name:'Preview',brief:'',revision:2,objects:[object,{...object,id:'fox-2'},{id:'bench-leg',name:'Bench leg',shape:'box',position:[0,1,0],scale:[1,3,1],color:'#ffffff'}],events:[],placement:{x:1,z:0,size:32}};
  const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({render:true,source}))).mockResolvedValueOnce(new Response(JSON.stringify({modelFile:true,url:'https://storage.example/model.glb',bytes:4}))).mockResolvedValueOnce(new Response(bytes)).mockResolvedValueOnce(new Response(bytes));vi.stubGlobal('fetch',fetcher);
- const res=response();await handler({method:'GET',headers:{host:'world.example',authorization:'Bearer agent-token'},query:{path:'plots/plot-1-0/preview',time:'1',focus:'fox'}} as never,res as never);
+ const res=response();await handler({method:'GET',headers:{host:'world.example',authorization:'Bearer agent-token'},query:{path:'plots/plot-1-0/preview',time:'1',focus:'fox-2,fox,fox',view:'side'}} as never,res as never);
  expect(res.statusCode).toBe(200);expect(fetcher).toHaveBeenCalledTimes(4);
  expect(fetcher.mock.calls[1][1].headers.Authorization).toBe('Bearer agent-token');expect(fetcher.mock.calls[2][1].headers).toBeUndefined();
- const payload=JSON.parse(fetcher.mock.calls[3][1].body);expect(payload.modelFiles).toEqual({[modelId]:Buffer.from(bytes).toString('base64')});expect(payload.previewTime).toBe(1);expect(payload.focusId).toBe('plot-1-0-fox');expect(fetcher.mock.calls[3][1].headers.Authorization).toBe('Bearer render-key');
+ const payload=JSON.parse(fetcher.mock.calls[3][1].body);expect(payload.modelFiles).toEqual({[modelId]:Buffer.from(bytes).toString('base64')});expect(payload.objects.map((item:{id:string})=>item.id)).toEqual(['plot-1-0-fox','plot-1-0-fox-2']);expect(payload.previewTime).toBe(1);expect(payload.focusId).toBe('plot-1-0-fox,plot-1-0-fox-2');expect(payload.view).toBe('side');expect(res.headers['X-Agartha-Preview-View']).toBe('side');expect(fetcher.mock.calls[3][1].headers.Authorization).toBe('Bearer render-key');
+});
+
+it('rejects an invalid preview view before reading cloud state or starting render work',async()=>{
+ vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ const res=response();await handler({method:'GET',headers:{host:'world.example'},query:{path:'plots/plot-1-0/preview',view:'rear'}} as never,res as never);
+ expect(res.statusCode).toBe(400);expect(JSON.parse(res.body)).toEqual({error:'Preview view must be isometric, front, side, or top.'});expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('rejects malformed or absent multi-object focus before model and render work',async()=>{
+ vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');
+ let fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ const oversized=response();await handler({method:'GET',headers:{host:'world.example'},query:{path:'plots/plot-1-0/preview',focus:Array.from({length:21},(_,i)=>`part-${i}`).join(',')}} as never,oversized as never);
+ expect(oversized.statusCode).toBe(400);expect(fetcher).not.toHaveBeenCalled();
+ const source={schema:1,id:'plot-1-0',name:'Preview',brief:'',revision:2,objects:[{id:'body',name:'Body',shape:'box',position:[0,1,0],scale:[1,1,1],color:'#ffffff'}],events:[],placement:{x:1,z:0,size:32}};
+ fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({render:true,source})));vi.stubGlobal('fetch',fetcher);
+ const missing=response();await handler({method:'GET',headers:{host:'world.example'},query:{path:'plots/plot-1-0/preview',focus:'body,handle'}} as never,missing as never);
+ expect(missing.statusCode).toBe(404);expect(JSON.parse(missing.body).error).toContain('not found');expect(fetcher).toHaveBeenCalledTimes(1);
 });

@@ -1,7 +1,7 @@
 // AGARTHA_SURFACE_SHADER_START
 fn agarthaShade(position:vec3f,normal:vec3f,color:vec3f,time:f32)->vec3f{return color;}
 // AGARTHA_SURFACE_SHADER_END
-struct Camera { viewProjection: mat4x4f, time: f32 }
+struct Camera { viewProjection: mat4x4f, time: f32, viewDirection: vec3f }
 struct Instance { position: vec4f, scale: vec4f, color: vec4f }
 @group(0) @binding(0) var<uniform> camera: Camera;
 @group(0) @binding(1) var<storage, read> instances: array<Instance>;

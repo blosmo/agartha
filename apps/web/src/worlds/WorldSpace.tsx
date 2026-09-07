@@ -7,11 +7,13 @@ import { usePlotWorld } from './usePlotWorld';
 import { AgentActivityPanel } from './AgentActivityPanel';
 import { useAgentActivity } from './useAgentActivity';
 import './worldSpace.css';
+import {GovernancePanel} from './governance/GovernancePanel';
+import {CLOUD_MODE} from './cloudMode';
 
 export function WorldSpace() {
   const { address, id, world, neighborhood, connected, connectionError, navigate } = usePlotWorld();
   const [showConnect,setShowConnect]=useState(false),[showRooms,setShowRooms]=useState(false),[showDetails,setShowDetails]=useState(false);
-  const [panel, setPanel] = useState<'watch' | undefined>('watch');
+  const [panel, setPanel] = useState<'watch' | 'rules' | undefined>('watch');
   const [focusRequest,setFocusRequest]=useState<{id:string;serial:number}>();
   function focusActivity(nextId: string) {
     if (nextId !== id) navigate(nextId);
@@ -20,7 +22,7 @@ export function WorldSpace() {
   const activity = useAgentActivity(neighborhood?.plots, focusActivity);
   const authors=[...new Set(world?.objects.filter(o=>o.author!=='World seed').map(o=>o.author))];
   function explore(nextId:string){if(nextId===id)return;activity.setFollowing(undefined);navigate(nextId);setShowDetails(false);}
-  function select(nextId:string,focus=false){activity.setFollowing(undefined);if(nextId!==id||focus)navigate(nextId,focus);setShowDetails(true);setShowRooms(false);if(focus)setFocusRequest({id:nextId,serial:Date.now()});}
+  function select(nextId:string,focus=false){activity.setFollowing(undefined);if(nextId!==id||focus)navigate(nextId,focus);setShowDetails(true);setShowRooms(false);setPanel(undefined);if(focus)setFocusRequest({id:nextId,serial:Date.now()});}
   return <main className="world-space">
     <section className="world-stage" aria-label="Connected agent rooms">
       <WorldViewport plots={neighborhood?.plots??[]} empty={neighborhood?.empty??[]} activePlotId={id} highlights={activity.highlights} animateSurfaces onSelect={()=>{}} onVisit={nextId=>select(nextId)} onExplore={explore} focusRequest={focusRequest}/>
@@ -29,9 +31,11 @@ export function WorldSpace() {
       <a className="world-brand" href="/" aria-label="Agartha home"><span className="brand-symbol">△</span> agartha</a>
       <button aria-expanded={showRooms} aria-controls="room-browser" onClick={()=>{setShowRooms(v=>!v);setPanel(undefined);setShowDetails(false);}}><GridFour size={16}/> Rooms</button>
       <button aria-expanded={panel==='watch'} onClick={()=>{setPanel(panel==='watch'?undefined:'watch');setShowRooms(false);setShowDetails(false);}}>Watch</button>
+      <button aria-expanded={panel==='rules'} aria-controls="governance-panel" onClick={()=>{setPanel(panel==='rules'?undefined:'rules');setShowRooms(false);setShowDetails(false);}}>Rules</button>
       <button aria-label="Invite agent" className="world-connect" onClick={()=>setShowConnect(true)}><Plus size={16}/><span>Invite agent</span></button>
     </header>
     {panel==='watch'&&<AgentActivityPanel events={activity.events} connected={connected} following={activity.following} onFollow={activity.setFollowing} onVisit={focusActivity} onClose={()=>setPanel(undefined)}/>}
+    {panel==='rules'&&<GovernancePanel roomId={id} cloud={CLOUD_MODE} onClose={()=>setPanel(undefined)}/>}
     {showRooms&&<aside id="room-browser" className="room-browser" aria-label="Browse rooms">
       <div className="room-panel-heading"><h2>Nearby rooms</h2><button aria-label="Close room browser" onClick={()=>setShowRooms(false)}><X size={18}/></button></div>
       <nav className="world-picker" aria-label="Nearby rooms">

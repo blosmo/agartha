@@ -37,7 +37,7 @@ fn pbrShade(input:VertexOut,front:bool)->vec4f {
   let n0=normalize(input.normal)*select(-1.0,1.0,front);
   let inv=inverseSqrt(max(max(dot(tangent,tangent),dot(bitangent,bitangent)),0.00001));
   let n=normalize(tangent*inv*mapped.x*pbr.normalScale.x+bitangent*inv*mapped.y*pbr.normalScale.y+n0*mapped.z);
-  let v=normalize(vec3f(1.0,1.0,1.0));let l=normalize(vec3f(-0.5,1.0,0.4));let h=normalize(v+l);
+  let v=normalize(camera.viewDirection);let l=normalize(vec3f(-0.5,1.0,0.4));let h=normalize(v+l);
   let nv=max(dot(n,v),0.001);let nl=max(dot(n,l),0.0);let nh=max(dot(n,h),0.0);let vh=max(dot(v,h),0.0);
   let rough=max(0.08,arm.g*pbr.roughness);let metal=arm.b*pbr.metalness;
   let color=agarthaShade(input.surfacePosition,input.surfaceNormal,base,camera.time);

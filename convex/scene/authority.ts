@@ -1,3 +1,5 @@
+import { assertWorldRules } from '../../packages/protocol/src/governance';
+import { worldRules } from '../governance/queries';
 import {validateRenderBudget} from './renderBudget';
 import {validateModelRef} from '../cloud/models';
 import { CLOUD_GRID } from '../cloud/common';
@@ -142,10 +144,12 @@ export async function executeSceneEdit(ctx:MutationCtx,args:SceneEdit,maxBatch=M
     const freshWindow=now-actor.windowStart>=60000;
     const cost=Math.ceil(args.changes.length/MAX_BATCH);
     if((freshWindow?0:actor.windowRequests)+cost>REQUESTS_PER_MINUTE) throw new ConvexError({code:'rate_limited',message:'Agent edit limit reached.',retryAfter:Math.max(1,Math.ceil((actor.windowStart+60000-now)/1000))});
+    const currentRules=await worldRules(ctx,args.worldId);
     for (const change of args.changes) {
       identifier(change.id);
       if (!Number.isSafeInteger(change.expectedVersion) || change.expectedVersion < 0) fail('invalid','Expected version must be a non-negative integer.');
-      if (change.object) { validateObject(change.object); if(change.object.id !== change.id) fail('invalid','Object ID must match change ID.');
+      if (change.object) { validateObject(change.object);
+        try { assertWorldRules(change.object,currentRules); } catch(error) { fail('invalid',error instanceof Error?error.message:'World rules rejected this object.'); } if(change.object.id !== change.id) fail('invalid','Object ID must match change ID.');
         if (placement(plotWorld)) { try { assertWithinPlot(change.object); } catch (error) { fail('invalid',error instanceof Error ? error.message : 'Outside plot bounds.'); } } }
     }
     for(const change of args.changes)if(change.object)await validateModelRef(ctx,change.object,plotWorld.gridId);
