@@ -1,3 +1,4 @@
+import { assertLegacyEnabled } from './legacyGate';
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -19,6 +20,7 @@ export const seedOrigin = mutation({
     allowLocalTokens: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const now = Date.now();
     const existingWorld = await ctx.db
       .query("worlds")

@@ -1,12 +1,23 @@
-.DS_Store
+# Dependencies and build output
 node_modules/
 target/
 dist/
-apps/web/dist/
+coverage/
+*.tsbuildinfo
 *.log
+__pycache__/
+*.py[cod]
+.venv/
 
-.env.local
-.env.openclaw
+# Credentials and machine-specific state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.agartha/
 .agartha-bin/
-openclaw-e2e-report.json
+.vercel/
 .codex/
+.DS_Store
+openclaw-e2e-report.json

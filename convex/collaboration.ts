@@ -1,3 +1,4 @@
+import { assertLegacyEnabled } from './legacyGate';
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { CollaborationEnvelope } from "@agartha/protocol/collaboration";
@@ -10,6 +11,7 @@ const envelopeArg = v.any();
 export const context = query({
   args: { agentId: v.string(), worldId: v.optional(v.string()), token: v.optional(v.string()), production: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const worldId = args.worldId ?? "origin";
     const now = Date.now();
     const auth = await authenticateRead(ctx, { worldId, agentId: args.agentId, token: args.token, production: args.production ?? false }, now);
@@ -23,6 +25,7 @@ export const context = query({
 export const handle = mutation({
   args: { envelope: envelopeArg, token: v.optional(v.string()), production: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const parsed = validateCollaborationEnvelope(args.envelope);
     if (!parsed.ok) return parsed.response;
     const envelope = parsed.envelope;

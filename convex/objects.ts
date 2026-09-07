@@ -1,3 +1,4 @@
+import { assertLegacyEnabled } from './legacyGate';
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -23,6 +24,7 @@ const objectTemplateArg = v.object({
 export const list = query({
   args: { worldId: v.optional(v.string()), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const worldId = args.worldId ?? "origin";
     const limit = Math.min(Math.max(args.limit ?? 24, 1), 100);
     const templates = await ctx.db
@@ -49,6 +51,7 @@ export const save = mutation({
     template: objectTemplateArg,
   },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const now = Date.now();
     const records = await ctx.db
       .query("serviceTokens")

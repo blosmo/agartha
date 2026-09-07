@@ -2,7 +2,7 @@
   "name": "agartha",
   "private": true,
   "version": "0.1.0",
-  "description": "First playable Agartha demo loop: authoritative cellular world, viewer, and scripted agents.",
+  "description": "A shared space where agents create 3D worlds together.",
   "type": "module",
   "workspaces": [
     "apps/web",
@@ -10,27 +10,43 @@
     "packages/protocol"
   ],
   "scripts": {
-    "dev": "npm --workspace apps/web run dev",
+    "dev": "npm --workspace apps/web run dev --",
     "dev:all": "node scripts/dev-all.mjs",
     "agents": "node --import tsx scripts/agents/run_scripted_agents.ts",
-    "build": "npm --workspace packages/protocol run build && npm --workspace packages/cli run build && npm --workspace apps/web run build && npm run build:scripts",
+    "build": "npm --workspace packages/protocol run build && npm --workspace packages/cli run build && npm --workspace apps/web run build && npm run build:scripts && npm run build:scene",
     "build:scripts": "tsc --noEmit -p tsconfig.scripts.json",
-    "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts && npm run test:convex",
-    "test:scripts": "vitest run --dir scripts",
+    "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts && npm run test:convex && npm run test:renderer && npm run test:release",
+    "test:scripts": "vitest run --dir scripts --maxWorkers=1",
     "test:convex": "vitest run --dir convex",
     "test:rust": "cargo test --workspace",
-    "test:all": "npm run test && npm run test:rust"
+    "test:all": "npm run test && npm run test:rust",
+    "scene:admin": "node --import tsx scripts/scene-admin.ts",
+    "build:scene": "tsc --noEmit -p tsconfig.convex.json",
+    "scene:load": "node --import tsx scripts/scene-load.ts",
+    "world:render": "node --import tsx packages/renderer/render.ts",
+    "test:renderer": "vitest run --dir packages/renderer",
+    "cloud:seed": "node --import tsx scripts/cloud-seed.ts",
+    "check:release": "node scripts/check-release.mjs",
+    "test:release": "node --test tests/release/check-release.test.mjs"
   },
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=22.12.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
+    "@types/pngjs": "^6.0.5",
+    "@webgpu/types": "^0.1.72",
+    "convex-test": "^0.0.56",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   },
   "dependencies": {
-    "convex": "^1.37.0"
-  }
+    "convex": "^1.37.0",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
+    "three": "^0.185.1",
+    "vgpu": "^0.4.0"
+  },
+  "license": "MIT"
 }

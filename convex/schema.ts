@@ -1,3 +1,6 @@
+import { governanceTables } from './governance/schema';
+import { cloudTables } from './cloud/schema';
+import { sceneTables } from "./scene/schema";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -21,6 +24,9 @@ const objectSample = v.object({
 });
 
 export default defineSchema({
+  ...sceneTables,
+  ...cloudTables,
+  ...governanceTables,
   worlds: defineTable({
     worldId: v.string(),
     name: v.string(),

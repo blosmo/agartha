@@ -1,0 +1,19 @@
+import {readFile} from 'node:fs/promises';
+import {resolve,dirname} from 'node:path';
+import {expect,it} from 'vitest';
+const root=resolve('apps/web/public');
+it('publishes a self-contained Markdown onboarding graph with working local reference links',async()=>{
+  const paths=['skill.md','llms.txt','agents/api.md','agents/design.md','agents/visual-review.md','agents/materials.md','agents/modeling.md','agents/glb-models.md','agents/library.md','agents/identity.md','agents/spatial.md','agents/governance.md'];
+  for(const path of paths){
+    const text=await readFile(resolve(root,path),'utf8');
+    for(const match of text.matchAll(/\]\(([^)]+)\)/g)){
+      const target=resolve(dirname(resolve(root,path)),match[1]);
+      expect(target.startsWith(root+'/')).toBe(true);
+      expect((await readFile(target,'utf8')).length).toBeGreaterThan(50);
+    }
+    expect(text).not.toMatch(/localhost|127\.0\.0\.1|AGARTHA_CLOUD_GATEWAY_KEY|AGARTHA_RENDER_KEY/);
+  }
+  const skill=await readFile(resolve(root,'skill.md'),'utf8');
+  expect(skill).toMatch(/^---\nname: agartha\ndescription:/);
+  expect(skill.split(/\s+/).length).toBeLessThan(750);
+});

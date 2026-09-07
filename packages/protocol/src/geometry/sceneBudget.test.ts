@@ -1,0 +1,5 @@
+import {expect,it} from 'vitest';
+import {assertRoomRenderBudget,sceneCost} from './sceneBudget';
+it('counts instance triangle work separately from shared draw groups',()=>{const cost=sceneCost(Array.from({length:100},()=>({shape:'mesh',meshId:'m'})),new Map([['m',{triangles:1000}]]));expect(cost).toEqual({objects:100,triangles:100000,draws:1,uniqueGeometry:1,animatedTriangles:0});});
+it('includes native model primitives and animation cost',()=>{const cost=sceneCost([{shape:'model',modelId:'m',animation:{clip:'Walk'}},{shape:'model',modelId:'m'}],new Map([['m',{triangles:576,draws:3}]]));expect(cost.draws).toBe(6);expect(cost.animatedTriangles).toBe(576);});
+it('rejects increasing an overloaded scene but permits reducing its cost',()=>{const previous={objects:100,triangles:300000,draws:1,uniqueGeometry:1,animatedTriangles:0};expect(()=>assertRoomRenderBudget(previous)).toThrow('triangles');expect(()=>assertRoomRenderBudget({...previous,triangles:250000},previous)).not.toThrow();expect(()=>assertRoomRenderBudget({...previous,triangles:350000},previous)).toThrow();});

@@ -1,0 +1,72 @@
+{
+  "environment": "Convex development striped-eagle-66, client in Tokyo",
+  "worldId": "scale-check-mtp9cell",
+  "registeredAgents": 1000,
+  "registrationFailures": 0,
+  "authenticatedReadStatus": 200,
+  "anonymousReadStatus": 401,
+  "runs": [
+    {
+      "agents": 1000,
+      "concurrency": 100,
+      "verified": 1000,
+      "statuses": {
+        "200": 1000
+      },
+      "elapsedSeconds": 10.66244225,
+      "verifiedEditsPerSecond": 93.78714337233573,
+      "p50Ms": 893.902708,
+      "p95Ms": 1989.125167
+    },
+    {
+      "agents": 1000,
+      "concurrency": 256,
+      "objectsPerEdit": 1,
+      "verified": 1000,
+      "statuses": {
+        "200": 1000
+      },
+      "elapsedSeconds": 5.274987375,
+      "verifiedEditsPerSecond": 189.5739134351957,
+      "p50Ms": 938.57925,
+      "p95Ms": 1948.419375
+    },
+    {
+      "agents": 1000,
+      "concurrency": 256,
+      "objectsPerEdit": 10,
+      "variant": "sequential object operations",
+      "verified": 1000,
+      "verifiedObjects": 10000,
+      "statuses": {
+        "200": 1000
+      },
+      "elapsedSeconds": 10.9555665,
+      "verifiedEditsPerSecond": 91.27779928130597,
+      "p50Ms": 2719.829042,
+      "p95Ms": 3610.512459
+    },
+    {
+      "agents": 1000,
+      "concurrency": 256,
+      "objectsPerEdit": 10,
+      "variant": "batched object operations",
+      "verified": 1000,
+      "verifiedObjects": 10000,
+      "statuses": {
+        "200": 1000
+      },
+      "elapsedSeconds": 8.934646291,
+      "verifiedEditsPerSecond": 111.92384873784141,
+      "p50Ms": 1491.887,
+      "p95Ms": 4455.657166
+    }
+  ],
+  "limitations": [
+    "Burst tests, not sustained production traffic; object count per edit is specified per run",
+    "Latency includes write and read-back network requests",
+    "No persistent WebSocket subscriber fanout was benchmarked",
+    "1,000 distinct agent identities; active HTTP concurrency is specified per run"
+  ],
+  "targetStatus": "The proposed 167 ten-object edits/s target remains unmet. Latest run: 112 verified edits/s; p95 increased versus the sequential baseline."
+}

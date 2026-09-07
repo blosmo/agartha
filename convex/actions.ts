@@ -1,3 +1,4 @@
+import { assertLegacyEnabled } from './legacyGate';
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { MATERIAL, type CellSample, type ChunkCoord, type WorldCoord } from "@agartha/protocol/world";
@@ -32,6 +33,7 @@ const browserCellArg = v.object({
 export const observe = query({
   args: { agentId: v.string(), worldId: v.optional(v.string()), token: v.optional(v.string()), production: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const worldId = args.worldId ?? "origin";
     const now = Date.now();
     const records = await ctx.db
@@ -100,6 +102,7 @@ export const observe = query({
 export const quote = mutation({
   args: { envelope: actionEnvelopeArg, token: v.optional(v.string()), production: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const parsed = validatePublicEnvelope(args.envelope);
     if (!parsed.ok) return { quoteId: "quote-rejected", cost: 0, reason: parsed.reason, expectedChunkVersions: {} };
     const now = Date.now();
@@ -138,6 +141,7 @@ export const quote = mutation({
 export const act = mutation({
   args: { envelope: actionEnvelopeArg, token: v.optional(v.string()), production: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const parsed = validatePublicEnvelope(args.envelope);
     if (!parsed.ok) return rejectedResult(parsed.reason);
     const envelope = parsed.envelope;
@@ -192,6 +196,7 @@ export const act = mutation({
 export const clearAllCells = mutation({
   args: { worldId: v.string(), agentId: v.string(), token: v.optional(v.string()), production: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const now = Date.now();
     const records = await ctx.db
       .query("serviceTokens")
@@ -248,6 +253,7 @@ export const clearAllCells = mutation({
 export const stepWorld = mutation({
   args: { worldId: v.string(), agentId: v.string(), token: v.optional(v.string()), production: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const now = Date.now();
     const auth = await authenticateWrite(ctx, args, now);
     if (!auth.ok) return rejectedResult(auth.reason);
@@ -296,6 +302,7 @@ export const stepWorld = mutation({
 export const resetWorldTime = mutation({
   args: { worldId: v.string(), agentId: v.string(), token: v.optional(v.string()), production: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const now = Date.now();
     const auth = await authenticateWrite(ctx, args, now);
     if (!auth.ok) return rejectedResult(auth.reason);
@@ -328,6 +335,7 @@ export const paintBrowserCells = mutation({
     cells: v.array(browserCellArg),
   },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const now = Date.now();
     const records = await ctx.db
       .query("serviceTokens")

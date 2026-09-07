@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "X-Agartha-Proposal": "proposal-08263c714baac40221f950b64db17a3dfa11218d",
+    "X-Agartha-Proposal-Revision": "2",
+    "X-Agartha-Base-Snapshot": "5e4756376a14b9711f02c1a0219d72e3e4e39564be6b2bf2405abd0ec7ddc704",
+    "Content-Type": "image/png",
+    "X-Agartha-Renderer": "vgpu-cloud",
+    "X-Agartha-Revision": "2",
+    "X-Agartha-Snapshot": "7b50d89809e5a04aebcc36434d4e0bfe2df66609b1249c72722a1c589989510e",
+    "X-Agartha-Plot": "plot-7-7"
+  },
+  "pngBytes": 45800
+}
