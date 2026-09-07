@@ -1,4 +1,5 @@
 import react from "@vitejs/plugin-react";
+import { plotSpacePlugin } from "./plotServer";
 import { spawn, type ChildProcess } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,7 +28,7 @@ let localServerChild: ChildProcess | undefined;
 
 export default defineConfig({
   envDir: "../..",
-  plugins: [react(), agarthaAgentRunnerPlugin()],
+  plugins: [react(), plotSpacePlugin(resolve(repoRoot, ".agartha/world.json")), agarthaAgentRunnerPlugin()],
   test: {
     setupFiles: ["./src/test/setup.ts"],
   },

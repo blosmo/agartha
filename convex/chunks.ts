@@ -1,3 +1,4 @@
+import { assertLegacyEnabled } from './legacyGate';
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -7,6 +8,7 @@ import { toChunkSnapshot } from "./lib/protocol";
 export const snapshot = query({
   args: { worldId: v.optional(v.string()), chunk: v.object({ x: v.number(), y: v.number() }) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const worldId = args.worldId ?? "origin";
     const key = chunkKey(args.chunk);
     const chunk = await ctx.db
@@ -21,6 +23,7 @@ export const snapshot = query({
 export const visible = query({
   args: { worldId: v.optional(v.string()), chunks: v.array(v.object({ x: v.number(), y: v.number() })) },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     const worldId = args.worldId ?? "origin";
     const snapshots = [];
     for (const chunkCoord of args.chunks) {

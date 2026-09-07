@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run --environment jsdom"
+    "test": "vitest run --environment jsdom --maxWorkers=1"
   },
   "dependencies": {
     "@agartha/protocol": "file:../../packages/protocol",
@@ -15,17 +15,20 @@
     "gradient-border-plugin": "^1.1.3",
     "pixi.js": "^8.14.3",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^5.1.2",
     "jsdom": "^27.3.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
     "vitest": "^4.0.16"
-  }
+  },
+  "license": "MIT"
 }

@@ -1695,3 +1695,24 @@ button:disabled {
     filter: brightness(1.12);
   }
 }
+
+/* Keep the full editor reachable when the canvas and inspector stack. */
+@media (max-width: 760px) {
+  .agartha-app { display: flex; flex-direction: column; height: auto; min-height: 100dvh; overflow: visible; }
+  .agartha-board-shell { height: 75dvh; min-height: 540px; flex: none; }
+  .board-canvas { min-height: 0; }
+  .agartha-side-panel { height: auto; max-height: none; overflow: visible; flex: none; }
+  .tool-dock { width: calc(100% - 24px); flex-wrap: wrap; justify-content: center; border-radius: 16px; bottom: 12px; }
+  .tool-dock__tools, .tool-dock__colors { flex-wrap: wrap; justify-content: center; }
+  .tool-dock__colors { border-left: 0; margin-left: 0; padding-left: 0; }
+  .mode-switch { left: auto; right: 12px; transform: none; }
+  .board-canvas__view-controls { top: 55px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agartha-app *, .agartha-app *::before, .agartha-app *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

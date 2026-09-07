@@ -1,0 +1,15 @@
+.agartha
+.env*
+node_modules
+.git
+.codex
+crates
+target
+apps/web/dist
+docs/benchmarks
+.vercel
+.agartha/**
+docs
+Plans
+skills
+.DS_Store

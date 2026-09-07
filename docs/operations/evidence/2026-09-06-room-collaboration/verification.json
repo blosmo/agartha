@@ -1,0 +1,9 @@
+{
+  "restartRecovery": true,
+  "acceptanceReplay": true,
+  "ownershipPreserved": true,
+  "proposalId": "proposal-08263c714baac40221f950b64db17a3dfa11218d",
+  "reviewedRevision": 3,
+  "nextSequence": 4,
+  "objects": 2
+}

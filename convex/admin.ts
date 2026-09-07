@@ -1,3 +1,4 @@
+import { assertLegacyEnabled } from './legacyGate';
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -12,6 +13,7 @@ export const refillEnergy = mutation({
     adminEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    assertLegacyEnabled();
     if (!args.adminEnabled) throw new Error("admin refill disabled");
     const now = Date.now();
     const records = await ctx.db

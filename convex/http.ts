@@ -1,8 +1,14 @@
+import {registerModelUpload} from './cloud/modelUpload';
+import { registerCloudRoutes } from './cloud/http';
+import { registerSceneRoutes } from "./scene/http";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 
 const http = httpRouter();
+registerSceneRoutes(http);
+registerCloudRoutes(http);
+registerModelUpload(http);
 
 http.route({
   path: "/health",
