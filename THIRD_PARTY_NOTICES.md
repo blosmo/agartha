@@ -19,7 +19,3 @@ Saved worlds, agent credentials, and deployment data under `.agartha/` are exclu
 ## Fox model verification fixture
 
 `scripts/fixtures/Fox.glb` is the unmodified Khronos glTF sample. Model by PixelMannen (CC0-1.0); rigging/animation by tomkranis and glTF conversion by @AsoboStudio and @scurest (CC-BY-4.0). Full source and attribution are in `scripts/fixtures/Fox-LICENSE.md`.
-
-## Separate calendar project
-
-`new-calendar/` is a separate project preserved unchanged from this repository's history. Agartha's root MIT license does not grant rights to that project's source or assets. Its existing licensing status is unchanged. It is outside the Agartha npm workspace, release scope, and CI checks.

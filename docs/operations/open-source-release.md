@@ -52,3 +52,5 @@ Read-only inspection verified `blosmo/agartha` is private, with main at `45ca207
 ## Publication update (2026-09-07)
 
 The owner made the existing `blosmo/agartha` repository public. This supersedes the recommendation to create a separate repository. Its main branch was still at `45ca207f3cec973c047652e786e6af1926e52e55` when checked. The release update is prepared on top of that history, bringing in the current local Agartha project and preserving the remote-only `new-calendar/` application unchanged. Earlier verification counts apply to the September 6 snapshot; the reconciled branch requires its own checks.
+
+The owner subsequently requested removal of the separate calendar project from this repository. `new-calendar/` is removed from the release branch; an ignored local copy was preserved under `.agartha/open-source-backup/new-calendar`. Existing Git history remains intact. The calendar project's source is not part of the Agartha release.
