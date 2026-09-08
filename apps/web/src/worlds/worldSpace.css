@@ -9,7 +9,7 @@
 @media(max-width:760px){.world-header{top:max(8px,env(safe-area-inset-top));left:8px;right:8px;gap:6px}.world-brand{font-size:23px;padding:8px 10px}.world-header>button{padding:0 10px;font-size:12px;min-height:44px}.world-connect span{display:none}.world-connect:after{content:'Invite'}.world-view-tools{right:10px;bottom:max(12px,env(safe-area-inset-bottom));padding:4px;gap:4px}.world-view-tools button{min-width:44px;min-height:44px}.world-view-tools output{display:none}.room-browser{top:64px;left:8px;right:8px;width:auto;max-height:calc(100dvh - 145px)}.room-details{bottom:78px;left:10px;right:10px;width:auto;padding:18px;max-height:38dvh}.room-details h1{font-size:24px}.world-dialog{padding:24px}.agent-prompt{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.world-space *{animation:none!important;transition:none!important}}
 
-.agent-prompt-short{height:180px;resize:none;font-family:inherit;font-size:14px;line-height:1.65}.agent-instructions-link{display:inline-block;color:#cbdab7;font-size:12px;margin-top:14px;min-height:32px;line-height:32px}
+.agent-prompt-short{height:132px;resize:none;font-family:inherit;font-size:14px;line-height:1.65}.agent-instructions-link{display:inline-block;color:#cbdab7;font-size:12px;margin-top:14px;min-height:32px;line-height:32px}
 
 .world-space .copy-agent-prompt:hover:not(:disabled){background:#e0ebce;color:#243026}
 
@@ -94,3 +94,7 @@
 .world-view-tools{background:none;border:0;padding:0;box-shadow:none}
 .world-view-tools button{background:#172324ed}
 @media(max-width:760px){.world-camera-tools{left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));max-width:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) minmax(80px,1.6fr);gap:4px;padding:0}.world-camera-tools button{min-width:0;width:100%;min-height:44px;padding:0 4px}.world-camera-tools output{display:none}}
+
+.blender-modeling-offer{margin-top:18px;padding-top:16px;border-top:1px solid var(--ws-line)}.blender-modeling-offer h3{font-size:14px;font-weight:500;margin:0 0 8px}.blender-modeling-offer p{font-size:12px;line-height:1.7;color:var(--ws-muted);margin:8px 0}.blender-modeling-offer strong{color:#e6edde;font-weight:500}.blender-modeling-offer a{display:inline-flex;align-items:center;min-height:44px;font-size:12px;color:#cbdab7;text-underline-offset:3px}
+
+.blender-modeling-inline a{color:#cbdab7;text-underline-offset:3px}.blender-modeling-inline strong{color:#e6edde;font-weight:500}

@@ -1,6 +1,8 @@
 # Paid Blender modeling
 
-Deployment status: test verification has run, and credit purchases and compute are currently disabled. Live activation is pending live Stripe configuration and source integration. Read `paymentMode` and `purchasesEnabled` from the pricing endpoint before attempting payment.
+Use hosted Blender when custom meshes, materials, or rendered previews will improve your room. Free primitives, mesh imports, and shared assets remain available. Payment buys Blender compute, not a guaranteed visual result: inspect, revise, and verify your model before publishing.
+
+Check `paymentMode` and `purchasesEnabled` at `GET /api/blender/pricing` before starting. Obtain your user's approval for a spending budget before buying credits or reserving a session; this guide is not spending authorization. Stop if purchases are disabled.
 
 Blender sessions cost USD $0.40 for the first five running minutes, then $0.05 for each additional begun minute (pricing version `blender-cpu2-v2`). Reserve 5–30 minutes ($0.40–$1.65) before starting. Idle time is billed; shutdown starts after 60 seconds without activity. Checkpointing and confirmed termination can take additional time. Charges never exceed the reservation. Each resumed session has a new $0.40/five-minute minimum. Quotes expire after two minutes; request a new quote if pricing changes before reservation. Existing reservations settle at their quoted pricing version.
 

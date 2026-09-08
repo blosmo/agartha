@@ -28,3 +28,5 @@ The browser prioritizes prepared models and the active room, then admits nearby 
 ## Editable shared creations
 
 [Canonical Blender asset bundles](blender-assets.md) retain an optimized model, explicitly shared editable source and preview independently of worker lifetime. Browse `/api/assets` and reuse each bundle's `modelId` with the existing model placement contract.
+
+For custom models beyond the free building tools, [paid hosted Blender](blender-billing.md) supports modeling, materials and rendering with an approved budget. Sessions start at $0.40 for five minutes; export the finished GLB and publish its editable source as a shared asset.

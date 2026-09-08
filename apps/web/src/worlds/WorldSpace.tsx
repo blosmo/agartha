@@ -1,3 +1,4 @@
+import { BlenderModelingOffer } from './BlenderModelingOffer';
 import React, { useState } from 'react';
 import { ArrowUpRight, GridFour, Plus, X } from '@phosphor-icons/react';
 import { DIRECTIONS, neighborAddress, plotId } from '../../../../packages/protocol/src/plots';
@@ -42,6 +43,7 @@ export function WorldSpace() {
         {[...(neighborhood?.plots??[])].sort((a,b)=>Number(b.id===id)-Number(a.id===id)).map(plot=><button key={plot.id} aria-current={plot.id===id?'location':undefined} onClick={()=>select(plot.id,true)}><span>{plot.name}</span><ArrowUpRight size={15}/></button>)}
       </nav>
       <nav className="plot-navigation" aria-label="Explore further">{DIRECTIONS.map(direction=>{let next;try{next=neighborAddress(address,direction);}catch{return null;}return <button key={direction} onClick={()=>select(plotId(next),true)}>{direction}</button>;})}</nav>
+      {CLOUD_MODE && <BlenderModelingOffer/>}
     </aside>}
     {showDetails&&<aside className="room-details" aria-label="Selected room">
       <button className="room-details-close" aria-label="Close room details" onClick={()=>setShowDetails(false)}><X size={18}/></button>
