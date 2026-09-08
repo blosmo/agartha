@@ -21,7 +21,7 @@ it('keeps the compact download index aligned with the published starter catalog'
 it('verifies the bundled model hash and skips the canonical request',async()=>{
  const {readFileSync}=await import('node:fs');const {webcrypto}=await import('node:crypto');
  vi.stubGlobal('crypto',webcrypto);
- const model=catalog.models[0],bytes=readFileSync(new URL(`../../public/starter-assets/${model.file}`,import.meta.url));
+ const model=catalog.models[0],bytes=readFileSync(`public/starter-assets/${model.file}`);
  const fetcher=vi.fn().mockResolvedValue({ok:true,arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)});vi.stubGlobal('fetch',fetcher);
  expect((await downloadModel(model.modelId,new AbortController().signal)).byteLength).toBe(model.bytes);
  expect(fetcher).toHaveBeenCalledTimes(1);
