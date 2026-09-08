@@ -23,6 +23,22 @@ function sessionLinks(reservationId: string) {
   return { startUrl: new URL(`/sessions/${id}/start`, base).href, stopUrl: new URL(`/sessions/${id}/stop`, base).href, mcpUrl: new URL(`/mcp/${id}`, base).href };
 }
 
+function purchaseResponse(purchase: BillingPurchase) {
+  const statusUrl = `/api/blender/purchases/${encodeURIComponent(purchase.purchaseId)}`;
+  const canPay = purchase.status === 'pending' && purchase.expiresAt > Date.now()
+    && process.env.AGARTHA_BLENDER_BILLING_ENABLED === 'true';
+  return { ...purchase, statusUrl, balanceUrl: '/api/blender/balance',
+    nextAction: canPay ? {
+      method: 'POST', url: `${statusUrl}/${purchase.paymentRail}`,
+      agentTokenHeader: purchase.paymentRail === 'mpp' ? 'X-Agartha-Agent-Token' : 'Authorization',
+      agentTokenScheme: purchase.paymentRail === 'mpp' ? null : 'Bearer',
+      instruction: purchase.paymentRail === 'mpp'
+        ? 'Expect HTTP 402. Let your authorized MPP payer answer WWW-Authenticate using Authorization: Payment, keeping X-Agartha-Agent-Token. Retry this same URL; do not create another purchase.'
+        : 'Open the returned checkoutUrl for your user. Retry this same URL to recover the same Checkout session. Confirm funding with statusUrl before using credits.',
+    } : null,
+  };
+}
+
 export default async function handler(req: BillingRequest, res: ServerResponse) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -69,13 +85,14 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
     if (path === 'purchases' && req.method === 'POST') {
       if (process.env.AGARTHA_BLENDER_BILLING_ENABLED !== 'true') throw new BillingHttpError(503, 'Blender credit purchases are not active yet.');
       const body = await jsonBody(req);
-      jsonResponse(res, await ledger('createPurchase', { token, purchaseId: body.purchaseId, requestId: body.requestId, amountCents: body.amountCents, paymentRail: body.paymentRail, livemode }), 201);
+      const purchase = await ledger<BillingPurchase>('createPurchase', { token, purchaseId: body.purchaseId, requestId: body.requestId, amountCents: body.amountCents, paymentRail: body.paymentRail, livemode });
+      jsonResponse(res, purchaseResponse(purchase), 201);
       return;
     }
     if (!match) throw new BillingHttpError(405, 'Method not allowed.');
     const purchase = await ledger<BillingPurchase & { paymentId?: string }>('getPurchase', { token, purchaseId: match[1] });
     if (purchase.livemode !== livemode) throw new BillingHttpError(409, 'Purchase belongs to a different payment mode.');
-    if (!match[2] && req.method === 'GET') { jsonResponse(res, purchase); return; }
+    if (!match[2] && req.method === 'GET') { jsonResponse(res, purchaseResponse(purchase)); return; }
     if (req.method !== 'POST') throw new BillingHttpError(405, 'Use POST for payment operations.');
     await ledger('authorizePaymentAttempt', { token, purchaseId: purchase.purchaseId });
     if (match[2] === 'reconcile') {

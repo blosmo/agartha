@@ -78,6 +78,31 @@ describe('billing transport boundaries', () => {
     expect(mpp.state.body).toContain('X-Agartha-Agent-Token');
   });
 
+  it.each(['checkout', 'mpp'] as const)('returns an actionable %s handoff without starting a payment', async paymentRail => {
+    configureTestPayments();
+    vi.stubEnv('AGARTHA_BLENDER_BILLING_ENABLED', 'true');
+    const purchase = { purchaseId: 'p1', paymentRail, status: 'pending', expiresAt: Date.now() + 60_000, livemode: false };
+    const fetcher = vi.fn().mockImplementation(async () => Response.json(purchase));
+    vi.stubGlobal('fetch', fetcher);
+    const result = responseRecorder();
+    await blender({ method: 'POST', query: { path: 'purchases' }, headers: { authorization: `Bearer ${'a'.repeat(64)}`, 'content-type': 'application/json' }, body: { purchaseId: 'p1', requestId: 'p1', amountCents: 500, paymentRail } } as unknown as BillingRequest, result.res);
+    expect(result.state.statusCode).toBe(201);
+    expect(JSON.parse(result.state.body)).toMatchObject({ statusUrl: '/api/blender/purchases/p1', balanceUrl: '/api/blender/balance', nextAction: { method: 'POST', url: `/api/blender/purchases/p1/${paymentRail}`, agentTokenHeader: paymentRail === 'mpp' ? 'X-Agartha-Agent-Token' : 'Authorization', agentTokenScheme: paymentRail === 'mpp' ? null : 'Bearer' } });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(String(fetcher.mock.calls[0][0])).toBe('https://ledger.example/billing/api/createPurchase');
+    expect(result.state.body).not.toContain('a'.repeat(64));
+  });
+
+  it.each(['paid', 'expired', 'disabled'] as const)('does not suggest paying a %s purchase', async condition => {
+    configureTestPayments();
+    vi.stubEnv('AGARTHA_BLENDER_BILLING_ENABLED', condition === 'disabled' ? 'false' : 'true');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ purchaseId: 'p1', paymentRail: 'checkout', status: condition === 'paid' ? 'paid' : 'pending', expiresAt: Date.now() + (condition === 'expired' ? -60_000 : 60_000), livemode: false })));
+    const result = responseRecorder();
+    await blender({ method: 'GET', query: { path: 'purchases/p1' }, headers: { authorization: `Bearer ${'a'.repeat(64)}` } } as unknown as BillingRequest, result.res);
+    expect(result.state.statusCode).toBe(200);
+    expect(JSON.parse(result.state.body).nextAction).toBeNull();
+  });
+
   it('rejects forged webhook bytes and accepts signed unrelated events without ledger writes', async () => {
     configureTestPayments();
     const stripe = new Stripe('sk_test_fixture');
