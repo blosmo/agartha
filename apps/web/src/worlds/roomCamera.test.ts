@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { OrthographicCamera, Vector3 } from 'three';
-import { RoomCamera, rotateQuarter } from './roomCamera';
+import { RoomCamera, rotateCamera } from './roomCamera';
 
 describe('room camera', () => {
   it('rotates about a panned target and returns after four quarter turns without changing zoom', () => {
     const camera = new OrthographicCamera(); const target = new Vector3(40, 0, -30);
     camera.position.set(140, 100, 70); camera.zoom = 2;
     const start = camera.position.clone();
-    rotateQuarter(camera, target, 1);
+    rotateCamera(camera, target, Math.PI / 2);
     expect(camera.position.distanceTo(new Vector3(140, 100, -130))).toBeLessThan(.00001);
-    for (let i = 0; i < 3; i++) rotateQuarter(camera, target, 1);
+    for (let i = 0; i < 3; i++) rotateCamera(camera, target, Math.PI / 2);
     expect(camera.position.distanceTo(start)).toBeLessThan(.00001); expect(camera.zoom).toBe(2);
   });
   it('moves relative to heading and normalizes diagonal movement', () => {

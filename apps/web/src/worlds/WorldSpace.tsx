@@ -13,7 +13,7 @@ import {CLOUD_MODE} from './cloudMode';
 export function WorldSpace() {
   const { address, id, world, neighborhood, connected, connectionError, navigate } = usePlotWorld();
   const [showConnect,setShowConnect]=useState(false),[showRooms,setShowRooms]=useState(false),[showDetails,setShowDetails]=useState(false);
-  const [panel, setPanel] = useState<'watch' | 'rules' | undefined>('watch');
+  const [panel, setPanel] = useState<'watch' | 'rules' | undefined>();
   const [focusRequest,setFocusRequest]=useState<{id:string;serial:number}>();
   function focusActivity(nextId: string) {
     if (nextId !== id) navigate(nextId);

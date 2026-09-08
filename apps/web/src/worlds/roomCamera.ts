@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
-export function rotateQuarter(camera: THREE.OrthographicCamera, target: THREE.Vector3, direction: -1 | 1) {
+export function rotateCamera(camera: THREE.OrthographicCamera, target: THREE.Vector3, radians: number) {
   const offset = camera.position.clone().sub(target);
-  offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), direction * Math.PI / 2);
+  offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), radians);
   camera.position.copy(target).add(offset);
   camera.lookAt(target);
   camera.updateMatrixWorld();

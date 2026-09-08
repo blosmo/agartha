@@ -1,9 +1,11 @@
 import { cameraExploration } from './cameraExploration';
-import { RoomCamera, rotateQuarter } from './roomCamera';
+import { QuarterTurn } from './quarterTurn';
+import { createSkybox } from './skybox';
+import { RoomCamera, rotateCamera } from './roomCamera';
 import { RoomJoystick } from './RoomJoystick';
 import {ModelLayer} from './ModelLayer';
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowClockwise, ArrowCounterClockwise, CornersOut, Minus, Plus } from '@phosphor-icons/react';
+import { ArrowClockwise, HouseSimple, CornersOut, Minus, Plus } from '@phosphor-icons/react';
 import * as THREE from 'three';
 import { bindTrackpadPan } from './trackpadControls';
 import { PbrTextures } from './pbrMaterial';
@@ -33,6 +35,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
   const roomCamera = useRef(new RoomCamera());
   const [inside, setInside] = useState(false);
   const overviewRotation = useRef(0);
+  const turn = useRef(new QuarterTurn());
   const anchor=useRef(addressFromId(activePlotId));
   const callbacks = useRef({onSelect,onVisit,onExplore,activePlotId,plots,empty});callbacks.current = {onSelect,onVisit,onExplore,activePlotId,plots,empty};
   const [modelError,setModelError]=useState('');
@@ -49,19 +52,27 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
   function fitCamera() {
     const rt=runtime.current;if(!rt)return;
     if(roomCamera.current.active){roomCamera.current.resize(rt.aspect);return;}
+    finishRotation();
     // Render relative to the selected plot, keeping distant grid addresses numerically stable.
     const half=(focusRef.current?24:72)/Math.min(1,rt.aspect);
     rt.camera.left=-half*rt.aspect;rt.camera.right=half*rt.aspect;rt.camera.top=half;rt.camera.bottom=-half;
     const address=addressFromId(callbacks.current.activePlotId),x=(address.x-anchor.current.x)*32,z=(address.z-anchor.current.z)*32;
     rt.camera.zoom=1;rt.camera.position.set(x+100*Math.cos(overviewRotation.current)+100*Math.sin(overviewRotation.current),100,z+100*Math.cos(overviewRotation.current)-100*Math.sin(overviewRotation.current));rt.controls.target.set(x,0,z);rt.camera.updateProjectionMatrix();rt.controls.update();setZoom(100);updateLabels();
   }
-  function rotate(direction: -1 | 1) {
+  function applyRotation(angle: number) {
+    const rt = runtime.current; if (!rt) return;
+    const delta = angle - overviewRotation.current;
+    if (!delta) return;
+    rotateCamera(rt.camera, rt.controls.target, delta);
+    overviewRotation.current = angle;
+    rt.controls.update();
+  }
+  function finishRotation() { turn.current.finish(); applyRotation(turn.current.value); }
+  function rotate(immediate: boolean) {
     const rt = runtime.current; if (!rt || roomCamera.current.active) return;
-    // Flush residual pan damping before applying an exact quarter turn.
-    const damping = rt.controls.enableDamping; rt.controls.enableDamping = false; rt.controls.update();
-    rotateQuarter(rt.camera, rt.controls.target, direction);
-    overviewRotation.current = (overviewRotation.current + direction * Math.PI / 2) % (Math.PI * 2);
-    rt.controls.update(); rt.controls.enableDamping = damping; updateLabels();
+    const damping = rt.controls.enableDamping; rt.controls.enableDamping = false; rt.controls.update(); rt.controls.enableDamping = damping;
+    turn.current.rotate(performance.now(), immediate || window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (!turn.current.active) applyRotation(turn.current.value);
   }
   function exitRoom() {
     roomCamera.current.exit(); setInside(false); host.current?.querySelector('canvas')?.focus();
@@ -69,6 +80,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
   }
   function enterRoom() {
     const rt = runtime.current; if (!rt) return;
+    finishRotation();
     const address = addressFromId(callbacks.current.activePlotId);
     const damping = rt.controls.enableDamping; rt.controls.enableDamping = false; rt.controls.update(); rt.controls.enableDamping = damping;
     rt.controls.enabled = false;
@@ -77,7 +89,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
   }
   function changeCamera(action:'in'|'out'|'reset') {
     const rt=runtime.current;if(!rt)return;
-    if(action==='reset'){overviewRotation.current=0;fitCamera();return;}
+    if(action==='reset'){turn.current.reset();overviewRotation.current=0;fitCamera();return;}
     rt.camera.zoom=Math.max(.5,Math.min(6,rt.camera.zoom*(action==='in'?1.25:.8)));rt.camera.updateProjectionMatrix();rt.controls.update();setZoom(Math.round(rt.camera.zoom*100));updateLabels();
   }
   useEffect(()=>{
@@ -87,11 +99,12 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.setClearColor('#111c23');renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     renderer.domElement.setAttribute('aria-label','Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Plot buttons and neighboring-plot controls provide keyboard navigation.');renderer.domElement.tabIndex=0;element.appendChild(renderer.domElement);
     const scene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-80,80,60,-60,.1,2000),controls=new OrbitControls(camera,renderer.domElement);
+    const sky=createSkybox();scene.add(sky);scene.fog=new THREE.Fog('#dee8df',200,1200);
     controls.enableRotate=false;controls.minZoom=.5;controls.maxZoom=6;controls.listenToKeyEvents(renderer.domElement);
     controls.touches.ONE=THREE.TOUCH.PAN;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;
     controls.mouseButtons.LEFT=THREE.MOUSE.PAN;
     const unbindTrackpadPan=bindTrackpadPan(renderer.domElement,controls);
-    const motion=window.matchMedia('(prefers-reduced-motion: reduce)'),updateMotion=()=>{controls.enableDamping=!motion.matches;};updateMotion();motion.addEventListener('change',updateMotion);
+    const motion=window.matchMedia('(prefers-reduced-motion: reduce)'),updateMotion=()=>{controls.enableDamping=!motion.matches;if(motion.matches)finishRotation();};updateMotion();motion.addEventListener('change',updateMotion);
     const environmentScene=new RoomEnvironment(), environmentGenerator=new THREE.PMREMGenerator(renderer);
     const environment=environmentGenerator.fromScene(environmentScene,.04);scene.environment=environment.texture;scene.environmentIntensity=.3;
     environmentScene.dispose();environmentGenerator.dispose();
@@ -140,7 +153,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     renderer.setAnimationLoop(now => {
       frameTotal+=now-lastFrame;frameCount++;
       const delta = Math.min((now-lastFrame)/1000, .1); lastFrame = now;
-      if(!roomCamera.current.active)controls.update();
+      if(!roomCamera.current.active){controls.update();if(turn.current.active)applyRotation(turn.current.sample(now));}
       roomCamera.current.step(delta);
       const rt = runtime.current;
       if (rt) {
@@ -159,8 +172,10 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
           item.outline.position.y = item.y + pose.lift; item.outline.rotation.y = pose.yaw;
         }
       }
-      renderer.render(scene,roomCamera.current.active?roomCamera.current.camera:camera);
-      if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}
+      const renderCamera=roomCamera.current.active?roomCamera.current.camera:camera;
+      sky.position.copy(renderCamera.position);sky.scale.setScalar(roomCamera.current.active?100:1400);
+      renderer.render(scene,renderCamera);
+      if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{rotationAnimating:String(turn.current.active),skybox:'procedural',cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}
     });
     return()=>{roomCamera.current.exit();window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);exploration.dispose();renderer.setAnimationLoop(null);resize.disconnect();motion.removeEventListener('change',updateMotion);unbindTrackpadPan();controls.dispose();models.dispose();scene.remove(models.group);scene.traverse(disposeObject);sun.shadow.dispose();textures.dispose();for(const geometry of runtime.current?.meshGeometries.values()??[])geometry.dispose();environment.dispose();renderer.dispose();renderer.domElement.remove();runtime.current=null;};
   },[]);
@@ -243,9 +258,8 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       <div className="room-walk-hint">Drag to look · joystick or WASD to move</div>
       <div className="world-view-tools"><button onClick={exitRoom}>Exit room <span aria-hidden="true">↗</span></button></div>
     </> : <div className="world-view-tools" aria-label="Camera controls">
-      <button aria-label="Rotate left 90 degrees" disabled={error} onClick={()=>rotate(-1)}><ArrowCounterClockwise size={17}/></button>
-      <button aria-label="Rotate right 90 degrees" disabled={error} onClick={()=>rotate(1)}><ArrowClockwise size={17}/></button>
-      <button aria-label="Reset camera" disabled={error} onClick={()=>changeCamera('reset')}>↺</button>
+      <button aria-label="Rotate scene 90 degrees" title="Rotate scene 90°" disabled={error} onClick={event=>rotate(event.detail===0)}><ArrowClockwise size={17}/></button>
+      <button aria-label="Reset camera" disabled={error} onClick={()=>changeCamera('reset')}><HouseSimple size={17}/></button>
       <button aria-label="Zoom out" disabled={error} onClick={()=>changeCamera('out')}><Minus size={17}/></button><output aria-label="Camera zoom">{zoom}%</output>
       <button aria-label="Zoom in" disabled={error} onClick={()=>changeCamera('in')}><Plus size={17}/></button>
       <button className="plot-focus-button" aria-pressed={focused} disabled={error} onClick={()=>setFocused(value=>!value)}><CornersOut size={16}/>{focused?'Grid view':'Focus plot'}</button>
