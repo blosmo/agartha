@@ -255,7 +255,6 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     {!inside&&<div className="plot-labels" aria-label="Plots in view">{labels.filter(label=>label.x>0&&label.x<100&&label.y>0&&label.y<90).map(label=><button key={label.id} className="world-plot-label" aria-pressed={label.id===activePlotId} style={{left:`${label.x}%`,top:`${label.y}%`}} onClick={()=>onVisit(label.id)} title={label.name}>{label.name}{label.empty&&<span> +</span>}</button>)}</div>}
     {inside ? <>
       <RoomJoystick onMove={point=>{roomCamera.current.movement=point;}} />
-      <div className="room-walk-hint">Drag to look · joystick or WASD to move</div>
       <div className="world-view-tools"><button onClick={exitRoom}>Exit room <span aria-hidden="true">↗</span></button></div>
     </> : <div className="world-view-tools world-camera-tools" aria-label="Camera controls">
       <button aria-label="Rotate scene 90 degrees" title="Rotate scene 90°" disabled={error} onClick={event=>rotate(event.detail===0)}><ArrowClockwise size={17}/></button>

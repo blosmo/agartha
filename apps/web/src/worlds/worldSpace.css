@@ -88,8 +88,8 @@
 
 .room-joystick{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(26px,env(safe-area-inset-bottom));width:116px;height:116px;border:1px solid #e9e6d65c;border-radius:50%;background:#172725b8;touch-action:none;user-select:none;display:grid;place-items:center;z-index:3}
 .room-joystick-thumb{width:44px;height:44px;border:1px solid #e9e6d680;border-radius:50%;background:#d4d4bb80;pointer-events:none}
-.room-walk-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);font-size:11px;color:#eeeade;background:#142221b8;padding:8px 12px;border-radius:8px;pointer-events:none;text-align:center}
-@media(max-width:760px){.world-view-tools{max-width:calc(100vw - 16px);gap:2px;right:8px;bottom:max(12px,env(safe-area-inset-bottom));flex-wrap:wrap}.world-view-tools button{min-width:38px;min-height:44px;padding:0 8px}.world-view-tools output{font-size:10px}.room-walk-hint{bottom:156px;white-space:nowrap;font-size:10px}.room-joystick{bottom:max(24px,env(safe-area-inset-bottom))}}
+
+@media(max-width:760px){.world-view-tools{max-width:calc(100vw - 16px);gap:2px;right:8px;bottom:max(12px,env(safe-area-inset-bottom));flex-wrap:wrap}.world-view-tools button{min-width:38px;min-height:44px;padding:0 8px}.world-view-tools output{font-size:10px}.room-joystick{bottom:max(24px,env(safe-area-inset-bottom))}}
 
 .world-view-tools{background:none;border:0;padding:0;box-shadow:none}
 .world-view-tools button{background:#172324ed}
