@@ -20,12 +20,12 @@ describe('room camera', () => {
     room.enter(0, 0, 1); room.yaw = Math.PI / 2; room.keys.add('w'); room.step(.05);
     expect(room.camera.position.x).toBeCloseTo(-.2);
   });
-  it('limits pitch, movement time and room bounds; clears held input on exit', () => {
+  it('limits pitch and movement time while allowing room crossings; clears input on exit', () => {
     const room = new RoomCamera(); room.enter(32, -32, 2); room.look(0, 100000);
     expect(Math.abs(room.pitch)).toBeLessThan(Math.PI / 2);
     room.keys.add('s'); room.step(100); expect(room.camera.position.z).toBeCloseTo(-21.8);
     for (let i = 0; i < 100; i++) room.step(.05);
-    expect(room.camera.position.z).toBe(-17.5);
+    expect(room.camera.position.z).toBeCloseTo(-1.8);
     room.exit(); expect(room.keys.size).toBe(0); const previous = room.camera.position.clone(); room.step(1);
     expect(room.camera.position.equals(previous)).toBe(true);
   });
