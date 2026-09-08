@@ -104,10 +104,11 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     controls.enableRotate=false;controls.minZoom=.5;controls.maxZoom=6;controls.listenToKeyEvents(renderer.domElement);
     controls.touches.ONE=THREE.TOUCH.PAN;controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;
     controls.mouseButtons.LEFT=THREE.MOUSE.PAN;
-    const tunePan=(event:PointerEvent)=>{controls.panSpeed=event.pointerType==='touch'?2.5:1;controls.dampingFactor=event.pointerType==='touch'?.12:.05;};
+    let touchPanning=false;
+    const tunePan=(event:PointerEvent)=>{touchPanning=event.pointerType==='touch';controls.panSpeed=touchPanning?2.5:1;controls.enableDamping=!touchPanning&&!motion.matches;};
     renderer.domElement.addEventListener('pointerdown',tunePan,true);
     const unbindTrackpadPan=bindTrackpadPan(renderer.domElement,controls);
-    const motion=window.matchMedia('(prefers-reduced-motion: reduce)'),updateMotion=()=>{controls.enableDamping=!motion.matches;if(motion.matches)finishRotation();};updateMotion();motion.addEventListener('change',updateMotion);
+    const motion=window.matchMedia('(prefers-reduced-motion: reduce)'),updateMotion=()=>{controls.enableDamping=!touchPanning&&!motion.matches;if(motion.matches)finishRotation();};updateMotion();motion.addEventListener('change',updateMotion);
     const environmentScene=new RoomEnvironment(), environmentGenerator=new THREE.PMREMGenerator(renderer);
     const environment=environmentGenerator.fromScene(environmentScene,.04);scene.environment=environment.texture;scene.environmentIntensity=.45;
     environmentScene.dispose();environmentGenerator.dispose();
