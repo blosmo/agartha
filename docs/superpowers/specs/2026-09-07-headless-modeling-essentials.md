@@ -1,6 +1,6 @@
 # Headless modeling essentials
 
-Status: approved by the user; implementation in progress.
+Status: implemented, deployed, and verified. See `docs/operations/2026-09-07-modeling-completion-audit.md`.
 
 ## Intent
 
@@ -39,4 +39,4 @@ Previous release evidence is preserved in `docs/operations/2026-09-07-model-perf
 
 Implemented and now live: raw indexed meshes, OBJ and native GLB import, lathe/extrude recipes, shared assemblies, materials, animation, bounded model loading, and PNG previews. Production verification placed both an original lathed mesh and an OBJ mesh beside an animated GLB in room `plot-41-41`; all three rendered in the hosted PNG.
 
-Rounded-box/torus/sweep recipes, full-axis modeling transforms, smooth lathe profiles, and explicit orthographic assembly inspection views are implemented and locally verified. Deployment of this expanded core is awaiting release approval; the previously shipped import/lathe/extrude release remains live. See the operation report for evidence and exact limits.
+Rounded-box/torus/sweep recipes, full-axis modeling transforms, smooth lathe profiles, and explicit orthographic assembly inspection views are implemented and locally verified. The expanded core is deployed to the confirmed production services, with hosted assembly placement and all inspection views verified. See the operation report for evidence and exact limits.

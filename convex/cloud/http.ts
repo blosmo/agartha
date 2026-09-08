@@ -1,4 +1,5 @@
 import { governanceRoute } from '../governance/routes';
+import { assetRoute, assetCapabilities } from './assetRoutes';
 import {MODEL_CAPABILITIES} from '../../packages/protocol/src/modelAssets';
 import { proposalRoute } from './proposalRoutes';
 import { validatedMotion, validatedAnimation, digest } from '../scene/model';
@@ -19,6 +20,8 @@ export function registerCloudRoutes(router:HttpRouter){
       if(request.method==='POST'){const raw=await request.text();if(raw.length>(parts[0]==='library'?4_000_000:65536))return json({error:'Request too large'},413);try{body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))throw new Error();}catch{return json({error:'Invalid JSON'},400);}}
       if(parts[0]==='session'&&parts.length===1&&request.method==='POST')return json(await ctx.runMutation(auth.register,{token:body.agentToken,name:body.name,...(body.recoveryToken?{recoveryToken:body.recoveryToken}:{}),ipHash:request.headers.get('x-agartha-client')??'unknown'}));
       if(parts[0]==='session'&&parts.length===2&&request.method==='POST'&&['renew','rotate'].includes(parts[1]))return json(await ctx.runMutation(auth.maintain,{operation:parts[1],token,agentId:body.agentId,recoveryToken:body.recoveryToken,newToken:body.newToken,newRecoveryToken:body.newRecoveryToken}));
+      const canonicalAsset = await assetRoute(ctx, request, parts, url, token, body);
+      if (canonicalAsset !== undefined) return json(canonicalAsset);
       if(parts[0]==='models'){
         if(request.method==='POST'&&parts.length===2&&parts[1]==='upload-ticket'){
           if(!token)return json({error:'Register before importing models.'},401);
@@ -36,7 +39,7 @@ export function registerCloudRoutes(router:HttpRouter){
         try{return json({...worldToLocal(['x','y','z'].map(key=>Number(url.searchParams.get(key)??0))),spatialFrame:SPATIAL_FRAME});}catch{return json({error:'Invalid world coordinates'},400);}
       }
       if(parts[0]==='plots'&&parts.length===1){
-        if(request.method==='GET'){const coordinates={x:Number(url.searchParams.get('x')??0),z:Number(url.searchParams.get('z')??0)};return json(url.searchParams.get('view')==='summary'?await ctx.runQuery(read.summary,coordinates):await ctx.runQuery(read.neighborhood,{...coordinates,token}));}
+        if(request.method==='GET'){const coordinates={x:Number(url.searchParams.get('x')??0),z:Number(url.searchParams.get('z')??0)};return json(url.searchParams.get('view')==='summary'?await ctx.runQuery(read.summary,coordinates):await ctx.runQuery(read.neighborhood,{...coordinates,radius:Number(url.searchParams.get('radius')??1),token}));}
         if(!token)return json({error:'Register an agent first'},401);
         const result=await ctx.runMutation(write.createPlot,{token,x:Number(body.x),z:Number(body.z),name:body.name});return json(await ctx.runQuery(read.plot,{id:result.id,token}));
       }
@@ -60,7 +63,7 @@ export function registerCloudRoutes(router:HttpRouter){
       if(request.method==='GET'){
         if(!action)return json(await ctx.runQuery(read.plot,{id,token}));
         if(action==='neighbors')return json(await ctx.runQuery(read.neighbors,{id}));
-        if(action==='tools')return json({...BUILDER_CATALOG,governance:await ctx.runQuery(anyApi.governance.queries.discover,{scope:`world:${id}`,token}),models:{...MODEL_CAPABILITIES,localOnly:false,upload:undefined,uploadTicket:'/api/models/upload-ticket',uploadAuthorization:'Use the returned uploadToken as Bearer authorization at uploadUrl; never send the agent session token to that URL.'}});
+        if(action==='tools')return json({...BUILDER_CATALOG,assets:assetCapabilities(url.origin),governance:await ctx.runQuery(anyApi.governance.queries.discover,{scope:`world:${id}`,token}),models:{...MODEL_CAPABILITIES,localOnly:false,upload:undefined,uploadTicket:'/api/models/upload-ticket',uploadAuthorization:'Use the returned uploadToken as Bearer authorization at uploadUrl; never send the agent session token to that URL.'}});
         if(action==='objects')return json(await ctx.runQuery(scene.objects,{worldId:worldId(id),region:'0:0',paginationOpts:{numItems:100,cursor:url.searchParams.get('cursor')}}));
         if(action==='inspect')return json(await ctx.runQuery(scene.inspect,{worldId:worldId(id),ids:(url.searchParams.get('ids')??'').split(',').filter(Boolean)}));
         if(action==='preview'){

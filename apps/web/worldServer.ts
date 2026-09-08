@@ -8,7 +8,7 @@ import { applyWorldEdit, createWorld, WorldError, type SharedWorld } from './src
 
 export function worldSpacePlugin(file: string): Plugin {
   let queue: Promise<unknown> = Promise.resolve();
-  const preview = createWorldPreview(resolve(dirname(fileURLToPath(import.meta.url)), '../../packages/renderer/render.ts'));
+  const preview = createWorldPreview(resolve(dirname(fileURLToPath(import.meta.url)), '../../packages/renderer/render.ts')); 
   async function read(): Promise<SharedWorld> {
     try {
       const world = JSON.parse(await readFile(file, 'utf8')) as SharedWorld;

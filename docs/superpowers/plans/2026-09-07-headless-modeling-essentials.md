@@ -73,5 +73,5 @@
 - [x] Build a handled vessel from lathe plus sweep and a softened architectural object from rounded forms and transformed parts through the agent library API.
 - [x] Inspect front, side, top and isometric PNGs with PBR highlights. Check proportions, seams, winding, normals, caps and intersections. Adjust fixture geometry or implementation when evidence shows a defect.
 - [x] Review focused changes for API compatibility, invalid-input cost, geometry correctness and render-cache consistency. Re-run only tests relevant to fixes, then perform one full integration check.
-- [ ] Use the already confirmed real production targets for the release workflow: Vercel Divine Inside/agartha, Convex quaint-ladybug-283, Modal agartha-world-renderer. Honor any action-specific approval boundary, and do not mistake striped-eagle-66 development for production.
-- [ ] Verify actual hosted recipes, placement, all inspection views and browser appearance before claiming completion. Record limitations precisely and keep the goal active if any approved core operation remains unfinished.
+- [x] Use the already confirmed real production targets for the release workflow: Vercel Divine Inside/agartha, Convex quaint-ladybug-283, Modal agartha-world-renderer. Honor any action-specific approval boundary, and do not mistake striped-eagle-66 development for production.
+- [x] Verify actual hosted recipes, placement, all inspection views and browser appearance before claiming completion. Record limitations precisely and keep the goal active if any approved core operation remains unfinished.

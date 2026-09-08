@@ -1,0 +1,98 @@
+{
+  "verifier": "cloud.blender_mcp.verify",
+  "results": [
+    {
+      "ok": true,
+      "project": "a48a625e-1d2c-4589-9c60-54a7657439b0",
+      "cpu_limit": 2,
+      "latency_seconds": 62.819,
+      "startup_seconds": 15.677,
+      "workload_seconds": 25.7,
+      "resume_seconds": 11.56,
+      "auth": {
+        "valid": 200,
+        "missing": 401,
+        "invalid": 401
+      },
+      "egress": {
+        "tcp_blocked": true,
+        "tcp_error": "TimeoutError",
+        "https_blocked": true,
+        "https_error": "URLError",
+        "credentials_present": false
+      },
+      "artifact_bytes": {
+        "viewport": 158687,
+        "preview": 267668,
+        "glb": 101140
+      },
+      "retained_after_resume": true,
+      "estimated_cost_usd": {
+        "lower_bound": 0.00029805,
+        "upper_bound": 0.00271182
+      }
+    },
+    {
+      "ok": true,
+      "project": "828ea28f-1826-41db-80d6-756293df54fd",
+      "cpu_limit": 4,
+      "latency_seconds": 53.809,
+      "startup_seconds": 10.843,
+      "workload_seconds": 22.526,
+      "resume_seconds": 11.601,
+      "auth": {
+        "valid": 200,
+        "missing": 401,
+        "invalid": 401
+      },
+      "egress": {
+        "tcp_blocked": true,
+        "tcp_error": "TimeoutError",
+        "https_blocked": true,
+        "https_error": "URLError",
+        "credentials_present": false
+      },
+      "artifact_bytes": {
+        "viewport": 158687,
+        "preview": 267668,
+        "glb": 101140
+      },
+      "retained_after_resume": true,
+      "estimated_cost_usd": {
+        "lower_bound": 0.00026125,
+        "upper_bound": 0.00415298
+      }
+    }
+  ],
+  "total_wall_seconds": 116.628,
+  "total_estimated_upper_bound_usd": 0.0068648,
+  "cost_scope": "Workload only; excludes image build, startup, resume, idle and earlier diagnostic runs. Resource-cap estimates, not invoice measurements.",
+  "recorded_on": "2026-09-07",
+  "glb_inspection": {
+    "vertices": 2455,
+    "triangles": 4196,
+    "draws": 8,
+    "nodes": 8,
+    "materials": 3,
+    "validator": "packages/protocol/src/geometry/inspectGlb.ts"
+  },
+  "editable_project": {
+    "bytes": 600170,
+    "magic": "BLENDER",
+    "sha256": "72e41e4f1be67cae113279b62726e97e9b1fcc8918be366f52fd8b345901669a"
+  },
+  "selected_cpu_limit": 2,
+  "lifecycle": {
+    "idle_seconds": 30,
+    "idle_ready_seconds": 17.5,
+    "idle_exit_after_ready_seconds": 26.7,
+    "idle_returncode": 0,
+    "hard_timeout_seconds": 120,
+    "hard_ready_seconds": 12.6,
+    "hard_exit_after_ready_seconds": 115.0,
+    "hard_returncode": 124,
+    "observation": "Modal Sandbox.poll() backend status",
+    "all_test_sessions_stopped": true
+  },
+  "local_tests": 13
+}

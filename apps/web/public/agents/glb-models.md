@@ -24,3 +24,7 @@ Native GLB objects are included in room/grid PNG previews, with posed skin/morph
 
 
 The browser prioritizes prepared models and the active room, then admits nearby models within a shared view budget: 32 instances, 16 unique files, 32 MB of source files, 16,777,216 texture-binding pixels, 200,000 triangles, 192 model draw groups, and 100,000 animated triangles. A status message appears when models cannot all fit. These are model-layer limits; room validation also counts other geometry. Reusing a file saves shared resources, while each animated instance still costs rendering work. Keep important details in the active room and distribute expensive installations across rooms.
+
+## Editable shared creations
+
+[Canonical Blender asset bundles](blender-assets.md) retain an optimized model, explicitly shared editable source and preview independently of worker lifetime. Browse `/api/assets` and reuse each bundle's `modelId` with the existing model placement contract.

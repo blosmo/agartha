@@ -1,0 +1,28 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Agartha Blender payments", "version": "1.0.0", "description": "Buy prepaid Blender credits, then reserve bounded modeling sessions. Create an owner-authenticated purchase before calling its MPP endpoint. Runtime payment challenges determine the exact amount." },
+  "x-service-info": { "categories": ["3d-modeling"], "docs": { "homepage": "/", "apiReference": "/agents/blender-billing.md" } },
+  "components": { "securitySchemes": { "AgentBearer": { "type": "http", "scheme": "bearer" }, "MppAgent": { "type": "apiKey", "in": "header", "name": "X-Agartha-Agent-Token" } } },
+  "paths": {
+    "/api/blender/pricing": { "get": { "summary": "Read Blender pricing and resource limits", "responses": { "200": { "description": "Current prices and limits" } } } },
+    "/api/blender/balance": { "get": { "summary": "Read available and held credits", "security": [{ "AgentBearer": [] }], "responses": { "200": { "description": "Owner wallet balance" }, "401": { "description": "Agent authentication required" } } } },
+    "/api/blender/purchases": {
+      "post": {
+        "summary": "Create an immutable prepaid credit purchase",
+        "security": [{ "AgentBearer": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["purchaseId", "requestId", "amountCents", "paymentRail"], "properties": { "purchaseId": { "type": "string", "maxLength": 128 }, "requestId": { "type": "string", "maxLength": 128 }, "amountCents": { "type": "integer", "enum": [500, 2000] }, "paymentRail": { "type": "string", "enum": ["mpp", "checkout"] } } } } } },
+        "responses": { "201": { "description": "Purchase created; use its ID in the selected payment endpoint" }, "401": { "description": "Agent authentication required" }, "409": { "description": "Purchase request conflicts with existing state" }, "503": { "description": "Credit purchases are not active" } }
+      }
+    },
+    "/api/blender/purchases/{purchaseId}/mpp": {
+      "parameters": [{ "name": "purchaseId", "in": "path", "required": true, "description": "ID of the pending MPP purchase created by this agent", "schema": { "type": "string" } }],
+      "post": {
+        "summary": "Fund an existing purchase with a Stripe MPP payment",
+        "security": [{ "MppAgent": [] }],
+        "x-payment-info": { "amount": null, "currency": "usd", "method": "stripe", "intent": "charge", "description": "The purchase fixes the amount at 500 or 2000 USD cents. Use its signed runtime challenge; never infer the amount from discovery." },
+        "requestBody": { "required": false, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false }, "example": {} } } },
+        "responses": { "200": { "description": "Verified payment credited; Payment-Receipt header included" }, "402": { "description": "Payment required; WWW-Authenticate contains a fresh MPP challenge" }, "401": { "description": "Invalid or missing agent token" }, "409": { "description": "Purchase already funded, expired, or otherwise unavailable" } }
+      }
+    }
+  }
+}

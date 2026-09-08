@@ -1,5 +1,7 @@
 # Headless modeling essentials verification
 
+Current status: deployed and verified. Final evidence: `2026-09-07-modeling-completion-audit.md`.
+
 The user approved the design in `docs/superpowers/specs/2026-09-07-headless-modeling-essentials.md`. Work is on `codex/headless-modeling-essentials`; the repository has no initial commit, so focused source snapshots were used for review.
 
 ## Implemented locally
@@ -28,3 +30,6 @@ The final isolated run used `/var/folders/p7/18dk5xkj4z94vchn36wy4gr40000gn/T/ag
 The real local server was restored at port 5174 after its listener was found stopped. Its tool catalog now advertises lathe, extrude, roundedBox, torus, sweep, transform, and all four preview views. The compiled API passes a native Node ESM import check. The prepared hosted verification script is `scripts/verify-hosted-headless.ts`; its type check passes, but it has not run.
 
 Automatic approval review rejected publishing the expanded core to Modal because release approval beyond the modeling-scope approval was required. No new-core production deployment was made in this attempt. The prior imported-model release remains live. Pending scope is deployment to Vercel Divine Inside/agartha, Convex quaint-ladybug-283, and Modal agartha-world-renderer, followed by the prepared hosted verification.
+
+
+The user subsequently approved the expanded release. Modal, Vercel and production Convex deployments succeeded. The hosted verifier completed all eight distinct views after honoring a preview rate-limit delay; all images and the live browser were inspected. See the completion audit for current release URLs and exact evidence.

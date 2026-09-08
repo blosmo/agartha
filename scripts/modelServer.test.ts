@@ -5,6 +5,7 @@ import type {AddressInfo} from 'node:net';
 import {createServer} from 'vite';
 import {expect,it} from 'vitest';
 import {plotSpacePlugin} from '../apps/web/plotServer';
+import type {WorldObject} from '../apps/web/src/worlds/world';
 import {glbFixture} from '../packages/protocol/src/geometry/glbFixture';
 it('uploads and reads immutable GLBs through the local API',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'agartha-model-api-'));const server=await createServer({configFile:false,root:dir,plugins:[plotSpacePlugin(join(dir,'world.json'))],server:{host:'127.0.0.1',port:0},logLevel:'silent'});await server.listen();
@@ -22,11 +23,15 @@ it('rejects an over-budget room edit without persisting its objects',async()=>{
  const base=`http://127.0.0.1:${(server.httpServer!.address() as AddressInfo).port}`,url=base+'/api/plots/plot-1-1';
  try{
   let world=await(await fetch(url)).json();
+  const starterObjects=world.objects;
   for(let batch=0;batch<6;batch++){
    const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({baseRevision:world.revision,author:'Builder',message:'Budget test',objects:Array.from({length:100},(_,i)=>({id:`sphere-${batch}-${i}`,name:'Sphere',shape:'sphere',position:[0,1,0],scale:[.1,.1,.1],color:'#ffffff'}))})});
    if(batch<5){expect(response.status).toBe(200);world=await response.json();}else{expect(response.status).toBe(400);expect((await response.json()).error).toContain('triangles');}
   }
-  const persisted=await(await fetch(url)).json();expect(persisted.objects).toHaveLength(500);expect(persisted.revision).toBe(world.revision);
+  const persisted=await(await fetch(url)).json();expect(persisted.objects).toHaveLength(starterObjects.length+500);expect(persisted.revision).toBe(world.revision);
+  expect(persisted.objects).toEqual(world.objects);
+  expect(persisted.objects.filter((object:WorldObject)=>starterObjects.some((starter:WorldObject)=>starter.id===object.id))).toEqual(starterObjects);
+  expect(persisted.objects.some((object:WorldObject)=>object.id.startsWith('sphere-5-'))).toBe(false);
  }finally{await server.close();await rm(dir,{recursive:true,force:true});}
 },15000);
 it('places a native model and rejects missing clips before saving',async()=>{
@@ -35,9 +40,12 @@ it('places a native model and rejects missing clips before saving',async()=>{
  try{
   const model=await(await fetch(base+'/api/models?name=Moving%20model&author=Builder',{method:'POST',headers:{'Content-Type':'model/gltf-binary'},body:glbFixture()})).json();
   let world=await(await fetch(base+'/api/plots/plot-1-1')).json();
+  const starterObjects=world.objects;
   const object={id:'model-instance',name:'Moving model',shape:'model',modelId:model.id,position:[0,2,0],scale:[2,2,2],color:'#ffffff',animation:{clip:'Float',speed:1,paused:false}};
   const post=(objects:unknown[])=>fetch(base+'/api/plots/plot-1-1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({baseRevision:world.revision,author:'Builder',message:'Place native model',objects})});
-  const saved=await post([object]);expect(saved.status).toBe(200);world=await saved.json();expect(world.objects[0].animation.clip).toBe('Float');
-  const invalid=await post([{...object,animation:{...object.animation,clip:'Missing'}}]);expect(invalid.status).toBe(400);expect((await(await fetch(base+'/api/plots/plot-1-1')).json()).revision).toBe(world.revision);
+  const saved=await post([object]);expect(saved.status).toBe(200);world=await saved.json();expect(world.objects.find((placed:WorldObject)=>placed.id===object.id).animation.clip).toBe('Float');
+  expect(world.objects).toHaveLength(starterObjects.length+1);
+  expect(world.objects.filter((placed:WorldObject)=>placed.id!==object.id)).toEqual(starterObjects);
+  const invalid=await post([{...object,animation:{...object.animation,clip:'Missing'}}]);expect(invalid.status).toBe(400);const persisted=await(await fetch(base+'/api/plots/plot-1-1')).json();expect(persisted.revision).toBe(world.revision);expect(persisted.objects).toEqual(world.objects);
  }finally{await server.close();await rm(dir,{recursive:true,force:true});}
 },15000);

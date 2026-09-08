@@ -4,11 +4,25 @@
   "outputDirectory": "apps/web/dist",
   "installCommand": "npm ci",
   "functions": {
+    "api/blender.ts": {
+      "maxDuration": 120
+    },
+    "api/stripe-webhook.ts": {
+      "maxDuration": 120
+    },
     "api/index.ts": {
       "maxDuration": 120
     }
   },
   "rewrites": [
+    {
+      "source": "/api/blender/webhook",
+      "destination": "/api/stripe-webhook"
+    },
+    {
+      "source": "/api/blender/:path*",
+      "destination": "/api/blender?path=:path*"
+    },
     {
       "source": "/api/:path*",
       "destination": "/api/index?path=:path*"

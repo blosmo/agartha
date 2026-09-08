@@ -1,0 +1,27 @@
+import React from 'react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { RoomCoordinates, RoomObjects } from './RoomInspection';
+import { createWorld } from './world';
+afterEach(cleanup);
+it('visits canonical room coordinates and rejects invalid addresses', () => {
+  const visit = vi.fn();
+  render(<RoomCoordinates address={{x:0,z:0}} onVisit={visit}/>);
+  fireEvent.change(screen.getByLabelText('Room X'), {target:{value:'4'}});
+  fireEvent.change(screen.getByLabelText('Room Z'), {target:{value:'-1'}});
+  fireEvent.submit(screen.getByRole('form'));
+  expect(visit).toHaveBeenCalledWith('plot-4--1');
+  fireEvent.change(screen.getByLabelText('Room X'), {target:{value:'10001'}});
+  fireEvent.submit(screen.getByRole('form'));
+  expect(screen.getByRole('alert')).toHaveTextContent('integers between');
+  expect(visit).toHaveBeenCalledTimes(1);
+});
+it('exposes object identity and transforms and searches loaded objects', () => {
+  render(<RoomObjects world={{...createWorld(),hasMoreObjects:true}}/>);
+  fireEvent.click(screen.getByText(/Objects \(/));
+  expect(screen.getByText(/more objects than/)).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Find objects'), {target:{value:'island-rock'}});
+  expect(screen.getByText('Bedrock')).toBeInTheDocument();
+  expect(screen.queryByText('Stillwater pond')).not.toBeInTheDocument();
+  expect(screen.getByText(/Local XYZ:/)).toHaveTextContent('0, -5, 0');
+});

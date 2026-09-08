@@ -12,7 +12,7 @@ Implementation sequence:
 5. Agent modeling helpers and instructions, imported and original demonstration objects in rooms.
 6. Browser/PNG verification and performance measurements with repeated assets and animated scenes.
 
-Current stage: indexed/OBJ mesh publication and placement are connected to local and hosted validation, live browser geometry caching/instancing, shared assemblies, and PNG previews. Two 175-vertex/288-triangle vases were published and placed through the local API, one authored as indexed geometry and one imported as OBJ. Their browser and PNG appearance were inspected. Lathe and concave extrusion modeling helpers are now publishable recipes, tested through the local API. Meshes have both serialized and storage-cost limits. GLB import, richer native animation, and scene-wide performance budgets/measurements remain. The goal remains active until all requirements are evidenced.
+Current status: complete for the original goal and the user-approved headless-essential core. Local and hosted imports, original modeling, materials, animation, reusable assemblies, inspection views and bounded performance have been verified. See `docs/operations/2026-09-07-modeling-completion-audit.md`. The progress entries below are historical checkpoints.
 
 ## GLB import progress
 
@@ -70,3 +70,6 @@ Production Convex is now deployed following the user's explicit approval for qua
 
 
 The user approved the headless-essentials design. The new core is implemented and locally verified, including actual GPU renders and reusable assembly placement; full integration/build and final covering checks passed. See `docs/operations/2026-09-07-headless-modeling-essentials.md`. Production release of the expanded core is pending explicit approval after automatic review rejected the Modal publish; no new-core deployment was made.
+
+
+Final release is deployed and verified following explicit approval. The completion audit maps every requirement to source/test/runtime evidence and records the performance limits of that evidence. All approved headless-core tasks are complete.

@@ -1,5 +1,10 @@
+import { starterTables } from './cloud/starterSchema';
+import { assetTables } from './cloud/assetSchema';
 import { governanceTables } from './governance/schema';
 import { cloudTables } from './cloud/schema';
+import { blenderBillingTables } from './cloud/billingSchema';
+import { blenderSessionTables } from './cloud/blenderSessionSchema';
+import { blenderProjectTables } from './cloud/blenderProjectSchema';
 import { sceneTables } from "./scene/schema";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
@@ -25,7 +30,12 @@ const objectSample = v.object({
 
 export default defineSchema({
   ...sceneTables,
+  ...starterTables,
+  ...assetTables,
   ...cloudTables,
+  ...blenderBillingTables,
+  ...blenderSessionTables,
+  ...blenderProjectTables,
   ...governanceTables,
   worlds: defineTable({
     worldId: v.string(),

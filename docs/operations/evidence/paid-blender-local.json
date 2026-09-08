@@ -1,0 +1,123 @@
+{
+  "recordedAt": "2026-09-07T16:35:35.793184+00:00",
+  "status": "test_verified_live_pricing_gate_open",
+  "stripePaymentsExecuted": true,
+  "paidModalWorkersLaunched": true,
+  "deployed": true,
+  "liveChargingEnabled": false,
+  "verification": {
+    "convexFullSuite": {
+      "passed": 103,
+      "command": "npx vitest run --dir convex --maxWorkers=1"
+    },
+    "laterReservationRegressionSuite": {
+      "passed": 8,
+      "includesNewShutdownRenewalTest": true
+    },
+    "pricingPaymentsAndGatewayTests": {
+      "passed": 32
+    },
+    "paidPythonTests": {
+      "passed": 25
+    },
+    "existingOperatorPythonTests": {
+      "passed": 13
+    },
+    "typechecks": [
+      "tsconfig.scripts.json",
+      "tsconfig.convex.json"
+    ],
+    "integration": {
+      "realConvexHttp": true,
+      "actualPythonBroker": true,
+      "provider": "simulated",
+      "verified": [
+        "funding",
+        "credit hold",
+        "single tool execution on retry",
+        "checkpoint persistence",
+        "stop settlement",
+        "checkpoint restore",
+        "idle shutdown",
+        "lost launch lookup and full failed-start release"
+      ],
+      "simulatedCustomerChargeCents": 50,
+      "allSimulatedWorkersStopped": true
+    },
+    "scopedDeploymentBuild": {
+      "directory": "/private/tmp/agartha-paid-blender-sy73jar9",
+      "offlineInstall": true,
+      "command": "npm run build",
+      "passed": true,
+      "unrelatedWorktreeEditsExcluded": true
+    }
+  },
+  "remainingGates": [
+    "Choose live pricing or lower data limits to meet the maximum-use margin target",
+    "Supply live Stripe credentials and configure the live webhook/profile",
+    "Integrate the billing source into main before durable live activation"
+  ],
+  "unrelatedDiffCheckFailures": [
+    "apps/web/worldServer.ts trailing whitespace",
+    "convex/scene.test.ts trailing whitespace"
+  ],
+  "stripeTestProfileVerification": {
+    "httpStatus": 200,
+    "matchesConfiguredTestKey": true,
+    "profileIsTest": true,
+    "paymentsMade": false
+  },
+  "stripeTestWebhookVerification": {
+    "sameTestCredentials": true,
+    "id": "we_1UD4ELIOb6PxNRrnIlNvhfWD",
+    "enabled": true,
+    "livemode": false,
+    "requiredEventCount": 15,
+    "deliveryVerified": false
+  },
+  "remoteVerification": {
+    "mppTestPaymentsSucceeded": true,
+    "mppValidator": {
+      "passed": 15,
+      "failed": 0,
+      "warnings": 1,
+      "warning": "Validator omits required agent header during malformed-credential test; authenticated manual test returns 402 with fresh challenge"
+    },
+    "checkoutTestPaymentSucceeded": true,
+    "genuineStripeWebhookRedeliveryFundedWallet": true,
+    "partialRefundWalletCents": 250,
+    "originalPaidEventReplayPreservedRefund": true,
+    "fullRefundWalletCents": 0,
+    "paidWorkerStartupFailures": 6,
+    "startupChargesCents": 0,
+    "failedWorkerComputeCeilingUsd": 0.23742,
+    "correctedWorkerImage": "im-Kv6pF2pEAXlHBphZOfIbZn",
+    "remainingComputeGate": "Temporary operator allowlist replacement requires automatic-approval-review confirmation",
+    "realMcpModelCreated": true,
+    "glbExportBytes": 61848,
+    "pngExportBytes": 163641,
+    "editableCheckpointBytes": 641977,
+    "checkpointResumeVerified": true,
+    "crossContainerIdleCheckpointVerified": true,
+    "reconnectedMcpClientsVerified": true,
+    "meteredChargeCents": 30,
+    "meteredReleaseCents": 20,
+    "meteredElapsedMilliseconds": 310169,
+    "workerCredentialsAbsent": true,
+    "brokerStorageNotMountedInWorker": true,
+    "externalEgressBlocked": true,
+    "crossOwnerAccessDenied": true,
+    "refundAfterUsageDeficitCents": -155,
+    "refundDeficitFrozen": true,
+    "activeWorkersAfterCleanup": 0,
+    "activeOrPendingReservationsAfterCleanup": 0,
+    "testComputeDisabled": true,
+    "testAllowlistEmpty": true,
+    "newCreditPurchasesDisabled": true
+  },
+  "finalTestDeployment": {
+    "url": "https://agartha-dkeru8j7a-divine-inside.vercel.app",
+    "alias": "https://agartha-dusky.vercel.app",
+    "preservedMainCommit": "76559bb305f5b3b084a9f2fe53c43dc7555e6028"
+  }
+}

@@ -102,7 +102,7 @@ it('keeps 1,000 distinct agents isolated in the database model (not a hosted cap
     for(let i=0;i<hashes.length;i++)await ctx.db.insert('sceneAgents',{worldId:'commons',agentId:`scale-${i}`,name:`Agent ${i}`,tokenHash:hashes[i],revoked:false,canCurate:false,expiresAt:Date.now()+86400000,liveObjects:0,objectsAllocated:0,windowStart:0,windowRequests:0});
   });
   const results=[];
-  for(let offset=0;offset<credentials.length;offset+=50) results.push(...await Promise.all(credentials.slice(offset,offset+50).map((token,j)=>{const i=offset+j;return t.mutation(f.edit,edit(token,`object-${i}`,`scale-request-${i}`));})));
+  for(let offset=0;offset<credentials.length;offset+=50) results.push(...await Promise.all(credentials.slice(offset,offset+50).map((token,j)=>{const i=offset+j;return t.mutation(f.edit,edit(token,`object-${i}`,`scale-request-${i}`));}))); 
   expect(results).toHaveLength(1000);
   expect(results.every(r=>r.changed[0].version===1)).toBe(true);
   expect((await t.query(f.metadata,{worldId:'commons'})).briefVersion).toBe(1);

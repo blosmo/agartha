@@ -1,3 +1,4 @@
+import { neighborhoodCells, neighborhoodObjectLimit } from '../../packages/protocol/src/neighborhood';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { addressFromId, DIRECTIONS, neighborAddress, PLOT_SIZE, plotId, validateAddress, type PlotAddress } from '../../packages/protocol/src/plots';
@@ -8,7 +9,7 @@ import type { PlotNeighbor, PlotNeighborhood } from './src/worlds/plotTypes';
 export class PlotStore {
   private queues = new Map<string, Promise<unknown>>();
   private boot?: Promise<void>;
-  constructor(private originFile: string,private validateScene?: (next:SharedWorld,previous:SharedWorld)=>Promise<void>) {}
+  constructor(private originFile: string,private validateScene?: (next:SharedWorld,previous:SharedWorld)=>Promise<void>, private installStarters?: () => Promise<SharedWorld[]>) {}
   private file(id: string) { addressFromId(id); return id === 'the-commons' ? this.originFile : join(dirname(this.originFile), 'plots', `${id}.json`); }
   private async read(id: string): Promise<SharedWorld | undefined> {
     try {
@@ -35,6 +36,19 @@ export class PlotStore {
     return this.boot;
   }
   private async seed() {
+    if (this.installStarters) {
+      const worlds = await this.installStarters();
+      // Validate every candidate before creating any world file.
+      for (const world of worlds) await this.validateScene?.(world, { ...world, objects: [] });
+      for (const world of worlds) {
+        const file = this.file(world.id);
+        await mkdir(dirname(file), { recursive: true });
+        try { await writeFile(file, JSON.stringify(world), { flag: 'wx' }); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+      }
+      return;
+    }
+
     const starters = [
       { x: 0, z: -1, name: 'Fern Hollow', tool: 'grove', palette: 'woodland' },
       { x: 1, z: 0, name: 'Sky Workshop', tool: 'pavilion', palette: 'moonlight' },
@@ -93,13 +107,12 @@ export class PlotStore {
     await this.ready();const id = plotId(address);
     return this.serial(id, async () => { if (await this.read(id)) throw new WorldError('This plot already exists.', 409); const world = this.blank(address, name.trim(), author.trim()); await this.save(world); return world; });
   }
-  async neighborhood(center: PlotAddress): Promise<PlotNeighborhood> {
+  async neighborhood(center: PlotAddress, radius = 1): Promise<PlotNeighborhood> {
     try { validateAddress(center); } catch (error) { throw new WorldError(error instanceof Error ? error.message : 'Invalid plot address.'); }
     await this.ready();
-    const addresses: PlotAddress[] = [];
-    for (let x = center.x - 1; x <= center.x + 1; x++) for (let z = center.z - 1; z <= center.z + 1; z++) if (Math.abs(x) <= 10000 && Math.abs(z) <= 10000) addresses.push({ x, z });
+    let addresses:PlotAddress[];try{addresses=neighborhoodCells(center,radius);}catch(error){throw new WorldError(error instanceof Error?error.message:'Invalid neighborhood radius.');}
     const values = await Promise.all(addresses.map(address => this.serial(plotId(address), () => this.read(plotId(address)))));
-    return { center, plotSize: PLOT_SIZE, plots: values.filter((world): world is SharedWorld => Boolean(world)), empty: addresses.filter((_,i) => !values[i]).map(address => ({ ...address, id: plotId(address) })) };
+    return { center, plotSize: PLOT_SIZE, plots: values.filter((world): world is SharedWorld => Boolean(world)).map(world => {if(radius===1)return world;const maximum=neighborhoodObjectLimit(center,world.placement??addressFromId(world.id));return {...world,hasMoreObjects:world.objects.length>maximum,objects:world.objects.slice(0,maximum)};}), empty: addresses.filter((_,i) => !values[i]).map(address => ({ ...address, id: plotId(address) })) };
   }
   async neighbors(id: string): Promise<PlotNeighbor[]> {
     const world = await this.get(id), address = world.placement!;
