@@ -1,6 +1,6 @@
 # Paid Blender operator runbook
 
-Status: test-mode end-to-end verification is complete. MPP, hosted Checkout, webhook redelivery, refunds and stale-event replay, real MCP modeling/export, checkpoint resume, idle cleanup, reconnects and metered settlement are verified. All workers are stopped, compute and credit purchases are disabled, and the temporary allowlist is empty. Live activation remains gated on live Stripe configuration and durable source integration.
+Status: test-mode end-to-end verification is complete. MPP, hosted Checkout, webhook redelivery, refunds and stale-event replay, real MCP modeling/export, checkpoint resume, idle cleanup, reconnects and metered settlement are verified. All workers are stopped, compute and credit purchases are disabled, and the temporary allowlist is empty. Live activation remains gated on live Stripe configuration.
 
 Merchant: Divine Inside LLC, USA. The supplied Stripe test key was previously checked against the intended US account. The webhook destination is recorded in [stripe-blender-webhook.md](stripe-blender-webhook.md). Do not recreate it. `STRIPE_PROFILE_ID` is now a valid `profile_test_...` business profile. A read-only GET to Stripe Business Profiles returned HTTP 200 and exactly matched the profile configured with the supplied test key.
 
@@ -102,7 +102,7 @@ Pricing sources recorded during design: [Modal pricing](https://modal.com/pricin
 - Refunding the original test top-up after usage produced a frozen -155-cent balance, preserving spent-credit debt.
 - All workers and pending reservations are cleared. Temporary access and new purchases are disabled.
 - See [cost review](paid-blender-cost-review.md): pricing v2 applies the approved 40-cent minimum; maximum-data modeled contribution is 62.3% domestic and 60.8% international. Existing v1 reservations retain their original charges.
-- The scoped deployment preserves main commit `76559bb305f5b3b084a9f2fe53c43dc7555e6028`; billing changes remain local and must be integrated into main before future automatic deployments can retain them.
+- The scoped deployment preserves main commit `76559bb305f5b3b084a9f2fe53c43dc7555e6028`; keep the billing routes and services in main so future automatic deployments retain them.
 
 ## Approved pricing v2 and Astra scene
 

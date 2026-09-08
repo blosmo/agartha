@@ -24,6 +24,12 @@ jobs:
       - run: npm ci
       - run: npm run check:release
       - run: npm test
+      - name: Test Python Blender services
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r cloud/blender_mcp/requirements-client.txt
+          .venv/bin/python -m unittest discover -s cloud/blender_billing -t . -p 'test_*.py'
+          .venv/bin/python -m unittest cloud.blender_mcp.test_app cloud.blender_mcp.test_runtime cloud.blender_mcp.test_transport
       - run: npm run build
       - name: Test Rust workspace
         run: |
