@@ -14,18 +14,18 @@ describe('room camera', () => {
   });
   it('moves relative to heading and normalizes diagonal movement', () => {
     const room = new RoomCamera(); room.enter(0, 0, 1); room.keys.add('w'); room.step(.05);
-    expect(room.camera.position.z).toBeCloseTo(9.8);
+    expect(room.camera.position.z).toBeCloseTo(9.6);
     room.enter(0, 0, 1); room.keys.add('w'); room.keys.add('d'); room.step(.05);
-    expect(room.camera.position.distanceTo(new Vector3(0, 1.8, 10))).toBeCloseTo(.2);
+    expect(room.camera.position.distanceTo(new Vector3(0, 1.8, 10))).toBeCloseTo(.4);
     room.enter(0, 0, 1); room.yaw = Math.PI / 2; room.keys.add('w'); room.step(.05);
-    expect(room.camera.position.x).toBeCloseTo(-.2);
+    expect(room.camera.position.x).toBeCloseTo(-.4);
   });
   it('limits pitch and movement time while allowing room crossings; clears input on exit', () => {
     const room = new RoomCamera(); room.enter(32, -32, 2); room.look(0, 100000);
     expect(Math.abs(room.pitch)).toBeLessThan(Math.PI / 2);
-    room.keys.add('s'); room.step(100); expect(room.camera.position.z).toBeCloseTo(-21.8);
+    room.keys.add('s'); room.step(100); expect(room.camera.position.z).toBeCloseTo(-21.6);
     for (let i = 0; i < 100; i++) room.step(.05);
-    expect(room.camera.position.z).toBeCloseTo(-1.8);
+    expect(room.camera.position.z).toBeCloseTo(18.4);
     room.exit(); expect(room.keys.size).toBe(0); const previous = room.camera.position.clone(); room.step(1);
     expect(room.camera.position.equals(previous)).toBe(true);
   });

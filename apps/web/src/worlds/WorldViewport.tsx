@@ -206,7 +206,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
   },[]);
   useEffect(()=>{host.current?.querySelector('canvas')?.setAttribute('aria-label',inside?'First-person room view. Drag to look, WASD or arrow keys to move, Escape to exit.':'Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Use camera controls to rotate or enter a room.');},[inside]);
   useEffect(()=>{fitCamera();},[focused]);
-  useEffect(()=>{if(focusRequest){if(roomCamera.current.active)exitRoom();fitCamera();}},[focusRequest]);
+  useEffect(()=>{if(focusRequest){focusRef.current=true;setFocused(true);if(roomCamera.current.active)exitRoom();fitCamera();}},[focusRequest]);
   useEffect(()=>{
     const rt=runtime.current;if(!rt)return;
     rt.moving = []; rt.movingOutlines = [];

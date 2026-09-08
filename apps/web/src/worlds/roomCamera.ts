@@ -46,7 +46,7 @@ export class RoomCamera {
     const x = this.movement.x + key('d', 'ArrowRight') - key('a', 'ArrowLeft');
     const y = this.movement.y + key('s', 'ArrowDown') - key('w', 'ArrowUp');
     const length = Math.max(1, Math.hypot(x, y));
-    const distance = Math.min(Math.max(seconds, 0), .05) * 4;
+    const distance = Math.min(Math.max(seconds, 0), .05) * 8;
     const dx=(x * Math.cos(this.yaw) + y * Math.sin(this.yaw)) / length * distance;
     const dz=(y * Math.cos(this.yaw) - x * Math.sin(this.yaw)) / length * distance;
     // Resolve axes separately so the player slides along walls.

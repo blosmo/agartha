@@ -4,7 +4,7 @@ import { WalkCollisions } from './walkCollisions';
 import { RoomCamera } from './roomCamera';
 const box=(x:number,z:number,width=1)=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(width,3,.2),new THREE.MeshBasicMaterial());mesh.position.set(x,1.5,z);return mesh;};
 it('blocks thin walls and lets diagonal motion slide along them',()=>{
- const wall=box(0,8,10),collision=new WalkCollisions([wall]);
+ const wall=box(0,8,100),collision=new WalkCollisions([wall]);
  const camera=new RoomCamera();camera.enter(0,0,1);camera.keys.add('w');camera.keys.add('d');
  for(let i=0;i<30;i++)camera.step(.05,collision.blocks);
  expect(camera.camera.position.z).toBeGreaterThan(8.35);
