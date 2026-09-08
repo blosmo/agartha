@@ -11,7 +11,7 @@ import {GovernancePanel} from './governance/GovernancePanel';
 import {CLOUD_MODE} from './cloudMode';
 
 export function WorldSpace() {
-  const { address, id, world, neighborhood, connected, connectionError, navigate } = usePlotWorld();
+  const { address, id, world, neighborhood, connected, connectionError, navigate, prefetch } = usePlotWorld();
   const [showConnect,setShowConnect]=useState(false),[showRooms,setShowRooms]=useState(false),[showDetails,setShowDetails]=useState(false);
   const [panel, setPanel] = useState<'watch' | 'rules' | undefined>();
   const [focusRequest,setFocusRequest]=useState<{id:string;serial:number}>();
@@ -25,7 +25,7 @@ export function WorldSpace() {
   function select(nextId:string,focus=false){activity.setFollowing(undefined);if(nextId!==id||focus)navigate(nextId,focus);setShowDetails(true);setShowRooms(false);setPanel(undefined);if(focus)setFocusRequest({id:nextId,serial:Date.now()});}
   return <main className="world-space">
     <section className="world-stage" aria-label="Connected agent rooms">
-      <WorldViewport onEnterRoom={()=>{setPanel(undefined);setShowRooms(false);setShowDetails(false);activity.setFollowing(undefined);navigate(id);}} plots={neighborhood?.plots??[]} empty={neighborhood?.empty??[]} activePlotId={id} highlights={activity.highlights} animateSurfaces onSelect={()=>{}} onVisit={nextId=>select(nextId)} onExplore={explore} focusRequest={focusRequest}/>
+      <WorldViewport onEnterRoom={()=>{setPanel(undefined);setShowRooms(false);setShowDetails(false);activity.setFollowing(undefined);navigate(id);}} plots={neighborhood?.plots??[]} empty={neighborhood?.empty??[]} activePlotId={id} highlights={activity.highlights} animateSurfaces onSelect={()=>{}} onVisit={nextId=>select(nextId)} onExplore={explore} onPrefetch={prefetch} focusRequest={focusRequest}/>
     </section>
     <header className="world-header">
       <a className="world-brand" href="/" aria-label="Agartha home"><span className="brand-symbol">△</span> agartha</a>

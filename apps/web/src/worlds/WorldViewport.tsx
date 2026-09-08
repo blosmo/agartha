@@ -26,8 +26,8 @@ type MovingInstance = { mesh: THREE.InstancedMesh; index: number; position: THRE
 type Runtime = { models:ModelLayer; meshGeometries:Map<string,THREE.BufferGeometry>; textures: PbrTextures; moving: MovingInstance[]; movingOutlines: Array<{ outline: THREE.LineSegments; y: number; yaw: number; motion: ObjectMotion }>; scene: THREE.Scene; group: THREE.Group; terrain: THREE.Group; camera: THREE.OrthographicCamera; controls: OrbitControls; aspect: number; time: {value:number}; };
 const NO_HIGHLIGHTS: ObjectHighlight[] = [];
 type Label = { id:string; name:string; x:number; y:number; empty:boolean };
-export function WorldViewport({ plots, empty, activePlotId, selected, proposal, draftShader, animateSurfaces, onSelect, onVisit, onExplore, focusRequest, onEnterRoom, highlights = NO_HIGHLIGHTS }: {
-  onEnterRoom?:()=>void; highlights?: ObjectHighlight[]; plots: SharedWorld[]; empty: Array<PlotAddress & {id:string}>; activePlotId:string; selected?:string; proposal?:BuildObject[]; draftShader?:SharedShader; animateSurfaces?:boolean; onSelect:(id:string|undefined)=>void; onVisit:(id:string)=>void; onExplore?:(id:string)=>void; focusRequest?:{id:string;serial:number};
+export function WorldViewport({ plots, empty, activePlotId, selected, proposal, draftShader, animateSurfaces, onSelect, onVisit, onExplore, onPrefetch, focusRequest, onEnterRoom, highlights = NO_HIGHLIGHTS }: {
+  onEnterRoom?:()=>void; highlights?: ObjectHighlight[]; plots: SharedWorld[]; empty: Array<PlotAddress & {id:string}>; activePlotId:string; selected?:string; proposal?:BuildObject[]; draftShader?:SharedShader; animateSurfaces?:boolean; onSelect:(id:string|undefined)=>void; onVisit:(id:string)=>void; onExplore?:(id:string)=>void; onPrefetch?:(id:string)=>void; focusRequest?:{id:string;serial:number};
 }) {
   const meshLibrary=useMeshLibrary([...plots.flatMap(plot=>plot.objects),...(proposal??[])].flatMap(object=>object.meshId?[object.meshId]:[]));
   const animateRef=useRef(animateSurfaces);animateRef.current=animateSurfaces;
@@ -37,7 +37,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
   const overviewRotation = useRef(0);
   const turn = useRef(new QuarterTurn());
   const anchor=useRef(addressFromId(activePlotId));
-  const callbacks = useRef({onSelect,onVisit,onExplore,activePlotId,plots,empty});callbacks.current = {onSelect,onVisit,onExplore,activePlotId,plots,empty};
+  const callbacks = useRef({onSelect,onVisit,onExplore,onPrefetch,activePlotId,plots,empty});callbacks.current = {onSelect,onVisit,onExplore,onPrefetch,activePlotId,plots,empty};
   const [modelError,setModelError]=useState('');
   const [materialError,setMaterialError] = useState(false);
   const [error,setError] = useState(false), [zoom,setZoom] = useState(100), [focused,setFocused] = useState(false), [labels,setLabels] = useState<Label[]>([]);
@@ -117,10 +117,18 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     const grid=new THREE.GridHelper(4096,128,'#92a094','#92a094');grid.position.set(16,-.07,16);horizon.add(grid);scene.add(horizon);
     const group=new THREE.Group(),terrain=new THREE.Group(),models=new ModelLayer(setModelError);scene.add(group,terrain,models.group);runtime.current={models,meshGeometries:new Map(),textures,scene,group,terrain,camera,controls,aspect:1,time:{value:0},moving:[],movingOutlines:[]};
     let cameraPlotId=callbacks.current.activePlotId;
+    let previousCameraCell={x:anchor.current.x,z:anchor.current.z};
     const exploration=cameraExploration(()=>{
       if(roomCamera.current.active)return;
-      const x=Math.round(controls.target.x/PLOT_SIZE)+anchor.current.x,z=Math.round(controls.target.z/PLOT_SIZE)+anchor.current.z;
+      const raw={x:controls.target.x/PLOT_SIZE+anchor.current.x,z:controls.target.z/PLOT_SIZE+anchor.current.z};
+      const x=Math.round(raw.x),z=Math.round(raw.z);
+      const dx=raw.x-previousCameraCell.x,dz=raw.z-previousCameraCell.z;
+      previousCameraCell=raw;
       if(Math.abs(x)<=10000&&Math.abs(z)<=10000){const id=plotId({x,z});if(id!==cameraPlotId){cameraPlotId=id;callbacks.current.onExplore?.(id);}}
+      if(Math.max(Math.abs(dx),Math.abs(dz))>.02){
+        const ahead={x:x+(Math.abs(dx)>.02?Math.sign(dx):0),z:z+(Math.abs(dz)>.02?Math.sign(dz):0)};
+        if(Math.abs(ahead.x)<=10000&&Math.abs(ahead.z)<=10000)callbacks.current.onPrefetch?.(plotId(ahead));
+      }
       horizon.position.set(Math.round(controls.target.x/PLOT_SIZE)*PLOT_SIZE,0,Math.round(controls.target.z/PLOT_SIZE)*PLOT_SIZE);
     });
     const update=()=>{setZoom(Math.round(camera.zoom*100));exploration.schedule();};controls.addEventListener('change',update);
