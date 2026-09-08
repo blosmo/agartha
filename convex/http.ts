@@ -1,4 +1,6 @@
+import {registerAssetUpload} from './cloud/assetUpload';
 import {registerModelUpload} from './cloud/modelUpload';
+import { registerBillingRoutes } from './cloud/billingHttp';
 import { registerCloudRoutes } from './cloud/http';
 import { registerSceneRoutes } from "./scene/http";
 import { httpRouter } from "convex/server";
@@ -9,6 +11,8 @@ const http = httpRouter();
 registerSceneRoutes(http);
 registerCloudRoutes(http);
 registerModelUpload(http);
+registerAssetUpload(http);
+registerBillingRoutes(http);
 
 http.route({
   path: "/health",

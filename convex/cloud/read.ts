@@ -1,3 +1,4 @@
+import {neighborhoodCells,neighborhoodObjectLimit} from '../../packages/protocol/src/neighborhood';
 import { discovery } from '../governance/queries';
 import {modelById,publicModel} from './models';
 import {internalQuery,type QueryCtx,type MutationCtx} from '../_generated/server';
@@ -31,10 +32,9 @@ export async function snapshot(ctx:Reader,world:Doc<'sceneWorlds'>,token?:string
   };
 }
 export const plot=internalQuery({args:{id:v.string(),token:v.optional(v.string())},handler:async(ctx,args)=>snapshot(ctx,await publicWorld(ctx,args.id),args.token)});
-export const neighborhood=internalQuery({args:{x:v.number(),z:v.number(),token:v.optional(v.string())},handler:async(ctx,args)=>{
-  try{plotId(args);}catch{fail('invalid','Invalid grid coordinates.');}
-  const cells=[];for(let x=args.x-1;x<=args.x+1;x++)for(let z=args.z-1;z<=args.z+1;z++)if(Math.abs(x)<=10000&&Math.abs(z)<=10000)cells.push({x,z});
-  const values=await Promise.all(cells.map(async cell=>{const world=await ctx.db.query('sceneWorlds').withIndex('by_grid_cell',q=>q.eq('gridId',CLOUD_GRID).eq('plotX',cell.x).eq('plotZ',cell.z)).unique();return world?.publicRead?await snapshot(ctx,world,args.token,cell.x===args.x&&cell.z===args.z?1000:200):null;}));
+export const neighborhood=internalQuery({args:{x:v.number(),z:v.number(),radius:v.optional(v.number()),token:v.optional(v.string())},handler:async(ctx,args)=>{
+  let cells;try{cells=neighborhoodCells(args,args.radius);}catch(error){fail('invalid',error instanceof Error?error.message:'Invalid grid coordinates.');}
+  const values=await Promise.all(cells.map(async cell=>{const world=await ctx.db.query('sceneWorlds').withIndex('by_grid_cell',q=>q.eq('gridId',CLOUD_GRID).eq('plotX',cell.x).eq('plotZ',cell.z)).unique();return world?.publicRead?await snapshot(ctx,world,args.token,neighborhoodObjectLimit(args,cell)):null;}));
   return {center:{x:args.x,z:args.z},plotSize:32,cloud:true,spatialFrame:SPATIAL_FRAME,plots:values.filter(p=>p!==null&&(!p.archived||(p.placement.x===args.x&&p.placement.z===args.z))),archived:values.filter(p=>p?.archived).map(p=>({id:p!.id,name:p!.name,...p!.placement})),empty:cells.filter((_,i)=>!values[i]).map(cell=>({...cell,id:plotId(cell)}))};
 }});
 export const neighbors=internalQuery({args:{id:v.string()},handler:async(ctx,args)=>{

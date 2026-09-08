@@ -49,3 +49,14 @@ it('evicts lower-priority cached models when the active room needs the shared bu
  const ids:string[]=[];layer.group.traverse(node=>{if(node instanceof THREE.Mesh)ids.push(node.userData.references[0].id);});expect(ids.sort()).toEqual(['a','b']);
  }finally{layer.dispose();}
 });
+
+it('shows the active room before a slow neighboring model finishes',async()=>{
+ const bytes=glbFixture();let release!:()=>void;
+ const slow=new Promise<void>(resolve=>{release=resolve;});
+ const second=`model-${'b'.repeat(64)}`;
+ vi.stubGlobal('fetch',vi.fn(async(url:string)=>{if(url.includes(second))await slow;return {ok:true,arrayBuffer:async()=>bytes.buffer};}));
+ const layer=new ModelLayer(vi.fn());
+ const loading=layer.set([placement(),placement({...object,id:'neighbor',modelId:second})]);
+ try{await vi.waitFor(()=>expect(layer.metrics.models).toBe(1),{timeout:500});}
+ finally{release();await loading;layer.dispose();}
+});

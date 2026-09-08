@@ -15,7 +15,7 @@
     "agents": "node --import tsx scripts/agents/run_scripted_agents.ts",
     "build": "npm --workspace packages/protocol run build && npm --workspace packages/cli run build && npm --workspace apps/web run build && npm run build:scripts && npm run build:scene",
     "build:scripts": "tsc --noEmit -p tsconfig.scripts.json",
-    "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts && npm run test:convex && npm run test:renderer && npm run test:release",
+    "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts && npm run test:billing && npm run test:convex && npm run test:renderer && npm run test:release",
     "test:scripts": "vitest run --dir scripts --maxWorkers=1",
     "test:convex": "vitest run --dir convex",
     "test:rust": "cargo test --workspace",
@@ -27,7 +27,8 @@
     "test:renderer": "vitest run --dir packages/renderer",
     "cloud:seed": "node --import tsx scripts/cloud-seed.ts",
     "check:release": "node scripts/check-release.mjs",
-    "test:release": "node --test tests/release/check-release.test.mjs"
+    "test:release": "node --test tests/release/check-release.test.mjs",
+    "test:billing": "vitest run --dir packages/billing"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -43,8 +44,11 @@
   },
   "dependencies": {
     "convex": "^1.37.0",
+    "fflate": "0.8.3",
     "jpeg-js": "^0.4.4",
+    "mppx": "0.9.2",
     "pngjs": "^7.0.0",
+    "stripe": "22.6.1",
     "three": "^0.185.1",
     "vgpu": "^0.4.0"
   },

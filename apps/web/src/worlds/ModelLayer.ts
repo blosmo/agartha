@@ -1,3 +1,4 @@
+import {downloadModel} from './modelDownload';
 import {inspectGlb,type GlbInspection} from '../../../../packages/protocol/src/geometry/inspectGlb';
 import {fitsModelResources,fitsModelWork,modelWork} from './modelViewBudget';
 import {modelBounds} from '../../../../packages/renderer/modelBounds';
@@ -20,8 +21,7 @@ export class ModelLayer {
   const controller=new AbortController();
   const promise=(async()=>{
    if(!MODEL_ID.test(id))throw new Error('Invalid model reference.');
-   const response=await fetch(`/api/models/${id}/file`,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(20000)])});if(!response.ok)throw new Error(`Model could not load (${response.status}).`);
-   const bytes=await response.arrayBuffer();
+   const bytes=await downloadModel(id,AbortSignal.any([controller.signal,AbortSignal.timeout(20000)]));
    if(controller.signal.aborted||this.disposed||!this.desired.has(id))throw new Error('Model is no longer visible.');
    const cost=inspectGlb(new Uint8Array(bytes));
    const fits=()=>fitsModelResources([...this.templates.values()].map(template=>template.cost).concat([...this.reservations.values()]),cost);
@@ -55,8 +55,17 @@ export class ModelLayer {
   for(const [id,template]of this.templates)if(!this.desired.has(id)){disposeTemplate(template);this.templates.delete(id);}
   let failed=false;
   // Decode one new asset at a time to bound transient parser and image memory.
-  for(const id of ids){try{await this.load(id);}catch{failed=true;}if(this.disposed||generation!==this.generation)return;}
-  this.status(limited?'Some imported models are hidden to keep this view responsive.':failed?'Some imported models could not load.':'');
+  let workLimited=false;
+  // Paint each completed room before waiting for the next download or decode.
+  workLimited=this.renderPlacements(placements);
+  for(const id of ids){
+   try{await this.load(id);}catch{failed=true;}
+   if(this.disposed||generation!==this.generation)return;
+   workLimited=this.renderPlacements(placements)||workLimited;
+  }
+  this.status(limited||workLimited?'Some imported models are hidden to keep this view responsive.':failed?'Some imported models could not load.':'');
+ }
+ private renderPlacements(placements:Placement[]){
   const work={triangles:0,draws:0,animatedTriangles:0};
   let workLimited=false;const usedIds=new Set<string>();
   for(const placement of placements){
@@ -81,8 +90,9 @@ export class ModelLayer {
    if(instance.clip!==placement.object.animation?.clip){instance.mixer.stopAllAction();const clip=template.gltf.animations.find(clip=>clip.name===placement.object.animation?.clip);if(clip){instance.mixer.clipAction(clip).reset().play();instance.mixer.update(0);}instance.clip=placement.object.animation?.clip;}
    instance.placement=placement;
   }
-  if(workLimited)this.status('Some imported models are hidden to keep this view responsive.');
+
   for(const [id,template]of this.templates)if(!usedIds.has(id)){disposeTemplate(template);this.templates.delete(id);}
+  return workLimited;
  }
  get metrics(){return {models:this.instances.size,templates:this.templates.size,sourceBytes:[...this.templates.values()].reduce((sum,template)=>sum+template.cost.bytes,0),texturePixels:[...this.templates.values()].reduce((sum,template)=>sum+template.cost.texturePixels,0),animationTime:[...this.instances.values()].reduce((sum,instance)=>sum+instance.mixer.time,0)};}
  update(delta:number,time:number,animate:boolean){

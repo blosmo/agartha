@@ -1,3 +1,4 @@
+import { installStarterCatalog } from './starterCatalog';
 import {MODEL_CAPABILITIES} from '../../packages/protocol/src/modelAssets';
 import {ModelStore} from './modelStore';
 import {modelHandler} from './modelServer';
@@ -22,7 +23,7 @@ export function plotSpacePlugin(originFile: string): Plugin {
   const models=new ModelStore(resolve(dirname(originFile),'models'));
   const handleModels=modelHandler(models);
   const library = new LibraryStore(resolve(dirname(originFile), 'library'),id=>models.get(id));
-  const store = new PlotStore(originFile,(next,previous)=>library.validateScene(next,previous));
+  const store = new PlotStore(originFile,(next,previous)=>library.validateScene(next,previous),()=>installStarterCatalog(models));
   const worker = resolve(dirname(fileURLToPath(import.meta.url)), '../../packages/renderer/render.ts');
   const preview = createWorldPreview(worker,id=>models.content(id));
   async function handle(req: IncomingMessage, res: ServerResponse, legacy = false, isLibrary = false) {
@@ -54,7 +55,7 @@ export function plotSpacePlugin(originFile: string): Plugin {
         return;
       }
       if (!id) {
-        const result = req.method === 'GET' ? await store.neighborhood({x:Number(url.searchParams.get('x') ?? 0),z:Number(url.searchParams.get('z') ?? 0)}) : await store.create({x:Number(input.x),z:Number(input.z)},input.name as string,input.author as string);
+        const result = req.method === 'GET' ? await store.neighborhood({x:Number(url.searchParams.get('x') ?? 0),z:Number(url.searchParams.get('z') ?? 0)},Number(url.searchParams.get('radius')??1)) : await store.create({x:Number(input.x),z:Number(input.z)},input.name as string,input.author as string);
         res.end(JSON.stringify('plots' in result ? {...result,plots:await Promise.all(result.plots.map(world=>library.enrich(world)))} : await library.enrich(result)));return;
       }
       try { addressFromId(id); } catch { throw new WorldError('Invalid plot address.'); }
