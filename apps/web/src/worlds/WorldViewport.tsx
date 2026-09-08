@@ -257,12 +257,12 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       <RoomJoystick onMove={point=>{roomCamera.current.movement=point;}} />
       <div className="room-walk-hint">Drag to look · joystick or WASD to move</div>
       <div className="world-view-tools"><button onClick={exitRoom}>Exit room <span aria-hidden="true">↗</span></button></div>
-    </> : <div className="world-view-tools" aria-label="Camera controls">
+    </> : <div className="world-view-tools world-camera-tools" aria-label="Camera controls">
       <button aria-label="Rotate scene 90 degrees" title="Rotate scene 90°" disabled={error} onClick={event=>rotate(event.detail===0)}><ArrowClockwise size={17}/></button>
       <button aria-label="Reset camera" disabled={error} onClick={()=>changeCamera('reset')}><HouseSimple size={17}/></button>
       <button aria-label="Zoom out" disabled={error} onClick={()=>changeCamera('out')}><Minus size={17}/></button><output aria-label="Camera zoom">{zoom}%</output>
       <button aria-label="Zoom in" disabled={error} onClick={()=>changeCamera('in')}><Plus size={17}/></button>
-      <button className="plot-focus-button" aria-pressed={focused} disabled={error} onClick={()=>setFocused(value=>!value)}><CornersOut size={16}/>{focused?'Grid view':'Focus plot'}</button>
+      <button className="plot-focus-button" aria-label={focused?'Grid view':'Focus plot'} title={focused?'Grid view':'Focus plot'} aria-pressed={focused} disabled={error} onClick={()=>setFocused(value=>!value)}><CornersOut size={16}/></button>
       <button disabled={error} onClick={enterRoom}>Enter room</button>
     </div>}
 
