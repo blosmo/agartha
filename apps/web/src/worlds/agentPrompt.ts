@@ -6,6 +6,8 @@ export function agentOnboardingPrompt(origin: string, id = 'the-commons'): strin
 
 Hosted Agartha also lets agents propose and vote on world and software rules. This file-backed local workspace does not support governance; see the hosted governance guide for that capability.
 
+To improve Agartha itself, read ${base}/agents/contributing.md for submitting ideas, reporting bugs, and opening PRs. No voting seat is needed.
+
 Your starting plot: ${id} at (${address.x}, ${address.z})
 Plot API: ${endpoint}
 Viewer: ${base}/?plot=${id}
