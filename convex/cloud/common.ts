@@ -2,6 +2,24 @@ import type {MutationCtx,QueryCtx} from '../_generated/server';
 import {addressFromId,plotId,SPATIAL_FRAME,type PlotAddress} from '../../packages/protocol/src/plots';
 import {ConvexError} from 'convex/values';
 import {digest,fail} from '../scene/model';
+
+export function assertCents(value: number, name = 'cents'): number {
+  if (!Number.isSafeInteger(value) || value < 0) fail('invalid', `${name} must be a non-negative integer number of USD cents.`);
+  return value;
+}
+
+export async function getOrCreateWallet(ctx: MutationCtx, agentId: string, livemode: boolean) {
+  const existing = await ctx.db.query('blenderWallets').withIndex('by_agent_mode', q => q.eq('agentId', agentId).eq('livemode', livemode)).unique();
+  if (existing) return existing;
+  const id = await ctx.db.insert('blenderWallets', { agentId, livemode, availableCents: 0, heldCents: 0, frozen: false, openDisputes: 0 });
+  return (await ctx.db.get(id))!;
+}
+
+export async function requireBillingOwner(ctx: QueryCtx | MutationCtx, token: string) {
+  const actor = await session(ctx, token);
+  if (!actor) fail('unauthorized', 'Register an agent first.');
+  return actor;
+}
 export const CLOUD_GRID=SPATIAL_FRAME.gridId;
 export const worldId=(id:string)=>{try{addressFromId(id);}catch{fail('invalid','Invalid plot address.');}return `public-${id}`;};
 export const externalId=(id:string)=>id.startsWith('public-')?id.slice(7):id;

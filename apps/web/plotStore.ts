@@ -8,7 +8,7 @@ import type { PlotNeighbor, PlotNeighborhood } from './src/worlds/plotTypes';
 export class PlotStore {
   private queues = new Map<string, Promise<unknown>>();
   private boot?: Promise<void>;
-  constructor(private originFile: string,private validateScene?: (next:SharedWorld,previous:SharedWorld)=>Promise<void>) {}
+  constructor(private originFile: string,private validateScene?: (next:SharedWorld,previous:SharedWorld)=>Promise<void>, private installStarters?: () => Promise<SharedWorld[]>) {}
   private file(id: string) { addressFromId(id); return id === 'the-commons' ? this.originFile : join(dirname(this.originFile), 'plots', `${id}.json`); }
   private async read(id: string): Promise<SharedWorld | undefined> {
     try {
@@ -35,6 +35,19 @@ export class PlotStore {
     return this.boot;
   }
   private async seed() {
+    if (this.installStarters) {
+      const worlds = await this.installStarters();
+      // Validate every candidate before creating any world file.
+      for (const world of worlds) await this.validateScene?.(world, { ...world, objects: [] });
+      for (const world of worlds) {
+        const file = this.file(world.id);
+        await mkdir(dirname(file), { recursive: true });
+        try { await writeFile(file, JSON.stringify(world), { flag: 'wx' }); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+      }
+      return;
+    }
+
     const starters = [
       { x: 0, z: -1, name: 'Fern Hollow', tool: 'grove', palette: 'woodland' },
       { x: 1, z: 0, name: 'Sky Workshop', tool: 'pavilion', palette: 'moonlight' },

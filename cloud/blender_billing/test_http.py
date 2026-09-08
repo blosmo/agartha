@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+import unittest
+from unittest.mock import Mock
+
+from starlette.testclient import TestClient
+
+from .http import create_http_app
+from .ledger import LedgerError
+
+
+class HttpTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.broker = Mock()
+        self.monitor = Mock()
+        self.client = TestClient(create_http_app(self.broker, self.monitor))
+        self.headers = {"Authorization": f"Bearer {'a' * 64}"}
+        self.broker.owned.return_value = {"reservationId": "r1", "status": "running"}
+
+    def test_unauthorized_start_never_spawns_monitor(self):
+        self.broker.owned.side_effect = LedgerError(401)
+        response = self.client.post('/sessions/r1/start', headers=self.headers)
+        self.assertEqual(response.status_code, 401)
+        self.monitor.assert_not_called()
+        self.broker.start.assert_not_called()
+
+    def test_initialize_and_real_mcp_tool_envelopes(self):
+        response = self.client.post('/mcp/r1', headers=self.headers, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-03-26"}})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['result']['protocolVersion'], '2025-03-26')
+        tool_result = {"content": [{"type": "text", "text": "created"}], "structuredContent": {"count": 1}, "isError": False}
+        self.broker.call.return_value = {"id": 2, "result": tool_result}
+        response = self.client.post('/mcp/r1', headers=self.headers, json={"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_scene_info", "arguments": {}}})
+        self.assertEqual(response.json(), {"jsonrpc": "2.0", "id": 2, "result": tool_result})
+
+    def test_reconnected_mcp_clients_can_reuse_request_ids(self):
+        scopes = []
+        self.broker.call.return_value = {'result': {'content': [], 'isError': False}}
+        for _ in range(2):
+            initialized = self.client.post('/mcp/r1', headers=self.headers, json={'jsonrpc': '2.0', 'id': 0, 'method': 'initialize', 'params': {}})
+            scope = initialized.headers['mcp-session-id'];scopes.append(scope)
+            self.client.post('/mcp/r1', headers={**self.headers, 'mcp-session-id': scope}, json={'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})
+        self.assertNotEqual(scopes[0], scopes[1])
+        self.assertNotEqual(self.broker.call.call_args_list[0].args[3], self.broker.call.call_args_list[1].args[3])
+
+    def test_bound_request_and_private_state_projection(self):
+        response = self.client.post('/mcp/r1', headers=self.headers, content=b'x' * 65_537)
+        self.assertEqual(response.status_code, 413)
+        self.broker.owned.return_value = {"reservationId": "r1", "status": "running", "providerWorkerId": "sb-private", "startupExecutorId": "private"}
+        response = self.client.get('/sessions/r1', headers=self.headers)
+        self.assertEqual(response.json(), {"reservationId": "r1", "status": "running"})
+
+
+if __name__ == '__main__':
+    unittest.main()

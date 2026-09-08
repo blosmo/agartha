@@ -1,0 +1,127 @@
+{
+  "calculatedAt": "2026-09-08T02:14:12.847182+00:00",
+  "observedWorkloads": [
+    {
+      "reservationId": "modal-model-1788828764674",
+      "revenueUsd": 0.25,
+      "workerEnvelopeSeconds": 21.228,
+      "workerCostCeilingUsd": 0.00223997856,
+      "modeledTotalVariableUsd": 0.037240112321634704,
+      "modeledContributionPercent": 85.10395507134612
+    },
+    {
+      "reservationId": "modal-model-1788829475911",
+      "revenueUsd": 0.25,
+      "workerEnvelopeSeconds": 28.107,
+      "workerCostCeilingUsd": 0.0029658506399999995,
+      "modeledTotalVariableUsd": 0.037118145923293676,
+      "modeledContributionPercent": 85.15274163068253
+    },
+    {
+      "reservationId": "idle-resume-1788830249891",
+      "revenueUsd": 0.25,
+      "workerEnvelopeSeconds": 102.638,
+      "workerCostCeilingUsd": 0.01083036176,
+      "modeledTotalVariableUsd": 0.04914089879822429,
+      "modeledContributionPercent": 80.34364048071029
+    },
+    {
+      "reservationId": "metered-resume-1788830367512",
+      "revenueUsd": 0.25,
+      "workerEnvelopeSeconds": 58.665,
+      "workerCostCeilingUsd": 0.006190330799999999,
+      "modeledTotalVariableUsd": 0.042037500378224284,
+      "modeledContributionPercent": 83.18499984871028
+    },
+    {
+      "reservationId": "metered-resume-1788831156289",
+      "revenueUsd": 0.3,
+      "workerEnvelopeSeconds": 325.016,
+      "workerCostCeilingUsd": 0.034295688319999997,
+      "modeledTotalVariableUsd": 0.0895667979046516,
+      "modeledContributionPercent": 70.14440069844946
+    },
+    {
+      "reservationId": "isolation-check-1788831753026",
+      "revenueUsd": 0.25,
+      "workerEnvelopeSeconds": 20.069,
+      "workerCostCeilingUsd": 0.0021176808799999998,
+      "modeledTotalVariableUsd": 0.035802332914920874,
+      "modeledContributionPercent": 85.67906683403164
+    }
+  ],
+  "maximumDataScenarios": [
+    {
+      "minimumPriceUsd": 0.25,
+      "cardScenario": "US domestic card",
+      "costUsd": 0.1371577764892578,
+      "contributionPercent": 45.13688940429687
+    },
+    {
+      "minimumPriceUsd": 0.25,
+      "cardScenario": "international card",
+      "costUsd": 0.1409077764892578,
+      "contributionPercent": 43.63688940429687
+    },
+    {
+      "minimumPriceUsd": 0.4,
+      "cardScenario": "US domestic card",
+      "costUsd": 0.1506577764892578,
+      "contributionPercent": 62.33555587768555
+    },
+    {
+      "minimumPriceUsd": 0.4,
+      "cardScenario": "international card",
+      "costUsd": 0.1566577764892578,
+      "contributionPercent": 60.83555587768555
+    }
+  ],
+  "assumptions": {
+    "sandboxCpuCores": 2,
+    "sandboxMemoryGiB": 4,
+    "workerComputeContingency": 0.25,
+    "brokerAndMonitorUseHardResourceCapsForEntireWorkerEnvelope": true,
+    "gatewayAndDatabaseAllowanceUsdPerSession": 0.01,
+    "egressUsdPerGiB": 0.04,
+    "includesOutputToBrokerAndClientPlusCheckpointAndRestoreTransfers": true,
+    "includesSevenDayCheckpointStorage": true,
+    "paymentFeesModeledNotChargedInStripeTestMode": true,
+    "promotionalAllowancesIgnored": true,
+    "notAnInvoice": true
+  },
+  "testBudget": {
+    "limitUsd": 2,
+    "workerFullLifetimeCeilingUsd": 0.538152,
+    "conservativeWindowStartedAt": "2026-09-07T22:30:00+00:00",
+    "functionWindowCeilingUsd": 0.8109376281309598,
+    "buildAndOverlapReserveUsd": 0.1,
+    "conservativeTotalUsd": 1.44908962813096
+  },
+  "liveMarginGatePassedAtProposedPrice": true,
+  "recommendedMinimumUsdForExistingLimits": 0.4,
+  "approvedPricingVersion": "blender-cpu2-v2",
+  "approvedMinimumUsd": 0.4,
+  "observatoryVerification": {
+    "reservation": {
+      "reservationId": "astra-observatory-1788839886336",
+      "status": "settled",
+      "reservedMinutes": 5,
+      "reservedCents": 40,
+      "chargedCents": 40,
+      "releasedCents": 0,
+      "launchClaimedAt": 1788839891647,
+      "readyAt": 1788839900312,
+      "stoppedAt": 1788839949258,
+      "responseBytesUsed": 5416161
+    },
+    "objects": 424,
+    "activeWorkersAfterTest": 0,
+    "additionalConservativeTestCostUsd": 0.09267927223379134,
+    "priorConservativeTestCostUsd": 1.44908962813096,
+    "combinedConservativeTestCostUsd": 1.5417689003647512,
+    "additionalWindowStartedAt": "2026-09-08T03:50:00Z",
+    "additionalWindowEndedAt": "2026-09-08T03:59:09.258000+00:00",
+    "usesFull375SecondWorkerLifetime": true,
+    "additionalBuildReserveUsd": 0.02
+  }
+}

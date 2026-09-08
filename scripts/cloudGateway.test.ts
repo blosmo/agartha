@@ -83,3 +83,12 @@ it('rejects malformed or absent multi-object focus before model and render work'
  const missing=response();await handler({method:'GET',headers:{host:'world.example'},query:{path:'plots/plot-1-0/preview',focus:'body,handle'}} as never,missing as never);
  expect(missing.statusCode).toBe(404);expect(JSON.parse(missing.body).error).toContain('not found');expect(fetcher).toHaveBeenCalledTimes(1);
 });
+
+it('forwards canonical publication and downloads previews as public assets, not room renders',async()=>{
+ vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');
+ const fetcher=vi.fn().mockResolvedValueOnce(Response.json({id:'bundle-'+ 'a'.repeat(64)})).mockResolvedValueOnce(Response.json({assetFile:true,url:'https://example.convex.cloud/api/storage/file',bytes:100}));vi.stubGlobal('fetch',fetcher);
+ const published=response();await handler({method:'POST',headers:{host:'world.example','content-type':'application/json',authorization:'Bearer agent-token'},query:{path:'assets/upload-ticket'},body:{name:'Shared creation'}} as never,published as never);
+ expect(published.statusCode).toBe(200);expect(String(fetcher.mock.calls[0][0])).toBe('https://example.convex.site/cloud/assets/upload-ticket');
+ const preview=response();await handler({method:'GET',headers:{host:'world.example',cookie:'__Host-agartha_session=private-cookie'},query:{path:'assets/bundle-'+ 'a'.repeat(64)+'/files/preview',view:'not-a-room-view'}} as never,preview as never);
+ expect(preview.statusCode).toBe(302);expect(preview.headers.Location).toBe('https://example.convex.cloud/api/storage/file');expect(fetcher.mock.calls[1][1].headers.Authorization).toBeUndefined();
+});

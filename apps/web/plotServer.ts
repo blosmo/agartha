@@ -1,3 +1,4 @@
+import { installStarterCatalog } from './starterCatalog';
 import {MODEL_CAPABILITIES} from '../../packages/protocol/src/modelAssets';
 import {ModelStore} from './modelStore';
 import {modelHandler} from './modelServer';
@@ -22,7 +23,7 @@ export function plotSpacePlugin(originFile: string): Plugin {
   const models=new ModelStore(resolve(dirname(originFile),'models'));
   const handleModels=modelHandler(models);
   const library = new LibraryStore(resolve(dirname(originFile), 'library'),id=>models.get(id));
-  const store = new PlotStore(originFile,(next,previous)=>library.validateScene(next,previous));
+  const store = new PlotStore(originFile,(next,previous)=>library.validateScene(next,previous),()=>installStarterCatalog(models));
   const worker = resolve(dirname(fileURLToPath(import.meta.url)), '../../packages/renderer/render.ts');
   const preview = createWorldPreview(worker,id=>models.content(id));
   async function handle(req: IncomingMessage, res: ServerResponse, legacy = false, isLibrary = false) {

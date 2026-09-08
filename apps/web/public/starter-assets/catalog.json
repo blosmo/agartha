@@ -1,0 +1,1258 @@
+{
+  "schema": 1,
+  "models": [
+    {
+      "modelId": "model-4996c45c95d63cd82a919ad28641ea14c4c7e5a4bbb328bc6b09674f7c9fda8d",
+      "file": "commons-scene.glb",
+      "bytes": 897172,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -0.9549999833106995,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          8.574999809265137,
+          12.899999618530273
+        ]
+      },
+      "name": "The Commons",
+      "description": "A timber gathering hall, curved pond, grove and connected stepping-stone paths, with an open western clearing.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-67a75921dfbc72f896133b21e65eabd2bdc8abc2ded2fb5ccfcf2602ff3318e4"
+    },
+    {
+      "modelId": "model-873ea9be4cbb19b5086e82527b48ebeffcbf411c6d34bc4be4797327072c24d1",
+      "file": "commons-component.glb",
+      "bytes": 25312,
+      "bounds": {
+        "min": [
+          4.299999713897705,
+          0.11083518713712692,
+          4.840000152587891
+        ],
+        "max": [
+          8.09999942779541,
+          2.2699999809265137,
+          6.96999979019165
+        ]
+      },
+      "name": "Carved gathering bench",
+      "description": "A crafted timber bench with shaped ends and independent editable parts.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-cd20c44a9d6bb41265d5b9dd72cf359c0cd485a5521ff84d6d5d1d7d4466ec57"
+    },
+    {
+      "modelId": "model-7903f458524cb91eeaa1010fbb098db638c6c2f1ce4367cad0bace03e8637e10",
+      "file": "fern_hollow-scene.glb",
+      "bytes": 1079668,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -0.9700000286102295,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          9.419999122619629,
+          12.899999618530273
+        ]
+      },
+      "name": "Fern Hollow",
+      "description": "An ancient leaning tree and exposed roots frame a fern-lined stream and mossy footbridge. The front-right clearing remains available.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-e2e201f96d4d006c8a7944feadaca97fc086407a4394ac987e9d621bc99272d6"
+    },
+    {
+      "modelId": "model-2120ad25dd2907e0a7363bd701a149c05a83292093ccc41cb66b2060a53d63ce",
+      "file": "fern_hollow-component.glb",
+      "bytes": 370764,
+      "bounds": {
+        "min": [
+          -10.787519454956055,
+          0.02880336344242096,
+          -8.948058128356934
+        ],
+        "max": [
+          -0.9512680172920227,
+          9.419999122619629,
+          -0.9616402387619019
+        ]
+      },
+      "name": "Ancient rooted tree",
+      "description": "A leaning woodland tree with exposed roots and layered foliage.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-c324fad5eedfe1d7c3ea62d23646441425038dd3b5e3fa83bab7602d5950fe5c"
+    },
+    {
+      "modelId": "model-cbceaba13224b409310fef118cbc456b71a8162eda2c0b237f5e3d4c739698ca",
+      "file": "sky_workshop-scene.glb",
+      "bytes": 866596,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -1.2000000476837158,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          7.184969902038574,
+          12.899999618530273
+        ]
+      },
+      "name": "Sky Workshop",
+      "description": "A crafted timber and brass workshop with curved canopy, armillary, assembly terraces, survey telescope and an open building yard. Includes editable named components.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-480c01ea396e52fa485d2f5d77139724e7d717ed87f592182d09803f9c044b29"
+    },
+    {
+      "modelId": "model-92c8b00f460438dba0dc4811cbd76663fedc4672ac3d48928f28c5d8fa056847",
+      "file": "sky_workshop-component.glb",
+      "bytes": 221524,
+      "bounds": {
+        "min": [
+          -2.653700113296509,
+          0.11900000274181366,
+          -2.653700113296509
+        ],
+        "max": [
+          2.653700113296509,
+          6.783000946044922,
+          2.653700113296509
+        ]
+      },
+      "name": "Celestial armillary instrument",
+      "description": "An articulated brass armillary with meridian rings, degree marks, globe and pedestal.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-26d50e51e73eae3604df914a1843d5b4d69ad94fd781e6e68ad585b77ad3835f"
+    },
+    {
+      "modelId": "model-542671587b3fed52bd3e47f77aa33a353b1be9eba02be7508dfaebc0cf17bbc0",
+      "file": "ochre_court-scene.glb",
+      "bytes": 513224,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -1.7000000476837158,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          8.979999542236328,
+          12.899999618530273
+        ]
+      },
+      "name": "Ochre Court",
+      "description": "A carved sandstone arch, sundial and sunken court with layered masonry, vessels and a clear processional approach.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-d31273e4d3db409c60d7d9c17282228227383fd8c8f2107bb14dc16f5eb43806"
+    },
+    {
+      "modelId": "model-4a049a78919e930e38f72d9d83abc732ccaa32144454e200c63e3330fc3dedcf",
+      "file": "ochre_court-component.glb",
+      "bytes": 240760,
+      "bounds": {
+        "min": [
+          -11,
+          -0.19499999284744263,
+          -7.75
+        ],
+        "max": [
+          0.9999999403953552,
+          8.979999542236328,
+          -4.25
+        ]
+      },
+      "name": "Carved sandstone arch",
+      "description": "A monumental masonry arch with stepped feet, relief bands and individually editable voussoirs.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-fdb5bb22f1409686f3b9cfeb931cc9b29a5bd67732e9eac407b4976cbcb371e6"
+    },
+    {
+      "modelId": "model-6d0221553ef4d11474be135886fcf863a91c86e1c4d07488cee2243723ec1c97",
+      "file": "rolling_meadow-scene.glb",
+      "bytes": 1020428,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -0.9549999833106995,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          8.630228042602539,
+          12.899999618530273
+        ]
+      },
+      "name": "Rolling Meadow",
+      "description": "Contoured meadow terraces rise toward a crafted windmill, with dry-stone walls, a stream crossing, flowers and open grass for future building.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-1f61ab5abfa11caac0bbdf28f3138e08957f839d9f97af8270ba0d6d7d3e69e9"
+    },
+    {
+      "modelId": "model-b6982c9bf519a12ceb71d8d7829d9923c7ae0f1362b9dbe65d725ad192a9a94e",
+      "file": "rolling_meadow-component.glb",
+      "bytes": 195480,
+      "bounds": {
+        "min": [
+          -9.6102294921875,
+          2.25,
+          -8.41645622253418
+        ],
+        "max": [
+          -4.589771270751953,
+          8.630228042602539,
+          -5.510000228881836
+        ]
+      },
+      "name": "Crafted meadow windmill",
+      "description": "A small crafted windmill with lattice sails, door framing and layered construction.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-4f96b8a33c4f28124ac691882790a8b10cc4bb9cbd505b52e3e5532c339e684c"
+    },
+    {
+      "modelId": "model-589f332a0b57962ae9256c14b3fd6168dc5f575eace8ba1ec06d8d69c0574807",
+      "file": "quiet_beginning-scene.glb",
+      "bytes": 1066296,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -0.5799999833106995,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          6.189981937408447,
+          12.899999618530273
+        ]
+      },
+      "name": "A Quiet Beginning",
+      "description": "A stone moon gate, red maples, meditation deck and raked stone garden frame a generous quiet clearing.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-6e42c0101ff7e76f209dc0f3a13f2e65f36c0cdf0752a5f5c2b2cfc0d3b7c73b"
+    },
+    {
+      "modelId": "model-507ec988697c5953befc8598a4dce1f5219bd78119614b57dc1c7aaceaf9d63e",
+      "file": "quiet_beginning-component.glb",
+      "bytes": 137628,
+      "bounds": {
+        "min": [
+          -9.125,
+          0.09999999403953552,
+          -4.625
+        ],
+        "max": [
+          -2.875,
+          6.189981937408447,
+          -3.6750001907348633
+        ]
+      },
+      "name": "Stone moon gate",
+      "description": "A circular stone gateway assembled from individually jointed segments.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-b42d60112d90e71db23db59f7f84e51d568eb247af7faf8dd4319c379c9a0e88"
+    },
+    {
+      "modelId": "model-51e5e3c42d1242dc5002ee722932a40a4b5f446d557f3cf9f8dd9eb91e0b7c3f",
+      "file": "next_chapter-scene.glb",
+      "bytes": 1039928,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -0.5799999833106995,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          5.790632724761963,
+          12.899999618530273
+        ]
+      },
+      "name": "The Next Chapter",
+      "description": "A fan-roof reading pavilion, unfinished construction bay and small reading amphitheater leave space for the next contribution.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-e7aa9bac8c06fbf641b32e932769c65c1834d1cb1567865f98c004475b5c22c7"
+    },
+    {
+      "modelId": "model-b91d8212b61718e3d216394110495021935db304347cec7dc93918be464df9c3",
+      "file": "next_chapter-component.glb",
+      "bytes": 76716,
+      "bounds": {
+        "min": [
+          -6.449999809265137,
+          0.24500000476837158,
+          -3.434999942779541
+        ],
+        "max": [
+          -2.055000066757202,
+          1.6850000619888306,
+          -1.8224999904632568
+        ]
+      },
+      "name": "Reading bench and book cart",
+      "description": "An editable reading bench and small book cart with books and joinery.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-9ceabbd9729056c933ad9eb59a09e429e00dd93679c5836ec59d84513a283e6c"
+    },
+    {
+      "modelId": "model-4494eb38920709a1388626d33fc950b94588fcb8870f0788ab322ef2e31ffc57",
+      "file": "open_ground-scene.glb",
+      "bytes": 1044000,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -0.5799999833106995,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          0.9500000476837158,
+          12.899999618530273
+        ]
+      },
+      "name": "Open Ground",
+      "description": "A low formal garden with a compass meeting stone, curved benches and small parterres preserves an open central building area.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-87ad629fde23c7006c0f6e7ecbf4ec3bfbefcd8aa7de669dc7cd276e944baded"
+    },
+    {
+      "modelId": "model-3665440983c9d82435ded899c8343b24df95019a866ce54a5e94725c6795c9fd",
+      "file": "open_ground-component.glb",
+      "bytes": 133596,
+      "bounds": {
+        "min": [
+          -9.531022071838379,
+          0.09999999403953552,
+          4.358721733093262
+        ],
+        "max": [
+          -3.440426826477051,
+          0.8350000977516174,
+          9.991776466369629
+        ]
+      },
+      "name": "Curved garden bench",
+      "description": "A curved timber garden bench with radial slats, stone feet and shaped aprons.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-d89904425b188d2c5a2d7a2b1f8e1070f3d5ea148376fa5a82636c7019cbc133"
+    },
+    {
+      "modelId": "model-cae1d9170b81fbb0592fdf12197b6f650878c0537d65ec4f8597ed575ef1b009",
+      "file": "common_future-scene.glb",
+      "bytes": 1037084,
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -1.2000000476837158,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          6.523787498474121,
+          12.899999618530273
+        ]
+      },
+      "name": "Common Future",
+      "description": "A sweeping teal-tiled tea pavilion and rain garden with viewing seats, reeds and crafted courtyard details.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-02fcb92d49043553f36ce3e8362fc54e645c6051d82b567baa368e42acf1ddbb"
+    },
+    {
+      "modelId": "model-87c0566bc0dfec390dbca26e3813e0a8c49c4eca37d9e22976cdfd7980ae3131",
+      "file": "common_future-component.glb",
+      "bytes": 129984,
+      "bounds": {
+        "min": [
+          -7.75,
+          0.6200000643730164,
+          -6.050000190734863
+        ],
+        "max": [
+          -4.25,
+          2.3299999237060547,
+          -3.950000047683716
+        ]
+      },
+      "name": "Tea table and service",
+      "description": "A crafted tea table with an independently editable tea service and small furnishings.",
+      "author": "Agartha Studio",
+      "license": "MIT",
+      "attribution": "Created by Agartha Studio with GPT-6 Astra and Blender.",
+      "source": "https://agartha-dusky.vercel.app/api/assets/bundle-faaf84ff464d200d8424e01425fabd826d71ac05c25196cf97c1733c2fd537dc"
+    }
+  ],
+  "worlds": [
+    {
+      "id": "the-commons",
+      "name": "The Commons",
+      "brief": "A timber gathering hall, curved pond, grove and connected stepping-stone paths, with an open western clearing. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-67a75921dfbc72f896133b21e65eabd2bdc8abc2ded2fb5ccfcf2602ff3318e4 Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-cd20c44a9d6bb41265d5b9dd72cf359c0cd485a5521ff84d6d5d1d7d4466ec57",
+      "objects": [
+        {
+          "id": "starter-20260908-commons",
+          "name": "The Commons",
+          "shape": "model",
+          "modelId": "model-4996c45c95d63cd82a919ad28641ea14c4c7e5a4bbb328bc6b09674f7c9fda8d",
+          "position": [
+            0,
+            3.4727272933515727,
+            0
+          ],
+          "scale": [
+            25.8,
+            9.530000074390296,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-commons-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-commons-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-commons-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-commons-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    },
+    {
+      "id": "plot-0--1",
+      "name": "Fern Hollow",
+      "brief": "An ancient leaning tree and exposed roots frame a fern-lined stream and mossy footbridge. The front-right clearing remains available. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-e2e201f96d4d006c8a7944feadaca97fc086407a4394ac987e9d621bc99272d6 Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-c324fad5eedfe1d7c3ea62d23646441425038dd3b5e3fa83bab7602d5950fe5c",
+      "objects": [
+        {
+          "id": "starter-20260908-fern-hollow",
+          "name": "Fern Hollow",
+          "shape": "model",
+          "modelId": "model-7903f458524cb91eeaa1010fbb098db638c6c2f1ce4367cad0bace03e8637e10",
+          "position": [
+            0,
+            3.849999699078444,
+            0
+          ],
+          "scale": [
+            25.8,
+            10.389999458475614,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-fern-hollow-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-fern-hollow-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-fern-hollow-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-fern-hollow-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    },
+    {
+      "id": "plot-1-0",
+      "name": "Sky Workshop",
+      "brief": "A crafted timber and brass workshop with curved canopy, armillary, assembly terraces, survey telescope and an open building yard. Includes editable named components. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-480c01ea396e52fa485d2f5d77139724e7d717ed87f592182d09803f9c044b29 Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-26d50e51e73eae3604df914a1843d5b4d69ad94fd781e6e68ad585b77ad3835f",
+      "objects": [
+        {
+          "id": "starter-20260908-sky-workshop",
+          "name": "Sky Workshop",
+          "shape": "model",
+          "modelId": "model-cbceaba13224b409310fef118cbc456b71a8162eda2c0b237f5e3d4c739698ca",
+          "position": [
+            0,
+            2.729531829738147,
+            0
+          ],
+          "scale": [
+            25.8,
+            8.384970197676731,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-sky-workshop-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-sky-workshop-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-sky-workshop-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-sky-workshop-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    },
+    {
+      "id": "plot-0-1",
+      "name": "Ochre Court",
+      "brief": "A carved sandstone arch, sundial and sunken court with layered masonry, vessels and a clear processional approach. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-d31273e4d3db409c60d7d9c17282228227383fd8c8f2107bb14dc16f5eb43806 Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-fdb5bb22f1409686f3b9cfeb931cc9b29a5bd67732e9eac407b4976cbcb371e6",
+      "objects": [
+        {
+          "id": "starter-20260908-ochre-court",
+          "name": "Ochre Court",
+          "shape": "model",
+          "modelId": "model-542671587b3fed52bd3e47f77aa33a353b1be9eba02be7508dfaebc0cf17bbc0",
+          "position": [
+            0,
+            3.290908964390983,
+            0
+          ],
+          "scale": [
+            25.8,
+            10.67999990574149,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-ochre-court-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-ochre-court-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-ochre-court-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-ochre-court-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    },
+    {
+      "id": "plot--1-0",
+      "name": "Rolling Meadow",
+      "brief": "Contoured meadow terraces rise toward a crafted windmill, with dry-stone walls, a stream crossing, flowers and open grass for future building. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-1f61ab5abfa11caac0bbdf28f3138e08957f839d9f97af8270ba0d6d7d3e69e9 Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-4f96b8a33c4f28124ac691882790a8b10cc4bb9cbd505b52e3e5532c339e684c",
+      "objects": [
+        {
+          "id": "starter-20260908-rolling-meadow",
+          "name": "Rolling Meadow",
+          "shape": "model",
+          "modelId": "model-6d0221553ef4d11474be135886fcf863a91c86e1c4d07488cee2243723ec1c97",
+          "position": [
+            0,
+            3.4978310365200147,
+            0
+          ],
+          "scale": [
+            25.8,
+            9.585228309360868,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-rolling-meadow-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-rolling-meadow-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-rolling-meadow-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-rolling-meadow-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    },
+    {
+      "id": "plot--1--1",
+      "name": "A Quiet Beginning",
+      "brief": "A stone moon gate, red maples, meditation deck and raked stone garden frame a generous quiet clearing. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-6e42c0101ff7e76f209dc0f3a13f2e65f36c0cdf0752a5f5c2b2cfc0d3b7c73b Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-b42d60112d90e71db23db59f7f84e51d568eb247af7faf8dd4319c379c9a0e88",
+      "objects": [
+        {
+          "id": "starter-20260908-quiet-beginning",
+          "name": "A Quiet Beginning",
+          "shape": "model",
+          "modelId": "model-589f332a0b57962ae9256c14b3fd6168dc5f575eace8ba1ec06d8d69c0574807",
+          "position": [
+            0,
+            2.5590827791263333,
+            0
+          ],
+          "scale": [
+            25.8,
+            6.769982120916297,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-quiet-beginning-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-quiet-beginning-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-quiet-beginning-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-quiet-beginning-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    },
+    {
+      "id": "plot-1--1",
+      "name": "The Next Chapter",
+      "brief": "A fan-roof reading pavilion, unfinished construction bay and small reading amphitheater leave space for the next contribution. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-e7aa9bac8c06fbf641b32e932769c65c1834d1cb1567865f98c004475b5c22c7 Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-9ceabbd9729056c933ad9eb59a09e429e00dd93679c5836ec59d84513a283e6c",
+      "objects": [
+        {
+          "id": "starter-20260908-next-chapter",
+          "name": "The Next Chapter",
+          "shape": "model",
+          "modelId": "model-51e5e3c42d1242dc5002ee722932a40a4b5f446d557f3cf9f8dd9eb91e0b7c3f",
+          "position": [
+            0,
+            2.3775604043737157,
+            0
+          ],
+          "scale": [
+            25.8,
+            6.370632896460538,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-next-chapter-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-next-chapter-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-next-chapter-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-next-chapter-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    },
+    {
+      "id": "plot--1-1",
+      "name": "Open Ground",
+      "brief": "A low formal garden with a compass meeting stone, curved benches and small parterres preserves an open central building area. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-87ad629fde23c7006c0f6e7ecbf4ec3bfbefcd8aa7de669dc7cd276e944baded Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-d89904425b188d2c5a2d7a2b1f8e1070f3d5ea148376fa5a82636c7019cbc133",
+      "objects": [
+        {
+          "id": "starter-20260908-open-ground",
+          "name": "Open Ground",
+          "shape": "model",
+          "modelId": "model-4494eb38920709a1388626d33fc950b94588fcb8870f0788ab322ef2e31ffc57",
+          "position": [
+            0,
+            0.17727275881824492,
+            0
+          ],
+          "scale": [
+            25.8,
+            1.5300000762385015,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-open-ground-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-open-ground-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-open-ground-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-open-ground-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    },
+    {
+      "id": "plot-1-1",
+      "name": "Common Future",
+      "brief": "A sweeping teal-tiled tea pavilion and rain garden with viewing seats, reeds and crafted courtyard details. Preserve contributions and keep the four gateways clear. Use the open clearing for new work. Shared scene and editable source: https://agartha-dusky.vercel.app/api/assets/bundle-02fcb92d49043553f36ce3e8362fc54e645c6051d82b567baa368e42acf1ddbb Reusable component: https://agartha-dusky.vercel.app/api/assets/bundle-faaf84ff464d200d8424e01425fabd826d71ac05c25196cf97c1733c2fd537dc",
+      "objects": [
+        {
+          "id": "starter-20260908-common-future",
+          "name": "Common Future",
+          "shape": "model",
+          "modelId": "model-cae1d9170b81fbb0592fdf12197b6f650878c0537d65ec4f8597ed575ef1b009",
+          "position": [
+            0,
+            2.4289943646852037,
+            0
+          ],
+          "scale": [
+            25.8,
+            7.723787774560256,
+            25.8
+          ],
+          "color": "#ffffff",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-common-future-east",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-common-future-west",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            -13.625,
+            0.05,
+            0
+          ],
+          "scale": [
+            3.95,
+            0.1,
+            2.5
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-common-future-south",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        },
+        {
+          "id": "starter-20260908-common-future-north",
+          "name": "Shared gateway approach",
+          "shape": "box",
+          "position": [
+            0,
+            0.05,
+            -13.625
+          ],
+          "scale": [
+            2.5,
+            0.1,
+            3.95
+          ],
+          "color": "#c7c5ae",
+          "author": "Agartha Studio"
+        }
+      ]
+    }
+  ]
+}

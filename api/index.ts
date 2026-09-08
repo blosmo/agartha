@@ -21,11 +21,12 @@ export default async function handler(req:Request,res:ServerResponse){
     if(!base||!key){send({error:'Cloud configuration is incomplete'},503);return;}
     if(!['GET','POST'].includes(req.method??'')){send({error:'Method not allowed'},405);return;}
     const governancePath=/^governance(?:\/(?:voters|proposals(?:\/[a-zA-Z0-9_-]{1,80}(?:\/(?:open|vote|withdraw|finalize|comments|implementation))?)?))?$/.test(path);
-    if(!governancePath&&!/^(session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2})$/.test(path)){send({error:'Not found'},404);return;}
+    if(!governancePath&&!/^(session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2}|assets(?:\/[^/?]+){0,3})$/.test(path)){send({error:'Not found'},404);return;}
     let previewView:PreviewView='isometric';
-    if(path.endsWith('/preview')){try{previewView=parsePreviewView(req.query.view);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview view.'},400);return;}}
+    const roomPreview = path.startsWith('plots/') && path.endsWith('/preview');
+    if(roomPreview){try{previewView=parsePreviewView(req.query.view);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview view.'},400);return;}}
     let requestedFocus:string|undefined;
-    if(path.endsWith('/preview')){try{requestedFocus=canonicalPreviewFocus(req.query.focus);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview focus.'},400);return;}}
+    if(roomPreview){try{requestedFocus=canonicalPreviewFocus(req.query.focus);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview focus.'},400);return;}}
     let body:Record<string,any>={};
     if(req.method==='POST'){
       if(!req.headers['content-type']?.startsWith('application/json')){send({error:'Use application/json'},415);return;}
@@ -35,7 +36,7 @@ export default async function handler(req:Request,res:ServerResponse){
     const externalRegistration=path==='session'&&typeof body.agentToken==='string';
     if(req.method==='POST'&&origin&&origin!==`https://${req.headers.host}`&&!headerToken&&!externalRegistration){send({error:'Origin not allowed'},403);return;}
     let token=headerToken??req.headers.cookie?.split(';').map(c=>c.trim()).find(c=>c.startsWith(`${cookieName}=`))?.slice(cookieName.length+1);
-    const publicRead=req.method==='GET'&&!path.endsWith('/preview')&&!governancePath;
+    const publicRead=req.method==='GET'&&!roomPreview&&!governancePath;
     if(publicRead&&!headerToken)token=undefined;
     let setCookie=false;
     if(path==='session'){
@@ -50,7 +51,7 @@ export default async function handler(req:Request,res:ServerResponse){
     const data=await response.json();
     if(!response.ok){if(response.status===429&&response.headers.has('Retry-After'))res.setHeader('Retry-After',response.headers.get('Retry-After')!);send(data,response.status);return;}
     if(setCookie)res.setHeader('Set-Cookie',`${cookieName}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`);
-    if(data.modelFile){const download=new URL(data.url);if(download.protocol!=='https:')throw new Error('Invalid model download URL');res.statusCode=302;res.setHeader('Location',download.href);res.end();return;}
+    if(data.modelFile||data.assetFile){const download=new URL(data.url);if(download.protocol!=='https:')throw new Error('Invalid asset download URL');res.statusCode=302;res.setHeader('Location',download.href);res.end();return;}
     if(data.render){
       const source=data.source as SharedWorld;
       let focusObjects;try{focusObjects=selectPreviewFocus(source.objects,requestedFocus);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview focus.'},404);return;}
