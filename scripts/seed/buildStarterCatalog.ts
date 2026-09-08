@@ -45,4 +45,5 @@ for (const definition of STARTER_DEFINITIONS) {
 await mkdir(output, { recursive: true });
 for (const file of files) await writeFile(join(output, file.name), file.bytes);
 await writeFile(join(output, 'catalog.json'), JSON.stringify(catalog, null, 2) + '\n');
+await writeFile(join(output, 'model-files.json'), JSON.stringify(Object.fromEntries(catalog.models.map(model => [model.modelId, model.file])), null, 2) + '\n');
 console.log(JSON.stringify({ worlds: catalog.worlds.length, models: catalog.models.length, runtimeBytes: files.reduce((sum, file) => sum + file.bytes.length, 0) }));

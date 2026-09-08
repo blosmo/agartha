@@ -1,3 +1,4 @@
+import { cameraExploration } from './cameraExploration';
 import { RoomCamera, rotateQuarter } from './roomCamera';
 import { RoomJoystick } from './RoomJoystick';
 import {ModelLayer} from './ModelLayer';
@@ -97,10 +98,19 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     const textures=new PbrTextures(()=>setMaterialError(true));
     scene.add(new THREE.HemisphereLight('#f3eee1','#647b7c',1.2));
     const sun=new THREE.DirectionalLight('#ffe7c5',2);sun.position.set(-30,70,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-70,right:70,top:70,bottom:-70,far:250});sun.shadow.bias=-.001;scene.add(sun);scene.add(sun.target);
+    const horizon=new THREE.Group();
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(4096,4096),new THREE.MeshStandardMaterial({color:'#53636a',roughness:1}));
+    ground.rotation.x=-Math.PI/2;ground.position.y=-.08;horizon.add(ground);
+    const grid=new THREE.GridHelper(4096,128,'#92a094','#92a094');grid.position.set(16,-.07,16);horizon.add(grid);scene.add(horizon);
     const group=new THREE.Group(),terrain=new THREE.Group(),models=new ModelLayer(setModelError);scene.add(group,terrain,models.group);runtime.current={models,meshGeometries:new Map(),textures,scene,group,terrain,camera,controls,aspect:1,time:{value:0},moving:[],movingOutlines:[]};
-    let wanderTimer:ReturnType<typeof setTimeout>;
     let cameraPlotId=callbacks.current.activePlotId;
-    const update=()=>{setZoom(Math.round(camera.zoom*100));updateLabels();clearTimeout(wanderTimer);wanderTimer=setTimeout(()=>{if(roomCamera.current.active)return;const x=Math.round(controls.target.x/32)+anchor.current.x,z=Math.round(controls.target.z/32)+anchor.current.z;if(Math.abs(x)<=10000&&Math.abs(z)<=10000){const id=plotId({x,z});if(id!==cameraPlotId){cameraPlotId=id;callbacks.current.onExplore?.(id);}}},150);};controls.addEventListener('change',update);
+    const exploration=cameraExploration(()=>{
+      if(roomCamera.current.active)return;
+      const x=Math.round(controls.target.x/PLOT_SIZE)+anchor.current.x,z=Math.round(controls.target.z/PLOT_SIZE)+anchor.current.z;
+      if(Math.abs(x)<=10000&&Math.abs(z)<=10000){const id=plotId({x,z});if(id!==cameraPlotId){cameraPlotId=id;callbacks.current.onExplore?.(id);}}
+      horizon.position.set(Math.round(controls.target.x/PLOT_SIZE)*PLOT_SIZE,0,Math.round(controls.target.z/PLOT_SIZE)*PLOT_SIZE);
+    });
+    const update=()=>{setZoom(Math.round(camera.zoom*100));exploration.schedule();};controls.addEventListener('change',update);
     const keyDown=(event:KeyboardEvent)=>{if(event.ctrlKey||event.metaKey||event.altKey)return;if(roomCamera.current.active){if(event.key==='Escape'){event.preventDefault();exitRoom();return;}const key=event.key.length===1?event.key.toLowerCase():event.key;if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(key)){event.preventDefault();roomCamera.current.keys.add(key);}return;}if(event.ctrlKey||event.metaKey||event.altKey)return;const action=event.key==='+'||event.key==='='?'in':event.key==='-'?'out':event.key==='0'?'reset':undefined;if(action){event.preventDefault();changeCamera(action);}};
     renderer.domElement.addEventListener('keydown',keyDown);
     const keyUp=(event:KeyboardEvent)=>roomCamera.current.keys.delete(event.key.length===1?event.key.toLowerCase():event.key);
@@ -152,7 +162,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       renderer.render(scene,roomCamera.current.active?roomCamera.current.camera:camera);
       if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}
     });
-    return()=>{roomCamera.current.exit();window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);clearTimeout(wanderTimer);renderer.setAnimationLoop(null);resize.disconnect();motion.removeEventListener('change',updateMotion);unbindTrackpadPan();controls.dispose();models.dispose();scene.remove(models.group);scene.traverse(disposeObject);sun.shadow.dispose();textures.dispose();for(const geometry of runtime.current?.meshGeometries.values()??[])geometry.dispose();environment.dispose();renderer.dispose();renderer.domElement.remove();runtime.current=null;};
+    return()=>{roomCamera.current.exit();window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);exploration.dispose();renderer.setAnimationLoop(null);resize.disconnect();motion.removeEventListener('change',updateMotion);unbindTrackpadPan();controls.dispose();models.dispose();scene.remove(models.group);scene.traverse(disposeObject);sun.shadow.dispose();textures.dispose();for(const geometry of runtime.current?.meshGeometries.values()??[])geometry.dispose();environment.dispose();renderer.dispose();renderer.domElement.remove();runtime.current=null;};
   },[]);
   useEffect(()=>{if(roomCamera.current.active)exitRoom();},[activePlotId]);
   useEffect(()=>{host.current?.querySelector('canvas')?.setAttribute('aria-label',inside?'First-person room view. Drag to look, WASD or arrow keys to move, Escape to exit.':'Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Use camera controls to rotate or enter a room.');},[inside]);
