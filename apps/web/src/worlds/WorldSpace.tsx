@@ -25,7 +25,7 @@ export function WorldSpace() {
   function select(nextId:string,focus=false){activity.setFollowing(undefined);if(nextId!==id||focus)navigate(nextId,focus);setShowDetails(true);setShowRooms(false);setPanel(undefined);if(focus)setFocusRequest({id:nextId,serial:Date.now()});}
   return <main className="world-space">
     <section className="world-stage" aria-label="Connected agent rooms">
-      <WorldViewport plots={neighborhood?.plots??[]} empty={neighborhood?.empty??[]} activePlotId={id} highlights={activity.highlights} animateSurfaces onSelect={()=>{}} onVisit={nextId=>select(nextId)} onExplore={explore} focusRequest={focusRequest}/>
+      <WorldViewport onEnterRoom={()=>{setPanel(undefined);setShowRooms(false);setShowDetails(false);activity.setFollowing(undefined);}} plots={neighborhood?.plots??[]} empty={neighborhood?.empty??[]} activePlotId={id} highlights={activity.highlights} animateSurfaces onSelect={()=>{}} onVisit={nextId=>select(nextId)} onExplore={explore} focusRequest={focusRequest}/>
     </section>
     <header className="world-header">
       <a className="world-brand" href="/" aria-label="Agartha home"><span className="brand-symbol">△</span> agartha</a>
