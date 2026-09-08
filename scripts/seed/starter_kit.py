@@ -13,16 +13,19 @@ sphere(name,loc,scale,mat,segments=12,rings=6)
 tree(name,loc,height,mat_trunk,mat_leaf,radius=None)
 finish_scene(); save_source(path,collection=None,prefix=None)
 export_runtime(path,collection=None,prefix=None)
-render_preview(path,size=512,samples=8,collection=None,prefix=None)
+render_preview(path,size=None,samples=None,collection=None,prefix=None,quality="review",view="isometric")
 
 Export functions return JSON-serializable geometry/bounds/cost metadata.
 Call save_source before export_runtime; export operates on disposable copies.
-Component saves contain an independently usable Scene. No textures required.
+Component saves contain an independently usable Scene. Embedded PBR textures and
+smooth normals survive static runtime export. No texture download is required.
 """
 import bpy
 import math
 import os
 import time
+import json
+import struct
 from mathutils import Vector, Matrix, Euler
 
 _KIT_MAP = Matrix(((1,0,0),(0,0,-1),(0,1,0)))
@@ -199,6 +202,32 @@ def save_source(path,collection=None,prefix=None):
     result.update(path=path,bytes=os.path.getsize(path),elapsedSeconds=round(time.monotonic()-start,3))
     return result
 
+def _has_texture(material):
+    if material is None or not material.use_nodes or material.node_tree is None:
+        return False
+    pending=[material.node_tree]
+    seen=set()
+    while pending:
+        tree=pending.pop()
+        if tree in seen:
+            continue
+        seen.add(tree)
+        for node in tree.nodes:
+            if node.type in {'TEX_IMAGE','TEX_ENVIRONMENT'}:
+                return True
+            if node.type=='GROUP' and node.node_tree is not None:
+                pending.append(node.node_tree)
+    return False
+
+
+def _mesh_layout(data):
+    # Joining incompatible active UV/color layouts can silently change material
+    # inputs. Only batch compatible meshes; preserve all attribute data otherwise.
+    return (tuple((uv.name, uv.active_render) for uv in data.uv_layers),
+            tuple((color.name, color.domain, color.data_type) for color in data.color_attributes),
+            data.color_attributes.active_color_name, data.color_attributes.render_color_index)
+
+
 def export_runtime(path,collection=None,prefix=None):
     start=time.monotonic()
     path=_output(path)
@@ -206,104 +235,187 @@ def export_runtime(path,collection=None,prefix=None):
     result=_metadata(originals)
     deps=bpy.context.evaluated_depsgraph_get()
     groups={}
-    # Bake evaluated geometry and transforms; a single mesh per material keeps
-    # GLB draw calls bounded without changing any editable source object.
-    for obj in originals:
-        evaluated=obj.evaluated_get(deps)
-        data=evaluated.to_mesh()
-        try:
-            for polygon in data.polygons:
-                mat=data.materials[polygon.material_index] if polygon.material_index<len(data.materials) else None
-                key=mat.name if mat else '__unpainted'
-                vertices,faces,_=groups.setdefault(key,([],[],mat))
-                offset=len(vertices)
-                vertices.extend([evaluated.matrix_world @ data.vertices[index].co for index in polygon.vertices])
-                faces.append(tuple(range(offset,len(vertices))))
-        finally:
-            evaluated.to_mesh_clear()
     temporary=[]
+    meshes=[]
     previous_selected=list(bpy.context.selected_objects)
     previous_active=bpy.context.view_layer.objects.active
     try:
         bpy.ops.object.select_all(action='DESELECT')
-        for name,(vertices,faces,mat) in groups.items():
-            data=bpy.data.meshes.new('runtime_'+name)
-            data.from_pydata(vertices,[],faces)
-            data.update()
-            obj=bpy.data.objects.new('runtime_'+name,data)
+        for original in originals:
+            evaluated=original.evaluated_get(deps)
+            data=bpy.data.meshes.new_from_object(evaluated,preserve_all_data_layers=True,depsgraph=deps)
+            meshes.append(data)
+            # Bake into a common basis before freezing the evaluated normals.
+            # Letting join apply non-uniform scales changes smooth shading.
+            mirrored=original.matrix_world.determinant()<0
+            basis=Matrix.Diagonal((-1,1,1,1)) if mirrored else Matrix.Identity(4)
+            transform=basis.inverted() @ original.matrix_world
+            try:
+                normal_matrix=transform.to_3x3().inverted().transposed()
+            except ValueError:
+                # A plane with a zero-scale normal axis is still valid visible
+                # geometry. Recalculate on the transformed copy rather than
+                # substituting a false inverse or rejecting the entire asset.
+                data.transform(transform)
+                data.normals_split_custom_set([(0,0,0)]*len(data.loops))
+                data.update()
+                normals=[tuple(normal.vector) for normal in data.corner_normals]
+            else:
+                normals=[tuple((normal_matrix @ normal.vector).normalized()) for normal in data.corner_normals]
+                data.transform(transform)
+            data.normals_split_custom_set(normals)
+            # Resolve object-linked material overrides before baking a static copy.
+            for index,slot in enumerate(evaluated.material_slots):
+                if index < len(data.materials):
+                    data.materials[index]=slot.material
+            # Solid-color glTF materials have no UV inputs. Drop only those
+            # unused runtime layers, retaining all UVs in the editable source.
+            if not any(_has_texture(material) for material in data.materials):
+                for uv in list(data.uv_layers):
+                    data.uv_layers.remove(uv)
+            obj=bpy.data.objects.new('runtime_'+original.name,data)
+            obj.matrix_world=basis
             bpy.context.scene.collection.objects.link(obj)
-            if mat:
-                data.materials.append(mat)
-            obj.select_set(True)
             temporary.append(obj)
-        bpy.context.view_layer.objects.active=temporary[0]
-        bpy.ops.export_scene.gltf(filepath=path,export_format='GLB',use_selection=True,export_yup=True,export_animations=False,export_cameras=False,export_lights=False,export_extras=False,export_texcoords=False,export_normals=True,export_materials='EXPORT')
+            # Blender's join operator changes shading when mirrored and
+            # non-mirrored objects share a batch. Retain separate handedness.
+            groups.setdefault((_mesh_layout(data),mirrored),[]).append(obj)
+        batches=[]
+        for objects in groups.values():
+            bpy.ops.object.select_all(action='DESELECT')
+            for obj in objects:
+                obj.select_set(True)
+            bpy.context.view_layer.objects.active=objects[0]
+            if len(objects)>1:
+                bpy.ops.object.join()
+            batches.append(objects[0])
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in batches:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active=batches[0]
+        bpy.ops.export_scene.gltf(filepath=path,export_format='GLB',use_selection=True,export_yup=True,export_animations=False,export_cameras=False,export_lights=False,export_extras=False,export_texcoords=True,export_normals=True,export_materials='EXPORT')
     finally:
+        # join() deletes the other objects but leaves their unused mesh data.
         for obj in temporary:
-            data=obj.data
-            bpy.data.objects.remove(obj,do_unlink=True)
-            bpy.data.meshes.remove(data)
+            try:
+                bpy.data.objects.remove(obj,do_unlink=True)
+            except ReferenceError:
+                pass
+        for data in meshes:
+            if data.users == 0:
+                bpy.data.meshes.remove(data)
         for obj in previous_selected:
             obj.select_set(True)
         bpy.context.view_layer.objects.active=previous_active
-    result.update(path=path,bytes=os.path.getsize(path),drawGroups=len(groups),elapsedSeconds=round(time.monotonic()-start,3))
+    with open(path,'rb') as file:
+        header=file.read(20)
+        json_length=struct.unpack_from('<I',header,12)[0]
+        document=json.loads(file.read(json_length))
+    primitives=[p for mesh in document.get('meshes',[]) for p in mesh['primitives']]
+    result.update(path=path,bytes=os.path.getsize(path),drawGroups=len(primitives),
+                  runtimeVertices=sum(document['accessors'][p['attributes']['POSITION']]['count'] for p in primitives),
+                  elapsedSeconds=round(time.monotonic()-start,3))
     return result
 
-def render_preview(path,size=512,samples=8,collection=None,prefix=None):
+
+# Start cheaply, inspect, then spend more samples only on an accepted composition.
+_PREVIEW_QUALITY={
+    'draft': {'size':256,'samples':8,'noise':.10,'minimum':4,'seconds':10},
+    'review': {'size':512,'samples':32,'noise':.04,'minimum':8,'seconds':15},
+    'final': {'size':1024,'samples':128,'noise':.01,'minimum':16,'seconds':20},
+}
+_PREVIEW_VIEWS={'isometric':(1,-1,.9),'front':(0,-1,0),'side':(1,0,0),'top':(0,0,1)}
+
+
+def render_preview(path,size=None,samples=None,collection=None,prefix=None,*,quality='review',view='isometric'):
+    if quality not in _PREVIEW_QUALITY or view not in _PREVIEW_VIEWS:
+        raise ValueError('Choose draft/review/final quality and isometric/front/side/top view')
+    preset=_PREVIEW_QUALITY[quality]
+    size=preset['size'] if size is None else size
+    samples=preset['samples'] if samples is None else samples
+    if type(size) is not int or not 1<=size<=1024 or type(samples) is not int or not 1<=samples<=128:
+        raise ValueError('Preview size must be 1–1024 pixels and samples 1–128')
     start=time.monotonic()
+    path=_output(path)
     scene=bpy.context.scene
     selected=_objects(collection,prefix)
     bounds=_metadata(selected)['bounds']
+    # Preview rendering must not become an accidental edit to the saved project.
+    render=scene.render
+    old_render={key:getattr(render,key) for key in ('engine','resolution_x','resolution_y','resolution_percentage','film_transparent','filepath','threads_mode','threads')}
+    old_cycles={key:getattr(scene.cycles,key) for key in ('device','samples','use_denoising','denoiser','use_adaptive_sampling','adaptive_threshold','adaptive_min_samples','time_limit')}
+    old_format=render.image_settings.file_format
+    oldcamera,oldworld=scene.camera,scene.world
     hidden=[]
-    if collection is not None or prefix is not None:
-        chosen=set(selected)
-        for obj in scene.objects:
-            if obj.type in {'MESH','CURVE','SURFACE','FONT'} and obj not in chosen:
-                hidden.append((obj,obj.hide_render))
-                obj.hide_render=True
-    center=[(a+b)*.5 for a,b in zip(bounds['min'],bounds['max'])]
-    span=max(b-a for a,b in zip(bounds['min'],bounds['max']))
-    target=_v(center)
-    data=bpy.data.cameras.new('Preview camera')
-    camera=bpy.data.objects.new('Preview camera',data)
-    scene.collection.objects.link(camera)
-    camera.location=target+Vector((1,-1,.9))*max(span,1)*1.5
-    camera.rotation_euler=(target-camera.location).to_track_quat('-Z','Y').to_euler()
-    data.type='ORTHO'
-    data.ortho_scale=max(span,1)*1.5
-    lightdata=bpy.data.lights.new('Preview sun','SUN')
-    light=bpy.data.objects.new('Preview sun',lightdata)
-    scene.collection.objects.link(light)
-    lightdata.energy=2.5
-    light.rotation_euler=(.45,-.55,-.4)
-    oldcamera=scene.camera
-    scene.camera=camera
-    scene.render.engine='CYCLES'
-    scene.cycles.device='CPU'
-    scene.cycles.samples=samples
-    scene.cycles.use_denoising=True
-    scene.render.resolution_x=size
-    scene.render.resolution_y=size
-    scene.render.resolution_percentage=100
-    scene.render.image_settings.file_format='PNG'
-    scene.render.film_transparent=False
-    if scene.world is None:
-        scene.world=bpy.data.worlds.new('Daylight')
-    scene.world.color=(.55,.60,.65)
-    scene.world.use_nodes=True
-    background=scene.world.node_tree.nodes.get('Background')
-    if background:
-        background.inputs['Color'].default_value=(.72,.79,.86,1)
-        background.inputs['Strength'].default_value=.65
-    scene.render.filepath=_output(path)
+    camera=light=data=lightdata=preview_world=None
     try:
+        if collection is not None or prefix is not None:
+            chosen=set(selected)
+            for obj in scene.objects:
+                if obj.type in {'MESH','CURVE','SURFACE','FONT'} and obj not in chosen:
+                    hidden.append((obj,obj.hide_render))
+                    obj.hide_render=True
+        center=[(a+b)*.5 for a,b in zip(bounds['min'],bounds['max'])]
+        span=max(b-a for a,b in zip(bounds['min'],bounds['max']))
+        target=_v(center)
+        data=bpy.data.cameras.new('Preview camera')
+        camera=bpy.data.objects.new('Preview camera',data)
+        scene.collection.objects.link(camera)
+        camera.location=target+Vector(_PREVIEW_VIEWS[view])*max(span,1)*1.5
+        camera.rotation_euler=(target-camera.location).to_track_quat('-Z','Y').to_euler()
+        data.type='ORTHO'
+        data.ortho_scale=max(span,1)*1.5
+        lightdata=bpy.data.lights.new('Preview sun','SUN')
+        light=bpy.data.objects.new('Preview sun',lightdata)
+        scene.collection.objects.link(light)
+        lightdata.energy=2.5
+        light.rotation_euler=(.45,-.55,-.4)
+        scene.camera=camera
+        render.engine='CYCLES'
+        scene.cycles.device='CPU'
+        scene.cycles.samples=samples
+        scene.cycles.use_denoising=True
+        scene.cycles.denoiser='OPENIMAGEDENOISE'
+        scene.cycles.use_adaptive_sampling=True
+        scene.cycles.adaptive_threshold=preset['noise']
+        scene.cycles.adaptive_min_samples=min(samples,preset['minimum'])
+        # Sampling time is bounded; scene setup and denoising take additional time.
+        scene.cycles.time_limit=preset['seconds']
+        render.threads_mode='FIXED'
+        render.threads=4  # Modal's two physical cores expose four vCPUs.
+        render.resolution_x=size
+        render.resolution_y=size
+        render.resolution_percentage=100
+        render.image_settings.file_format='PNG'
+        render.film_transparent=False
+        preview_world=oldworld.copy() if oldworld else bpy.data.worlds.new('Preview daylight')
+        scene.world=preview_world
+        preview_world.color=(.55,.60,.65)
+        preview_world.use_nodes=True
+        background=preview_world.node_tree.nodes.get('Background')
+        if background:
+            background.inputs['Color'].default_value=(.72,.79,.86,1)
+            background.inputs['Strength'].default_value=.65
+        render.filepath=path
         bpy.ops.render.render(write_still=True)
     finally:
-        scene.camera=oldcamera
+        scene.camera,scene.world=oldcamera,oldworld
+        for key,value in old_render.items():
+            setattr(render,key,value)
+        for key,value in old_cycles.items():
+            setattr(scene.cycles,key,value)
+        render.image_settings.file_format=old_format
         for obj,was_hidden in hidden:
             obj.hide_render=was_hidden
-        bpy.data.objects.remove(camera,do_unlink=True)
-        bpy.data.objects.remove(light,do_unlink=True)
-        bpy.data.cameras.remove(data)
-        bpy.data.lights.remove(lightdata)
-    return {'path':scene.render.filepath,'bytes':os.path.getsize(scene.render.filepath),'elapsedSeconds':round(time.monotonic()-start,3),'size':size,'samples':samples,'device':'CPU'}
+        for obj in (camera,light):
+            if obj is not None:
+                bpy.data.objects.remove(obj,do_unlink=True)
+        if data is not None:
+            bpy.data.cameras.remove(data)
+        if lightdata is not None:
+            bpy.data.lights.remove(lightdata)
+        if preview_world is not None:
+            bpy.data.worlds.remove(preview_world)
+    return {'path':path,'bytes':os.path.getsize(path),'elapsedSeconds':round(time.monotonic()-start,3),
+            'size':size,'samples':samples,'quality':quality,'view':view,'device':'CPU',
+            'samplingTimeLimitSeconds':preset['seconds']}
