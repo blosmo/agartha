@@ -40,7 +40,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
   const callbacks = useRef({onSelect,onVisit,onExplore,activePlotId,plots,empty});callbacks.current = {onSelect,onVisit,onExplore,activePlotId,plots,empty};
   const [modelError,setModelError]=useState('');
   const [materialError,setMaterialError] = useState(false);
-  const [error,setError] = useState(false), [zoom,setZoom] = useState(100), [focused,setFocused] = useState(true), [labels,setLabels] = useState<Label[]>([]);
+  const [error,setError] = useState(false), [zoom,setZoom] = useState(100), [focused,setFocused] = useState(false), [labels,setLabels] = useState<Label[]>([]);
   const focusRef = useRef(focused);focusRef.current = focused;
   function updateLabels() {
     const rt = runtime.current;if (!rt) return;
@@ -54,7 +54,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     if(roomCamera.current.active){roomCamera.current.resize(rt.aspect);return;}
     finishRotation();
     // Render relative to the selected plot, keeping distant grid addresses numerically stable.
-    const half=(focusRef.current?24:72)/Math.min(1,rt.aspect);
+    const half=focusRef.current?24/Math.min(1,rt.aspect):Math.max(80,120/rt.aspect);
     rt.camera.left=-half*rt.aspect;rt.camera.right=half*rt.aspect;rt.camera.top=half;rt.camera.bottom=-half;
     const address=addressFromId(callbacks.current.activePlotId),x=(address.x-anchor.current.x)*32,z=(address.z-anchor.current.z)*32;
     rt.camera.zoom=1;rt.camera.position.set(x+100*Math.cos(overviewRotation.current)+100*Math.sin(overviewRotation.current),100,z+100*Math.cos(overviewRotation.current)-100*Math.sin(overviewRotation.current));rt.controls.target.set(x,0,z);rt.camera.updateProjectionMatrix();rt.controls.update();setZoom(100);updateLabels();
@@ -175,7 +175,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       const renderCamera=roomCamera.current.active?roomCamera.current.camera:camera;
       sky.position.copy(renderCamera.position);sky.scale.setScalar(roomCamera.current.active?100:1400);
       renderer.render(scene,renderCamera);
-      if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{rotationAnimating:String(turn.current.active),skybox:'procedural',cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}
+      if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{roomCount:String(callbacks.current.plots.length+callbacks.current.empty.length),rotationAnimating:String(turn.current.active),skybox:'procedural',cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}
     });
     return()=>{roomCamera.current.exit();window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);exploration.dispose();renderer.setAnimationLoop(null);resize.disconnect();motion.removeEventListener('change',updateMotion);unbindTrackpadPan();controls.dispose();models.dispose();scene.remove(models.group);scene.traverse(disposeObject);sun.shadow.dispose();textures.dispose();for(const geometry of runtime.current?.meshGeometries.values()??[])geometry.dispose();environment.dispose();renderer.dispose();renderer.domElement.remove();runtime.current=null;};
   },[]);
@@ -195,7 +195,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     const activeAddress=plots.find(world=>world.id===activePlotId)?.placement??addressFromId(activePlotId);
     void rt.models.set([
       ...(proposal??[]).filter(object=>object.shape==='model').map(object=>({object:{...object,author:'Prepared build'},plotId:activePlotId,offsetX:(activeAddress.x-origin.x)*32,offsetZ:(activeAddress.z-origin.z)*32,ghost:true})),
-      ...[...plots].sort((a,b)=>Number(b.id===activePlotId)-Number(a.id===activePlotId)).flatMap(world=>world.objects.filter(object=>object.shape==='model').map(object=>({object,plotId:world.id,offsetX:((world.placement?.x??addressFromId(world.id).x)-origin.x)*32,offsetZ:((world.placement?.z??addressFromId(world.id).z)-origin.z)*32}))),
+      ...[...plots].sort((a,b)=>{const distance=(world:SharedWorld)=>{const address=world.placement??addressFromId(world.id);return (address.x-activeAddress.x)**2+(address.z-activeAddress.z)**2;};return distance(a)-distance(b);}).flatMap(world=>world.objects.filter(object=>object.shape==='model').map(object=>({object,plotId:world.id,offsetX:((world.placement?.x??addressFromId(world.id).x)-origin.x)*32,offsetZ:((world.placement?.z??addressFromId(world.id).z)-origin.z)*32}))),
     ]);
     for(const plot of all) addPlotTerrain(rt.terrain,plot.id,{x:plot.address.x-origin.x,z:plot.address.z-origin.z},plot.id===activePlotId,plot.empty,plot.address);
     const shaders=new Map(plots.flatMap(world=>(world.shaders??[]).map(shader=>[shader.id,shader] as const)));

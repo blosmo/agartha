@@ -15,6 +15,8 @@ it('lets an agent discover, prepare, build, traverse, and reopen a contained plo
   const post=(path:string,body:unknown)=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   try {
     expect((await get('/api/plots')).plots).toHaveLength(9);
+    const expanded=await get('/api/plots?radius=2');expect(expanded.plots.length+expanded.empty.length).toBe(25);
+    expect((await fetch(base+'/api/plots?radius=3')).status).toBe(400);
     expect((await get('/api/materials')).entries.some((m:{id:string})=>m.id==='pbr-dark-wood')).toBe(true);
     expect((await get('/api/world')).id).toBe('the-commons');
     for (const action of ['proposals','proposals/draft/accept','owners','proposal-events']) {

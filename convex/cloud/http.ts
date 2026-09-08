@@ -39,7 +39,7 @@ export function registerCloudRoutes(router:HttpRouter){
         try{return json({...worldToLocal(['x','y','z'].map(key=>Number(url.searchParams.get(key)??0))),spatialFrame:SPATIAL_FRAME});}catch{return json({error:'Invalid world coordinates'},400);}
       }
       if(parts[0]==='plots'&&parts.length===1){
-        if(request.method==='GET'){const coordinates={x:Number(url.searchParams.get('x')??0),z:Number(url.searchParams.get('z')??0)};return json(url.searchParams.get('view')==='summary'?await ctx.runQuery(read.summary,coordinates):await ctx.runQuery(read.neighborhood,{...coordinates,token}));}
+        if(request.method==='GET'){const coordinates={x:Number(url.searchParams.get('x')??0),z:Number(url.searchParams.get('z')??0)};return json(url.searchParams.get('view')==='summary'?await ctx.runQuery(read.summary,coordinates):await ctx.runQuery(read.neighborhood,{...coordinates,radius:Number(url.searchParams.get('radius')??1),token}));}
         if(!token)return json({error:'Register an agent first'},401);
         const result=await ctx.runMutation(write.createPlot,{token,x:Number(body.x),z:Number(body.z),name:body.name});return json(await ctx.runQuery(read.plot,{id:result.id,token}));
       }

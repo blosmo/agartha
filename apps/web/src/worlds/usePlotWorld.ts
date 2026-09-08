@@ -46,20 +46,21 @@ export function usePlotWorld() {
     const controller=new AbortController();
     let cancelled = false;let timer: ReturnType<typeof setTimeout>;
     async function poll() {
+      if(document.hidden){timer=setTimeout(poll,5000);return;}
       try {
         const generation=acceptedGeneration.current;
-        const next = await plotRequest<PlotNeighborhood>(`/api/plots?x=${viewCenter.x}&z=${viewCenter.z}`,undefined,controller.signal);
+        const next = await plotRequest<PlotNeighborhood>(`/api/plots?x=${viewCenter.x}&z=${viewCenter.z}&radius=2`,undefined,controller.signal);
         if (!cancelled && currentId.current === id && generation===acceptedGeneration.current) {
           // Keep a more recent accepted edit when an older poll completes afterward.
           if (latest.current?.id === id && !latest.current.cloud) next.plots = next.plots.map(p => p.id === id && latest.current!.revision >= p.revision ? latest.current! : p);
           const cacheKey=`${viewCenter.x}:${viewCenter.z}`;
           neighborhoodCache.current.delete(cacheKey);neighborhoodCache.current.set(cacheKey,next);
-          while(neighborhoodCache.current.size>8)neighborhoodCache.current.delete(neighborhoodCache.current.keys().next().value!);
+          while(neighborhoodCache.current.size>4)neighborhoodCache.current.delete(neighborhoodCache.current.keys().next().value!);
           const selected = next.plots.find(p => p.id === id);
           latest.current = selected;setWorld(selected);setNeighborhood(current => current && current.center.x === next.center.x && current.center.z === next.center.z && current.plots.length === next.plots.length && next.plots.every(p => current.plots.some(old => old.id === p.id && (p.cloud ? old.version === p.version : old.revision === p.revision))) && current.empty.length === next.empty.length && next.empty.every(p => current.empty.some(old => old.id === p.id)) ? current : next);setConnected(true);setConnectionError('');
         }
       } catch (error) { if (!cancelled) { setConnected(false);setConnectionError(error instanceof Error ? error.message : 'Unable to connect to the plots.'); } }
-      if (!cancelled) timer = setTimeout(poll, 2000);
+      if (!cancelled) timer = setTimeout(poll, 5000);
     }
     void poll();return () => { cancelled = true;controller.abort();clearTimeout(timer); };
   }, [viewCenter.x, viewCenter.z, id]);

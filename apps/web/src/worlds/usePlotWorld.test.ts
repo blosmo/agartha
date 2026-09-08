@@ -17,11 +17,11 @@ it('keeps the loaded neighborhood when selecting a room, but recenters on naviga
   await waitFor(() => expect(result.current.connected).toBe(true));
   act(() => result.current.navigate('plot-1-0', false));
   await waitFor(() => expect(result.current.world?.id).toBe('plot-1-0'));
-  expect(fetchMock).toHaveBeenLastCalledWith('/api/plots?x=0&z=0', expect.anything());
+  expect(fetchMock).toHaveBeenLastCalledWith('/api/plots?x=0&z=0&radius=2', expect.anything());
   expect(result.current.neighborhood?.plots.map(plot => plot.id)).toContain('plot--1-0');
   act(() => result.current.navigate('plot-1-0'));
   await waitFor(() => expect(result.current.neighborhood?.center.x).toBe(1));
-  expect(fetchMock).toHaveBeenLastCalledWith('/api/plots?x=1&z=0', expect.anything());
+  expect(fetchMock).toHaveBeenLastCalledWith('/api/plots?x=1&z=0&radius=2', expect.anything());
   unmount();
 });
 

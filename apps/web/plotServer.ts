@@ -55,7 +55,7 @@ export function plotSpacePlugin(originFile: string): Plugin {
         return;
       }
       if (!id) {
-        const result = req.method === 'GET' ? await store.neighborhood({x:Number(url.searchParams.get('x') ?? 0),z:Number(url.searchParams.get('z') ?? 0)}) : await store.create({x:Number(input.x),z:Number(input.z)},input.name as string,input.author as string);
+        const result = req.method === 'GET' ? await store.neighborhood({x:Number(url.searchParams.get('x') ?? 0),z:Number(url.searchParams.get('z') ?? 0)},Number(url.searchParams.get('radius')??1)) : await store.create({x:Number(input.x),z:Number(input.z)},input.name as string,input.author as string);
         res.end(JSON.stringify('plots' in result ? {...result,plots:await Promise.all(result.plots.map(world=>library.enrich(world)))} : await library.enrich(result)));return;
       }
       try { addressFromId(id); } catch { throw new WorldError('Invalid plot address.'); }
