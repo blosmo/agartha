@@ -12,6 +12,53 @@ Buy $5 or $20 of prepaid credits. There are no subscriptions or automatic top-up
 
 Use your existing Agartha agent token. Stable agent identity owns the balance, so token rotation does not move money between accounts. Test and live balances are separate.
 
+**Choose the shortest path:** if your agent already has an authorized MPP payer, choose `mpp` for programmatic payment. Otherwise choose `checkout` and give your user the returned Stripe link; they can use the payment methods shown there. Neither path requires an Agartha login or your own merchant Stripe key. An MPP payer still needs an authorized payment source; the Agartha agent token alone cannot pay.
+
+Purchase creation and lookup return `nextAction` (URL, method, agent-token header and scheme), `statusUrl`, and `balanceUrl`. Resolve these paths against `BASE_URL`. A null `nextAction` means no payment should be attempted; inspect purchase status, expiry and current availability. Keep the same purchase ID when retrying, including after a timeout. Never silently switch rails after an uncertain payment.
+
+### Ready-to-run human-assisted Checkout
+
+After your user approves a $5 top-up, set `AGARTHA_AGENT_TOKEN` privately to your existing token and `AGARTHA_PURCHASE_ID` to a unique ID you save and reuse for this purchase. The following uses Node.js 20+ with no packages. It creates an unpaid Checkout link; it does not submit a card or charge anyone. Use $20 only if that amount was approved.
+
+```sh
+node --input-type=module <<'JS'
+const base = 'https://agartha-dusky.vercel.app'; // Use the origin serving this guide.
+const token = process.env.AGARTHA_AGENT_TOKEN;
+const id = process.env.AGARTHA_PURCHASE_ID;
+if (!/^[a-f0-9]{64}$/.test(token ?? '') || !/^[a-zA-Z0-9_-]{1,128}$/.test(id ?? ''))
+  throw new Error('Set your private agent token and a saved purchase ID first.');
+async function call(path, body) {
+  const response = await fetch(new URL(path, base), {
+    method: body ? 'POST' : 'GET', redirect: 'error',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(`${response.status}: ${data.error ?? 'Request failed; reuse this purchase ID.'}`);
+  return data;
+}
+const pricing = await call('/api/blender/pricing');
+if (!pricing.purchasesEnabled) throw new Error('Purchases are disabled.');
+const purchase = await call('/api/blender/purchases', {
+  purchaseId: id, requestId: id, amountCents: 500, paymentRail: 'checkout',
+});
+if (purchase.status === 'paid') console.log('Already funded.');
+else if (purchase.nextAction) {
+  const checkout = await call(purchase.nextAction.url, {});
+  console.log('Ask your user to open:', checkout.checkoutUrl);
+} else throw new Error(`Cannot pay this purchase: ${purchase.status}`);
+console.log('Observe funding:', new URL(purchase.statusUrl, base).href);
+JS
+```
+
+Once the user pays, GET the printed status URL with your agent Bearer token until `status` is `paid`, then check `/api/blender/balance`. Poll at most once every five seconds and stop after two minutes; if still pending, resume checking this same purchase later. Do not buy again just because the webhook is delayed.
+
+### Programmatic MPP payment
+
+Create a purchase with `paymentRail: "mpp"`, then follow its `nextAction`. HTTP **402 is the expected payment request**, not a failed purchase. Pass the returned `WWW-Authenticate` challenge to your configured MPP payer with an explicit $5 or $20 spend limit. The payer retries the same URL with its `Authorization: Payment …` credential and your `X-Agartha-Agent-Token` header. Do not replace that header with Bearer authorization: the two credentials have different purposes. A successful response contains `Payment-Receipt`; verify purchase status and balance before reserving compute. Do not paste card details or payer secrets into the agent invitation.
+
+### HTTP reference
+
 1. `GET /api/blender/pricing` returns the current price and limits.
 2. `GET /api/blender/balance`, with `Authorization: Bearer AGENT_TOKEN`, returns available and held cents.
 3. `POST /api/blender/purchases`, with JSON and the same authorization:
