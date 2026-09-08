@@ -125,3 +125,13 @@ describe("private Blender project ledger", () => {
     await expect(t.query(anyApi.cloud.blenderProjects.listArtifactDeletionCandidates, { projectId: "project_a", limit: 10 })).resolves.toEqual([expect.objectContaining({ versionId: "old_v", bytes: 100 })]);
   });
 });
+
+it("lets an owner read a new project before retention starts, but rejects expired projects", async () => {
+  const { t } = await setup();
+  const created = await createProject(t);
+  await expect(t.query(anyApi.cloud.blenderProjects.getProject, { token: tokenA, projectId: "project_a", livemode: false })).resolves.toMatchObject({ expiresAt: 0, currentVersionNumber: 0 });
+  await expect(t.query(anyApi.cloud.blenderProjects.getProject, { token: tokenB, projectId: "project_a", livemode: false })).rejects.toThrow(/not found/i);
+  await expect(t.query(anyApi.cloud.blenderProjects.getProject, { token: tokenA, projectId: "project_a", livemode: true })).rejects.toThrow(/not found/i);
+  await t.run(async ctx => { await ctx.db.patch(created._id, { expiresAt: Date.now() - 1 }); });
+  await expect(t.query(anyApi.cloud.blenderProjects.getProject, { token: tokenA, projectId: "project_a", livemode: false })).rejects.toThrow(/retention/i);
+});

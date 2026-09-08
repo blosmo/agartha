@@ -73,7 +73,7 @@ export const getProject = internalQuery({
     const actor = await requireBillingOwner(ctx, args.token);
     const row = await project(ctx, args.projectId);
     if (!row || row.agentId !== actor.agentId || row.livemode !== args.livemode) throw new Error("Project not found.");
-    if (row.expiresAt <= Date.now()) throw new Error("Project retention has expired.");
+    if (row.expiresAt !== 0 && row.expiresAt <= Date.now()) throw new Error("Project retention has expired.");
     return row;
   },
 });

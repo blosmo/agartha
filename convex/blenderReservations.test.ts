@@ -193,3 +193,11 @@ describe("paid Blender reservations", () => {
     expect(actor.agentId).toBeDefined();
   });
 });
+
+it("can reserve the first paid session for a newly created project", async () => {
+  const { t } = await setup();
+  await t.mutation(anyApi.cloud.blenderProjects.createProject, { token, projectId: "fresh", title: "Fresh", livemode: false, requestId: "fresh" });
+  const args = { token, quoteId: "q-fresh", minutes: 5, livemode: false, requestId: "q-fresh", projectId: "fresh" };
+  await expect(t.mutation(anyApi.cloud.blenderSessions.createQuote, args)).resolves.toMatchObject({ projectId: "fresh" });
+  await expect(t.mutation(anyApi.cloud.blenderSessions.reserveSession, { token, quoteId: "q-fresh", reservationId: "r-fresh", requestId: "r-fresh" })).resolves.toMatchObject({ projectId: "fresh", status: "reserved", reservedCents: 40 });
+});

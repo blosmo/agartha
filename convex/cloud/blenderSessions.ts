@@ -16,7 +16,7 @@ function identifier(value: string, name: string) {
 async function validateResumeProject(ctx: MutationCtx, agentId: string, livemode: boolean, projectId: string) {
   const project = await ctx.db.query("blenderProjects").withIndex("by_project", q => q.eq("projectId", projectId)).unique();
   if (!project || project.agentId !== agentId || project.livemode !== livemode) throw new Error("Project is not available to this agent.");
-  if (project.expiresAt <= Date.now() || project.purgedAt !== undefined) throw new Error("Project retention has expired.");
+  if ((project.expiresAt !== 0 && project.expiresAt <= Date.now()) || project.purgedAt !== undefined) throw new Error("Project retention has expired.");
 }
 
 function assertActivated(agentId: string, livemode: boolean) {
