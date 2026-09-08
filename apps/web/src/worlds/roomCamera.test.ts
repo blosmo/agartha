@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { OrthographicCamera, Vector3 } from 'three';
-import { RoomCamera, rotateCamera } from './roomCamera';
+import { OrthographicCamera, Vector3, Raycaster, Vector2, Plane } from 'three';
+import { RoomCamera, rotateCamera, overviewFraming } from './roomCamera';
 
 describe('room camera', () => {
   it('rotates about a panned target and returns after four quarter turns without changing zoom', () => {
@@ -29,4 +29,17 @@ describe('room camera', () => {
     room.exit(); expect(room.keys.size).toBe(0); const previous = room.camera.position.clone(); room.step(1);
     expect(room.camera.position.equals(previous)).toBe(true);
   });
+});
+
+it('keeps every corner of a wide portrait overview in front of the ground plane',()=>{
+ for(const aspect of [1280/720,390/844,320/740]){
+  const {half,distance}=overviewFraming(false,aspect);
+  const camera=new OrthographicCamera(-half*aspect,half*aspect,half,-half,.1,2000);
+  camera.position.set(distance,distance,distance);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+  for(const x of [-1,1])for(const y of [-1,1]){
+   const ray=new Raycaster();ray.setFromCamera(new Vector2(x,y),camera);
+   expect(ray.ray.origin.y).toBeGreaterThan(0);
+   expect(ray.ray.intersectPlane(new Plane(new Vector3(0,1,0),0),new Vector3())).not.toBeNull();
+  }
+ }
 });

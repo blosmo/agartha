@@ -1,7 +1,7 @@
 import { cameraExploration } from './cameraExploration';
 import { QuarterTurn } from './quarterTurn';
 import { createSkybox } from './skybox';
-import { RoomCamera, rotateCamera } from './roomCamera';
+import { RoomCamera, rotateCamera, overviewFraming } from './roomCamera';
 import { RoomJoystick } from './RoomJoystick';
 import {ModelLayer} from './ModelLayer';
 import React, { useEffect, useRef, useState } from 'react';
@@ -54,10 +54,10 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     if(roomCamera.current.active){roomCamera.current.resize(rt.aspect);return;}
     finishRotation();
     // Render relative to the selected plot, keeping distant grid addresses numerically stable.
-    const half=focusRef.current?24/Math.min(1,rt.aspect):Math.max(80,120/rt.aspect);
+    const {half,distance}=overviewFraming(focusRef.current,rt.aspect);
     rt.camera.left=-half*rt.aspect;rt.camera.right=half*rt.aspect;rt.camera.top=half;rt.camera.bottom=-half;
     const address=addressFromId(callbacks.current.activePlotId),x=(address.x-anchor.current.x)*32,z=(address.z-anchor.current.z)*32;
-    rt.camera.zoom=1;rt.camera.position.set(x+100*Math.cos(overviewRotation.current)+100*Math.sin(overviewRotation.current),100,z+100*Math.cos(overviewRotation.current)-100*Math.sin(overviewRotation.current));rt.controls.target.set(x,0,z);rt.camera.updateProjectionMatrix();rt.controls.update();setZoom(100);updateLabels();
+    rt.camera.zoom=1;rt.camera.position.set(x+distance*Math.cos(overviewRotation.current)+distance*Math.sin(overviewRotation.current),distance,z+distance*Math.cos(overviewRotation.current)-distance*Math.sin(overviewRotation.current));rt.controls.target.set(x,0,z);rt.camera.updateProjectionMatrix();rt.controls.update();setZoom(100);updateLabels();
   }
   function applyRotation(angle: number) {
     const rt = runtime.current; if (!rt) return;
@@ -173,6 +173,8 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
         }
       }
       const renderCamera=roomCamera.current.active?roomCamera.current.camera:camera;
+      const fogShift=roomCamera.current.active?0:Math.max(0,camera.position.distanceTo(controls.target)-Math.sqrt(3)*100);
+      if(scene.fog instanceof THREE.Fog){scene.fog.near=200+fogShift;scene.fog.far=1200+fogShift;}
       sky.position.copy(renderCamera.position);sky.scale.setScalar(roomCamera.current.active?100:1400);
       renderer.render(scene,renderCamera);
       if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{roomCount:String(callbacks.current.plots.length+callbacks.current.empty.length),rotationAnimating:String(turn.current.active),skybox:'procedural',cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}

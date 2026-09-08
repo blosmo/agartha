@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 
+export function overviewFraming(focused: boolean, aspect: number) {
+  const half = focused ? 24 / Math.min(1, aspect) : Math.max(80, 120 / aspect);
+  return { half, distance: Math.max(100, half * 1.25) };
+}
+
 export function rotateCamera(camera: THREE.OrthographicCamera, target: THREE.Vector3, radians: number) {
   const offset = camera.position.clone().sub(target);
   offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), radians);
