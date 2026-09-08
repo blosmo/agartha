@@ -10,6 +10,28 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  blender-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verify toolkit with the pinned Blender runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libgl1 libxi6 libxfixes3 libxkbcommon0 libxrender1
+          version="$(python3 -c 'from cloud.blender_mcp.config import BLENDER_VERSION; print(BLENDER_VERSION)')"
+          archive="blender-${version}-linux-x64.tar.xz"
+          runtime="$RUNNER_TEMP/blender-quality"
+          mkdir -p "$runtime"
+          curl --fail --silent --show-error --location --retry 3 --max-time 180 "https://download.blender.org/release/Blender4.5/$archive" -o "$runtime/$archive"
+          curl --fail --silent --show-error --location --retry 3 --max-time 60 "https://download.blender.org/release/Blender4.5/blender-${version}.sha256" -o "$runtime/SHA256SUMS"
+          (cd "$runtime" && grep -F "  $archive" SHA256SUMS | sha256sum --check -)
+          tar -xJf "$runtime/$archive" -C "$runtime"
+          "$runtime/blender-${version}-linux-x64/blender" --background --factory-startup --python-exit-code 1 \
+            --python scripts/blender/verify_quality.py -- --kit scripts/seed/starter_kit.py \
+            --output "$RUNNER_TEMP/blender-quality-results" --assert-quality --renders
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20

@@ -1,0 +1,243 @@
+{
+  "date": "2026-09-09",
+  "blender": "4.5.0",
+  "platform": "macOS arm64 CPU",
+  "baselineCommit": "c42fb8465a52991f7e9e71e1cffd23257ed80284",
+  "toolkitSha256": "763ea2797ffd9e54886b9ba2be8362b86169358db8281fb3219ef5e93ac21ea8",
+  "fixture": {
+    "baseline": {
+      "objects": 8,
+      "triangles": 3950,
+      "materials": 3,
+      "materialNames": [
+        "Brass",
+        "Ceramic",
+        "Stone"
+      ],
+      "bounds": {
+        "min": [
+          -2.0,
+          0.0,
+          -1.5850000381469727
+        ],
+        "max": [
+          2.0,
+          1.7000000476837158,
+          1.5
+        ]
+      },
+      "coordinateSystem": "world Y-up / glTF Y-up",
+      "bytes": 223020,
+      "drawGroups": 3,
+      "elapsedSeconds": 0.392,
+      "sourceUnchanged": true,
+      "embeddedImages": 1,
+      "uvPreserved": false,
+      "uvValuesPreserved": false,
+      "materialsPreserved": false,
+      "normalMatchFraction": 0.02379746835443038,
+      "normalMismatchExamples": [
+        {
+          "position": [
+            0.9,
+            -0.95,
+            0.9
+          ],
+          "minimumDot": 0.6634111227467656
+        },
+        {
+          "position": [
+            0.9,
+            -1.05,
+            0.9
+          ],
+          "minimumDot": 0.6634042169898748
+        },
+        {
+          "position": [
+            0.8646,
+            -1.0,
+            0.8646
+          ],
+          "minimumDot": 0.7507736045200488
+        },
+        {
+          "position": [
+            0.9354,
+            -1.0,
+            0.9354
+          ],
+          "minimumDot": 0.7460385540390035
+        },
+        {
+          "position": [
+            0.4,
+            -1.05,
+            0.9
+          ],
+          "minimumDot": 0.6633975310251117
+        },
+        {
+          "position": [
+            0.4,
+            -0.95,
+            0.9
+          ],
+          "minimumDot": 0.6634197034873068
+        },
+        {
+          "position": [
+            0.4277,
+            -1.0,
+            0.8584
+          ],
+          "minimumDot": 0.7502016013477544
+        },
+        {
+          "position": [
+            0.3723,
+            -1.0,
+            0.9416
+          ],
+          "minimumDot": 0.7464881927142244
+        },
+        {
+          "position": [
+            0.7049,
+            -1.0,
+            1.1498
+          ],
+          "minimumDot": 0.58465324536607
+        },
+        {
+          "position": [
+            0.7,
+            -0.95,
+            1.1
+          ],
+          "minimumDot": 0.48948138672858477
+        }
+      ],
+      "matchedPositionFraction": 1.0,
+      "runtimeVertices": 8176
+    },
+    "candidate": {
+      "objects": 8,
+      "triangles": 3950,
+      "materials": 3,
+      "materialNames": [
+        "Brass",
+        "Ceramic",
+        "Stone"
+      ],
+      "bounds": {
+        "min": [
+          -2.0,
+          0.0,
+          -1.5850000381469727
+        ],
+        "max": [
+          2.0,
+          1.7000000476837158,
+          1.5
+        ]
+      },
+      "coordinateSystem": "world Y-up / glTF Y-up",
+      "bytes": 99460,
+      "drawGroups": 5,
+      "runtimeVertices": 2452,
+      "elapsedSeconds": 0.126,
+      "sourceUnchanged": true,
+      "embeddedImages": 1,
+      "uvPreserved": true,
+      "uvValuesPreserved": true,
+      "materialsPreserved": true,
+      "normalMatchFraction": 1.0,
+      "normalMismatchExamples": [],
+      "matchedPositionFraction": 1.0
+    }
+  },
+  "previewMediansSeconds": {
+    "baseline512x8": 1.599,
+    "draft256": 0.211,
+    "review512": 1.093,
+    "final512": 2.636
+  },
+  "garden": [
+    {
+      "variant": "baseline",
+      "objects": 996,
+      "triangles": 18800,
+      "materials": 10,
+      "materialNames": [
+        "Ground / clipped herbs",
+        "Ground / compass bronze",
+        "Ground / cream blossom",
+        "Ground / cut edges",
+        "Ground / foundation earth",
+        "Ground / garden green",
+        "Ground / ivory limestone",
+        "Ground / silver sage",
+        "Ground / slate inlay",
+        "Ground / weathered oak"
+      ],
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -0.5799999833106995,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          0.9500000476837158,
+          12.899999618530273
+        ]
+      },
+      "coordinateSystem": "world Y-up / glTF Y-up",
+      "bytes": 1044000,
+      "drawGroups": 10,
+      "elapsedSeconds": 0.392
+    },
+    {
+      "variant": "candidate",
+      "objects": 996,
+      "triangles": 18800,
+      "materials": 10,
+      "materialNames": [
+        "Ground / clipped herbs",
+        "Ground / compass bronze",
+        "Ground / cream blossom",
+        "Ground / cut edges",
+        "Ground / foundation earth",
+        "Ground / garden green",
+        "Ground / ivory limestone",
+        "Ground / silver sage",
+        "Ground / slate inlay",
+        "Ground / weathered oak"
+      ],
+      "bounds": {
+        "min": [
+          -12.899999618530273,
+          -0.5799999833106995,
+          -12.899999618530273
+        ],
+        "max": [
+          12.899999618530273,
+          0.9500000476837158,
+          12.899999618530273
+        ]
+      },
+      "coordinateSystem": "world Y-up / glTF Y-up",
+      "bytes": 1038960,
+      "drawGroups": 10,
+      "runtimeVertices": 38248,
+      "elapsedSeconds": 1.062
+    }
+  ],
+  "failureCleanupPassed": true,
+  "notes": [
+    "Preview medians use three local runs; no cloud performance or dollar savings were measured.",
+    "Final quality measured at 512 px for comparison; the default final preset is 1024 px.",
+    "Worker resource guarantees and customer pricing are unchanged."
+  ]
+}

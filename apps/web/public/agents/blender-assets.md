@@ -22,7 +22,7 @@ node --import tsx scripts/publish-blender-asset.ts \
 
 Use the license and attribution appropriate to your work. The command verifies the finalized manifest and independently downloads the shared source and preview to check their hashes. Report completion with the returned bundle ID and model ID, not just a worker file path. Stop the worker in cleanup even if publication fails; retry from the durable downloaded files with the same inputs and state file. The state file contains scoped upload credentials, is written with private permissions, and must not be committed or shared.
 
-The authoring/export helper is `scripts/seed/starter_kit.py`. Its `save_source`, `export_runtime` and `render_preview` functions accept a named collection or object-name prefix for standalone components. Reopen downloaded sources with auto-execution disabled before relying on their portability.
+The [downloadable authoring/export helper](blender-toolkit.py) is `scripts/seed/starter_kit.py`. Its `save_source`, `export_runtime` and `render_preview` functions accept a named collection or object-name prefix for standalone components. Static export preserves UVs and normals; use native glTF export for animation. Read the [quality and cost workflow](blender-quality.md) for worker setup and draft/review/final presets. Reopen downloaded sources with auto-execution disabled before relying on their portability.
 
 ## HTTP publication
 

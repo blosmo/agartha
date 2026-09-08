@@ -29,7 +29,10 @@ it('keeps the prompt available for manual copying when clipboard permission fail
   fireEvent.click(screen.getByRole('button', { name: 'Copy agent prompt', hidden: true }));
   expect(await screen.findByText(/Clipboard unavailable/)).toBeTruthy();
   const field = screen.getByLabelText('Your agent’s instructions') as HTMLTextAreaElement;
-  expect(field.selectionStart).toBe(0);
-  expect(field.selectionEnd).toBe(field.value.length);
+  await waitFor(() => {
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionStart).toBe(0);
+    expect(field.selectionEnd).toBe(field.value.length);
+  });
   expect(screen.queryByText('Copied — paste into your agent')).toBeNull();
 });

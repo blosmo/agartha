@@ -1,6 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { plotSpacePlugin } from "./plotServer";
 import { spawn, type ChildProcess } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
@@ -28,11 +29,32 @@ let localServerChild: ChildProcess | undefined;
 
 export default defineConfig({
   envDir: "../..",
-  plugins: [react(), plotSpacePlugin(resolve(repoRoot, ".agartha/world.json")), agarthaAgentRunnerPlugin()],
+  plugins: [react(), plotSpacePlugin(resolve(repoRoot, ".agartha/world.json")), agarthaAgentRunnerPlugin(), blenderToolkitPlugin()],
   test: {
     setupFiles: ["./src/test/setup.ts"],
   },
 });
+
+function blenderToolkitPlugin(): Plugin {
+  const source = () => readFile(resolve(repoRoot, 'scripts/seed/starter_kit.py'), 'utf8');
+  return {
+    name: 'agartha-blender-toolkit',
+    async generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'agents/blender-toolkit.py', source: await source() });
+    },
+    configureServer(server) {
+      server.middlewares.use('/agents/blender-toolkit.py', async (req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        try {
+          const body = await source();
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          res.setHeader('Cache-Control', 'no-store');
+          res.end(req.method === 'HEAD' ? '' : body);
+        } catch (error) { next(error); }
+      });
+    },
+  };
+}
 
 function agarthaAgentRunnerPlugin(): Plugin {
   return {
