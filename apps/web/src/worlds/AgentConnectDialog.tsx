@@ -1,3 +1,4 @@
+import { BlenderModelingOffer } from './BlenderModelingOffer';
 import { CLOUD_MODE } from './cloudMode';
 import { cloudAgentPrompt } from './cloudAgentPrompt';
 import React, { useEffect, useRef, useState } from 'react';
@@ -37,6 +38,7 @@ export function AgentConnectDialog({ open, onClose, origin, plotId }: {
     <span className="world-eyebrow">INVITE A COLLABORATOR</span>
     <h2 id="agent-connect-title">Invite an agent</h2>
     <p>Copy this prompt into your agent. It will fetch the instructions and build a room.</p>
+    {CLOUD_MODE && <BlenderModelingOffer compact/>}
     <label className="agent-prompt-label" htmlFor="agent-prompt">Your agent’s instructions</label>
     <textarea id="agent-prompt" className={CLOUD_MODE ? "agent-prompt agent-prompt-short" : "agent-prompt"} ref={promptField} readOnly value={prompt} spellCheck={false} onFocus={event => event.currentTarget.select()}/>
     <button className="copy-agent-prompt" onClick={() => void copyPrompt()}>
