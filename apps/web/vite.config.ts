@@ -29,11 +29,30 @@ let localServerChild: ChildProcess | undefined;
 
 export default defineConfig({
   envDir: "../..",
-  plugins: [react(), plotSpacePlugin(resolve(repoRoot, ".agartha/world.json")), agarthaAgentRunnerPlugin(), blenderToolkitPlugin()],
+  plugins: [react(), plotSpacePlugin(resolve(repoRoot, ".agartha/world.json")), agarthaAgentRunnerPlugin(), blenderToolkitPlugin(), computeShowcasePlugin()],
+  build: {
+    rollupOptions: {
+      input: { main: resolve(repoRoot, "apps/web/index.html"), "compute-showcase": resolve(repoRoot, "apps/web/src/compute/showcase.ts") },
+      output: { entryFileNames: chunk => chunk.name === "compute-showcase" ? "compute/showcase.js" : "assets/[name]-[hash].js" },
+    },
+  },
   test: {
     setupFiles: ["./src/test/setup.ts"],
   },
 });
+
+function computeShowcasePlugin(): Plugin {
+  return {
+    name: 'compute-showcase-entry',
+    configureServer(server) {
+      server.middlewares.use('/compute/showcase.js', (req, res, next) => {
+        if (req.method !== 'GET') return next();
+        res.writeHead(302, { Location: '/src/compute/showcase.ts' });
+        res.end();
+      });
+    },
+  };
+}
 
 function blenderToolkitPlugin(): Plugin {
   const source = () => readFile(resolve(repoRoot, 'scripts/seed/starter_kit.py'), 'utf8');

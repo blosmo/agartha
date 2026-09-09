@@ -174,3 +174,31 @@ it('allows the textarea keyboard shortcut to copy the plan without a pointer',as
   await vi.waitFor(()=>expect(writeText).toHaveBeenCalledOnce());
   expect(writeText.mock.calls[0][0]).toContain('A ceramic teapot with a wide handle');
 });
+
+it('switches creation workflows without losing either brief or starting work',async()=>{
+  const fetcher=await boot();
+  input('managed-brief','Keep this hosted-model brief');
+  input('brief','Keep this direct-agent brief');
+  el('direct-tab').click();
+  expect(el('direct').hidden).toBe(false);
+  expect(el('managed-panel').hidden).toBe(true);
+  expect(el('direct-tab').getAttribute('aria-selected')).toBe('true');
+  el('managed-tab').click();
+  expect(el('managed-panel').hidden).toBe(false);
+  expect(el('direct').hidden).toBe(true);
+  expect((el('managed-brief') as HTMLTextAreaElement).value).toBe('Keep this hosted-model brief');
+  expect((el('brief') as HTMLTextAreaElement).value).toBe('Keep this direct-agent brief');
+  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it('supports keyboard selection between the creation tabs',async()=>{
+  await boot();
+  el('managed-tab').focus();
+  el('managed-tab').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  expect(document.activeElement).toBe(el('direct-tab'));
+  expect(el('direct').hidden).toBe(false);
+  expect(el('managed-tab').tabIndex).toBe(-1);
+  el('direct-tab').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}));
+  expect(document.activeElement).toBe(el('managed-tab'));
+  expect(el('managed-panel').hidden).toBe(false);
+});

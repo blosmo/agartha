@@ -1,0 +1,42 @@
+{
+  "source": "Original procedural models created for Agartha with Blender 4.5. No external assets, textures, or baked lighting.",
+  "generator": "scripts/blender/create_carousel_models.py",
+  "license": "MIT",
+  "models": [
+    {
+      "id": "tetrahedron",
+      "glbBytes": 3932,
+      "posterBytes": 133861
+    },
+    {
+      "id": "cube",
+      "glbBytes": 6552,
+      "posterBytes": 139643
+    },
+    {
+      "id": "octahedron",
+      "glbBytes": 7176,
+      "posterBytes": 95686
+    },
+    {
+      "id": "moon-bunny",
+      "glbBytes": 330596,
+      "posterBytes": 95869
+    },
+    {
+      "id": "dodecahedron",
+      "glbBytes": 16328,
+      "posterBytes": 110913
+    },
+    {
+      "id": "icosahedron",
+      "glbBytes": 15172,
+      "posterBytes": 119438
+    },
+    {
+      "id": "cloud-whale",
+      "glbBytes": 269284,
+      "posterBytes": 81457
+    }
+  ]
+}

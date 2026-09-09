@@ -12,7 +12,9 @@
   function error(err) { el('error').textContent = err.message || 'Request failed. Retry the same job to recover its status.'; }
   async function api(path, body, authenticated = true) {
     const response = await fetch(path, { method: body === undefined ? 'GET' : 'POST', headers: { ...(authenticated ? { Authorization: `Bearer ${token}` } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), cache: 'no-store', signal: AbortSignal.timeout(30000) });
-    const data = await response.json();
+    let data;
+    try { data = await response.json(); }
+    catch { throw new Error("The creation service could not be reached. Please refresh or try again shortly."); }
     if (!response.ok) {
       const failure = new Error(typeof data.error === 'string' ? data.error : `Request failed (${response.status}). Your saved request can be retried.`);
       failure.status = response.status;
@@ -49,13 +51,20 @@
   }
   async function check() {
     try {
-      const [data, pricing] = await Promise.all([api('/api/blender/capabilities', undefined, false), api('/api/blender/pricing', undefined, false)]);
+      const [data, pricing] = await Promise.all([api('/api/blender/capabilities', undefined, Boolean(token)), api('/api/blender/pricing', undefined, false)]);
       capabilities = data.managed;
+      el('reference-option').hidden = capabilities?.references?.enabled !== true;
+      el('references').disabled = Boolean(job) || capabilities?.references?.enabled !== true;
+      referenceHelp();
       el('availability').textContent = capabilities?.enabled === true ? 'Managed creation is available.' : 'Managed creation is not available yet. Direct Blender instructions are below.';
       el('submit').disabled = capabilities?.enabled !== true || Boolean(job) || busy;
       document.querySelectorAll('[data-fund]').forEach(button => { button.disabled = pricing.purchasesEnabled !== true || pricing.paymentMode !== 'live'; });
     } catch (err) { capabilities = null; el('submit').disabled = true; el('availability').textContent = 'Creation availability could not be verified. Refresh to try again.'; error(err); }
   }
+  function referenceHelp() {
+    el('budget-help').textContent = capabilities?.references?.enabled === true && el('references').checked ? '$5–$20 total, including design references, Astra, and Blender. Charged for actual usage; unused credits stay in your wallet.' : '$1–$20, including Astra and Blender. Charged for actual usage; unused credits stay in your wallet. A higher budget does not guarantee a better model.';
+  }
+  el('references').addEventListener('change', referenceHelp);
   function savedJob() { localStorage.setItem(jobKey, JSON.stringify(job)); }
   async function download(name, button) {
     button.disabled = true;
@@ -79,8 +88,8 @@
     for (const artifact of data.artifacts || []) {
       const value = typeof artifact === 'string' ? artifact : artifact.name || artifact.url || '';
       const name = value.split('/').pop()?.split('?')[0];
-      if (!['model.glb', 'model.blend', 'preview.png', 'turnaround.mp4'].includes(name)) continue;
-      const button = document.createElement('button'); button.type = 'button'; button.textContent = name === 'turnaround.mp4' ? 'Download 360° video' : `Download ${name}`; button.addEventListener('click', () => download(name, button)); el('artifacts').append(button);
+      if (!['model.glb', 'model.blend', 'preview.png', 'turnaround.mp4', 'reference.jpg', 'review.json'].includes(name)) continue;
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = name === 'turnaround.mp4' ? 'Download 360° video' : name === 'reference.jpg' ? 'Download design reference' : name === 'review.json' ? 'Download review history' : `Download ${name}`; button.addEventListener('click', () => download(name, button)); el('artifacts').append(button);
     }
     return done;
   }
@@ -126,9 +135,11 @@
     const brief = el('brief').value.trim(); const amount = el('budget').value.trim();
     if (new TextEncoder().encode(brief).length > 4000) { error(new Error('Shorten the model brief to fit the 4,000-byte limit.')); el('brief').focus(); return; }
     const cents = /^\d+(?:\.\d{1,2})?$/.test(amount) ? Math.round(Number(amount) * 100) : NaN;
+    const referenceMode = !el('references').disabled && el('references').checked ? 'generate' : 'none';
+    if (referenceMode === 'generate' && cents < 500) { error(new Error('Allow at least $5 for visual references, modeling, and rendering.')); return; }
     if (!brief || !Number.isSafeInteger(cents) || cents < (capabilities.minimumBudgetCents || 100) || cents > (capabilities.maximumBudgetCents || 2000)) { error(new Error('Enter a model brief and a total budget between $1 and $20.')); return; }
-    try { job = { jobId: crypto.randomUUID(), requestId: crypto.randomUUID(), brief, budgetCents: cents }; savedJob(); } catch (err) { job = null; error(err); return; }
-    el('brief').disabled = true; el('budget').disabled = true; start();
+    try { job = { jobId: crypto.randomUUID(), requestId: crypto.randomUUID(), brief, budgetCents: cents, referenceMode }; savedJob(); } catch (err) { job = null; error(err); return; }
+    el('brief').disabled = true; el('budget').disabled = true; el('references').disabled = true; start();
   });
   el('retry').addEventListener('click', start);
   el('cancel').addEventListener('click', async () => {
@@ -136,7 +147,7 @@
     el('cancel').disabled = true;
     try { await identity(); await api(`/api/blender/jobs/${encodeURIComponent(job.jobId)}/cancel`, {}); await poll(); } catch (err) { error(err); } finally { el('cancel').disabled = false; }
   });
-  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('submit').disabled = capabilities?.enabled !== true; });
+  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('submit').disabled = capabilities?.enabled !== true; });
   el('check').addEventListener('click', check);
   el('connect').addEventListener('click', async () => { try { await identity(); await balance(); } catch (err) { error(err); } });
   let funding = false;
@@ -165,7 +176,7 @@
   try {
     token = localStorage.getItem(tokenKey);
     job = JSON.parse(localStorage.getItem(jobKey) || 'null');
-    if (job) { el('brief').value = job.brief; el('budget').value = (job.budgetCents / 100).toFixed(2); el('brief').disabled = true; el('budget').disabled = true; el('job').hidden = false; poll(); }
+    if (job) { el('references').checked = job.referenceMode === 'generate'; el('brief').value = job.brief; el('budget').value = (job.budgetCents / 100).toFixed(2); el('brief').disabled = true; el('budget').disabled = true; el('job').hidden = false; poll(); }
     if (token) balance().catch(error);
   } catch (err) { error(err); }
   check();

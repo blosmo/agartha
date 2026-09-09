@@ -22,3 +22,11 @@ class TurnaroundTests(unittest.TestCase):
         broker = Mock(); broker.owned.return_value = {'status': 'settled'}
         with self.assertRaises(RuntimeError): render_turnaround(broker, 'token', 'reservation')
         broker.start.assert_not_called(); broker.download.assert_not_called()
+
+    def test_delivery_window_is_not_spent_on_optional_video(self):
+        broker = Mock()
+        broker.owned.return_value = {'status': 'running', 'launchClaimedAt': (time.time() - 510) * 1000, 'reservedMinutes': 10}
+        with self.assertRaisesRegex(RuntimeError, 'optional video'):
+            render_turnaround(broker, 'token', 'reservation')
+        broker.call.assert_not_called()
+        broker.download.assert_not_called()

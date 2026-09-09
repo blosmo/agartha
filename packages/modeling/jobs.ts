@@ -1,22 +1,23 @@
 import type { ServerResponse } from 'node:http';
 import { BillingHttpError, type LedgerCall } from '../billing/ledgerClient.js';
 import { jsonBody, jsonResponse, type BillingRequest } from '../billing/http.js';
-import { managedEnabled } from './http.js';
+import { managedEnabled, referencesEnabled } from './http.js';
 
 const names = ['model.glb', 'model.blend', 'preview.png'];
 function links(row: Record<string, any>) {
   const base = `/api/blender/jobs/${encodeURIComponent(row.jobId)}`;
-  return { ...row, statusUrl: base, startUrl: `${base}/start`, cancelUrl: `${base}/cancel`, artifacts: row.artifactsReady ? [...names, ...(row.videoReady ? ['turnaround.mp4'] : [])].map(name => ({ name, url: `${base}/artifacts/${name}` })) : [] };
+  return { ...row, statusUrl: base, startUrl: `${base}/start`, cancelUrl: `${base}/cancel`, artifacts: [...(row.artifactsReady ? [...names, ...(row.videoReady ? ['turnaround.mp4'] : [])] : []), ...(row.referenceReady ? ['reference.jpg', 'review.json'] : [])].map(name => ({ name, url: `${base}/artifacts/${name}` })) };
 }
 export async function managedJobs(req: BillingRequest, res: ServerResponse, path: string, token: string, ledger: LedgerCall, livemode: boolean) {
   if (path === 'jobs' && req.method === 'POST') {
     if (!managedEnabled(token, req)) throw new BillingHttpError(503, 'Managed modeling is not available.');
     const body = await jsonBody(req);
-    const row = await ledger<Record<string, any>>('createManagedJob', { token, jobId: body.jobId, requestId: body.requestId, brief: body.brief, budgetCents: body.budgetCents, livemode });
+    if (body.referenceMode === 'generate' && !referencesEnabled(token)) throw new BillingHttpError(503, 'Reference-guided modeling is not available yet.');
+    const row = await ledger<Record<string, any>>('createManagedJob', { token, jobId: body.jobId, requestId: body.requestId, brief: body.brief, ...(body.referenceMode === undefined ? {} : { referenceMode: body.referenceMode }), budgetCents: body.budgetCents, livemode });
     jsonResponse(res, links(row), 201);
     return;
   }
-  const match = /^jobs\/([A-Za-z0-9_-]{1,80})(?:\/(start|cancel|artifacts\/(?:model\.glb|model\.blend|preview\.png|turnaround\.mp4)))?$/.exec(path);
+  const match = /^jobs\/([A-Za-z0-9_-]{1,80})(?:\/(start|cancel|artifacts\/(?:model\.glb|model\.blend|preview\.png|turnaround\.mp4|reference\.jpg|review\.json)))?$/.exec(path);
   if (!match) throw new BillingHttpError(404, 'Job not found.');
   const jobId = match[1], action = match[2];
   const row = await ledger<Record<string, any>>('getManagedJob', { token, jobId });

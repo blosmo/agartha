@@ -19,3 +19,15 @@ it('uses the Vercel runtime OIDC header without exposing or persisting it', () =
   vi.stubEnv('VERCEL', '0');
   expect(managedCredential(request)).toBe('');
 });
+
+it('reports reference capabilities to the configured bearer identity only', async () => {
+  const { default: handler } = await import('../api/blender');
+  const token = 'a'.repeat(64);
+  vi.stubEnv('AGARTHA_REFERENCE_MODELING_ENABLED', 'false');
+  vi.stubEnv('AGARTHA_REFERENCE_MODELING_OPERATOR_AGENT_ID', `agent-${createHash('sha256').update(token).digest('hex').slice(0, 24)}`);
+  for (const [authorization, expected] of [[undefined, false], [`Bearer ${'b'.repeat(64)}`, false], [`Bearer ${token}`, true]] as const) {
+    const response = { setHeader: vi.fn(), end: vi.fn() };
+    await handler({ method: 'GET', query: { path: 'capabilities' }, headers: { authorization } } as any, response as any);
+    expect(JSON.parse(response.end.mock.calls[0][0]).managed.references.enabled).toBe(expected);
+  }
+});
