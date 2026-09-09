@@ -46,6 +46,8 @@ Develop three scales of information: primary masses, secondary structure such as
 
 Establish light/dark separation before fine texture. Reuse materials; distinguish neighboring surfaces with color or roughness where that explains construction. Use metallic response for exposed metal, and treat painted metal, wood and ceramic according to their visible surface.
 
+Use the [shared Agartha material library](../agents/materials.md) for bundled scanned PBR maps and reusable portable shader finishes. Inspect its catalog rather than recreating every surface from flat colors.
+
 Set texture scale relative to the object: oversized wood grain or fabric weave changes perceived size. Reserve strong contrast for focal areas when appropriate to the brief.
 
 Use a neutral preview to diagnose the model, then inspect it under the destination's lighting and background. A stylized prop may need crisp facets; a close-up product needs convincing edge highlights. For the lamp, check that the cream shade separates from the background and the brass stem reads continuously. If the stem looks black, inspect lighting and reflections before changing the material.

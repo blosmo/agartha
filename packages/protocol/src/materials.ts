@@ -27,4 +27,11 @@ export function validateMaterialId(id:unknown):string|undefined {
   if(typeof id!=='string'||!byId.has(id))throw new Error('Choose a materialId from /api/materials.');
   return id;
 }
-export const MATERIAL_CATALOG={entries:PBR_MATERIALS.map(material=>({...material,preview:`/materials/previews/${material.id}.png`})),shaderPresets:SURFACE_EXAMPLES,apply:'Set materialId on a raw object edit. Use white object color to preserve the scanned albedo; other colors tint it. Combine with shaderId for procedural color effects.',maps:'1K albedo (sRGB), OpenGL normal (linear), packed ambient occlusion / roughness / metalness (linear).',source:'Scanned maps: Poly Haven, CC0. Bundled locally; no runtime requests to the provider.'};
+/** Portable Blender finishes reuse the bundled maps; generated maps contain no lighting. */
+export const BLENDER_FINISHES = [
+  {id:'weathered-copper',name:'Weathered copper',baseMaterialId:'pbr-steel',kind:'patina',color:[0.42,0.19,0.075],accent:[0.055,0.27,0.20],roughness:0.38,metalness:0.95,shaderPreset:'Oxidized bronze'},
+  {id:'limestone-masonry',name:'Limestone masonry',baseMaterialId:'pbr-plaster',kind:'masonry',color:[0.66,0.60,0.47],accent:[0.31,0.29,0.25],roughness:0.82,metalness:0,shaderPreset:'Mineral bands'},
+  {id:'honed-limestone',name:'Honed limestone',baseMaterialId:'pbr-plaster',kind:'mineral',color:[0.66,0.60,0.47],accent:[0.31,0.29,0.25],roughness:0.76,metalness:0,shaderPreset:'Mineral bands'},
+  {id:'coastal-rock',name:'Coastal rock',baseMaterialId:'pbr-plaster',kind:'strata',color:[0.22,0.235,0.22],accent:[0.38,0.33,0.25],roughness:0.88,metalness:0,shaderPreset:'Sandstone strata'},
+] as const;
+export const MATERIAL_CATALOG={entries:PBR_MATERIALS.map(material=>({...material,preview:`/materials/previews/${material.id}.png`})),shaderPresets:SURFACE_EXAMPLES,blenderFinishes:BLENDER_FINISHES,apply:'Set materialId on a raw object edit. Use white object color to preserve the scanned albedo; other colors tint it. Combine with shaderId for procedural color effects.',maps:'1K albedo (sRGB), OpenGL normal (linear), packed ambient occlusion / roughness / metalness (linear).',source:'Scanned maps: Poly Haven, CC0. Bundled locally; no runtime requests to the provider.'};

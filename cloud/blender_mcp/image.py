@@ -24,6 +24,13 @@ def build_image():
     This function imports Modal lazily so config and unit tests remain usable on
     machines that only have the Modal CLI's isolated Python environment.
     """
+    import hashlib
+    import json
+    manifest = json.loads((REPOSITORY_ROOT / 'cloud/blender_mcp/material_catalog.json').read_text())
+    sources = b''.join((REPOSITORY_ROOT / path).read_bytes() for path in
+                       ('packages/protocol/src/materials.ts', 'packages/protocol/src/surfaceShaders.ts'))
+    if manifest['sourceSha256'] != hashlib.sha256(sources).hexdigest():
+        raise ValueError('Regenerate the shared material snapshot with npm run materials:blender.')
     import modal
 
     install = (
@@ -68,9 +75,12 @@ def build_image():
             or path.name == "verify.py"
             or "__pycache__" in path.parts,
         )
+        .add_local_dir(REPOSITORY_ROOT / "apps" / "web" / "public" / "materials",
+                       "/opt/agartha-assets/materials", copy=True)
         .env(
             {
                 "BLENDER_BIN": "/usr/local/bin/blender",
+                "AGARTHA_MATERIAL_ROOT": "/opt/agartha-assets",
                 "BLENDER_MCP_ADDON": "/opt/blender-mcp/addon.py",
                 "PYTHONPATH": "/opt/agartha-blender",
                 "PYTHONUNBUFFERED": "1",
