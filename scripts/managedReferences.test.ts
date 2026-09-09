@@ -69,5 +69,8 @@ describe('reference-guided Blender actions', () => {
     expect(() => parseStudioAction({ ...action, action: 'delete_account', code: '' })).toThrow('action');
     expect(() => parseStudioAction({ ...action, action: 'render_views', code: '' })).toThrow('arguments');
     expect(parseStudioAction({ ...action, code: '', injected: 'discard' })).not.toHaveProperty('injected');
+    expect(parseStudioAction({ ...action, action: 'render_views', code: '', views: ['hero', 'right'] })).toMatchObject({ views: ['hero', 'right'] });
+    expect(parseStudioAction({ ...action, action: 'edit', code: 'import bpy', views: ['front'] })).toMatchObject({ action: 'edit' });
+    expect(() => parseStudioAction({ ...action, action: 'render_views', code: '', views: ['invalid'] })).toThrow('invalid Blender action');
   });
 });
