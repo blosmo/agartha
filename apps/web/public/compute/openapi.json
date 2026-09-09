@@ -304,7 +304,40 @@
         "summary": "Get human-assisted Stripe Checkout URL",
         "responses": {
           "200": {
-            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "purchaseId",
+                    "checkoutSessionId",
+                    "checkoutUrl",
+                    "confirmationUrl"
+                  ],
+                  "properties": {
+                    "purchaseId": {
+                      "type": "string"
+                    },
+                    "checkoutSessionId": {
+                      "type": "string"
+                    },
+                    "checkoutUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uri"
+                    },
+                    "confirmationUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Shareable receipt confirmation link; no agent token is required in the browser."
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request"
@@ -1178,6 +1211,81 @@
             }
           }
         ]
+      }
+    },
+    "/api/blender/checkout-status": {
+      "get": {
+        "operationId": "getCheckoutReceiptStatus",
+        "summary": "Read a verified Checkout receipt without an agent credential",
+        "description": "Read-only receipt lookup. The opaque Stripe Checkout session ID grants access only to this purchase confirmation. No balance, agent identity or payment details are returned. A redirect flag alone never proves payment; agents still confirm their owned purchase and current balance before compute.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^cs_(test|live)_[A-Za-z0-9]{8,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verified receipt state, including delayed crediting and adjustments. creditedCents is the contribution of this purchase, not the current spendable wallet balance.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "state",
+                    "amountCents",
+                    "currency",
+                    "livemode"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "payment_received",
+                        "credited",
+                        "adjusted",
+                        "not_completed",
+                        "expired"
+                      ]
+                    },
+                    "amountCents": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "currency": {
+                      "type": "string",
+                      "const": "usd"
+                    },
+                    "livemode": {
+                      "type": "boolean"
+                    },
+                    "creditedCents": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid receipt ID"
+          },
+          "409": {
+            "description": "Receipt binding or payment state could not be verified"
+          },
+          "503": {
+            "description": "Receipt verification unavailable; retry the same receipt, not a new purchase"
+          }
+        }
       }
     }
   },

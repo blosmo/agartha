@@ -4,7 +4,7 @@ import { ConvexError } from 'convex/values';
 const purchases = anyApi.cloud.purchases;
 const ownerQueries = new Set(['balance', 'getPurchase']);
 const ownerMutations = new Set(['createPurchase', 'authorizePaymentAttempt']);
-const paymentQueries = new Set(['getPurchaseForPayment']);
+const paymentQueries = new Set(['getPurchaseForPayment', 'getCheckoutReceipt']);
 const paymentMutations = new Set(['attachCheckoutSession', 'beginPaymentReconciliation', 'fulfillPurchase']);
 const sessionQueries = new Set(['getReservation']);
 const sessionMutations = new Set(['createQuote', 'reserveSession', 'requestStop']);

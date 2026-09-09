@@ -89,6 +89,19 @@ describe('billing transport boundaries', () => {
     expect(unauthenticated.state.statusCode).toBe(401);
   });
 
+  it('rejects invalid opaque receipts without auth, upstream calls, or cacheable/indexable output', async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    const response = responseRecorder();
+    await blender({ method: 'GET', query: { path: 'checkout-status', session_id: 'cs_1' }, headers: {} } as unknown as BillingRequest, response.res);
+    expect(response.state.statusCode).toBe(400);
+    expect(JSON.parse(response.state.body)).toEqual({ error: 'Checkout receipt unavailable.' });
+    expect(response.state.headers.get('Cache-Control')).toBe('no-store');
+    expect(response.state.headers.get('X-Robots-Tag')).toBe('noindex');
+    expect(response.state.headers.get('Referrer-Policy')).toBe('no-referrer');
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it('keeps purchases disabled and separates MPP credentials from agent credentials', async () => {
     configureTestPayments();
     vi.stubEnv('AGARTHA_BLENDER_BILLING_ENABLED', 'false');

@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-from .broker import Broker, BrokerConflict, ResultStore
+from .broker import Broker, BrokerConflict, ResultStore, TOOL_TIMEOUT_SECONDS
 from .ledger import LedgerError
 
 
@@ -75,6 +75,69 @@ class BrokerTests(unittest.TestCase):
         with self.assertRaises(BrokerConflict):
             self.broker.call("owner", "r1", message, "op1")
         self.provider.call.assert_called_once()
+
+    def test_completed_operation_can_run_past_old_limit_and_does_not_block_next_operation(self):
+        simulated_duration_seconds = 31
+        def complete_after_old_limit(_worker_id, request, *, max_bytes, timeout):
+            self.assertEqual(timeout, TOOL_TIMEOUT_SECONDS)
+            self.assertGreater(timeout, simulated_duration_seconds)
+            return {"id": request["id"], "result": {"content": [], "isError": False}}
+        self.provider.call.side_effect = complete_after_old_limit
+        for operation_id in ("slow-render", "next-operation"):
+            result = self.broker.call("owner", "r1", {"id": operation_id, "method": "tools/list"}, operation_id)
+            self.assertFalse(result["result"]["isError"])
+        self.assertEqual(self.provider.call.call_count, 2)
+        self.assertEqual([args["state"] for name, args in self.events if name == "completeOperation"], ["completed", "completed"])
+
+    def test_idle_reconciliation_waits_for_active_operation_claim(self):
+        self.row.update({"lastActivityAt": 40_000, "activeOperationDeadline": 180_000})
+        self.broker._stop = Mock(return_value={"status": "settled"})
+        self.assertEqual(self.broker.reconcile("r1")["status"], "running")
+        self.broker._stop.assert_not_called()
+
+    def test_idle_reconciliation_stops_after_operation_claim_expires(self):
+        self.row.update({"lastActivityAt": 40_000, "activeOperationDeadline": 100_999})
+        self.broker._stop = Mock(return_value={"status": "settled"})
+        self.broker.reconcile("r1")
+        self.broker._stop.assert_called_once_with("r1", idle_only=True)
+
+    def test_idle_shutdown_race_does_not_fence_or_terminate_a_fresh_operation(self):
+        self.row.update({"lastActivityAt": 40_000})
+        original_ledger = self.ledger.call.side_effect
+        def authorize_during_shutdown(operation: str, **args):
+            if operation == "claimShutdown":
+                self.assertTrue(args["idleOnly"])
+                self.row["lastActivityAt"] = 101_000
+                return {"claimed": False, "terminal": False}
+            return original_ledger(operation, **args)
+        self.ledger.call.side_effect = authorize_during_shutdown
+        result = self.broker.reconcile("r1")
+        self.assertEqual(result["status"], "running")
+        self.provider.stop.assert_not_called()
+        self.projects.checkpoint.assert_not_called()
+        self.assertFalse(any(name == "settleSession" for name, _args in self.events))
+
+    def test_hard_deadline_and_explicit_stop_override_active_operation_grace(self):
+        self.row.update({"lastActivityAt": 100_000, "activeOperationDeadline": 999_999})
+        self.broker._stop = Mock(return_value={"status": "settled"})
+        self.row["launchClaimedAt"] = -300_000
+        self.broker.reconcile("r1")
+        self.broker._stop.assert_called_once_with("r1")
+        self.broker._stop.reset_mock()
+        self.row.update({"launchClaimedAt": 100_000, "stopRequested": True})
+        self.broker.reconcile("r1")
+        self.broker._stop.assert_called_once_with("r1")
+
+    def test_unknown_status_and_terminal_worker_override_active_operation_grace(self):
+        self.row.update({"lastActivityAt": 100_000, "activeOperationDeadline": 999_999, "status": "unknown"})
+        self.broker._stop = Mock(return_value={"status": "settled"})
+        self.broker.reconcile("r1")
+        self.broker._stop.assert_called_once_with("r1")
+        self.broker._stop.reset_mock()
+        self.row["status"] = "running"
+        self.provider.poll.return_value = 0
+        self.broker.reconcile("r1")
+        self.broker._stop.assert_called_once_with("r1")
 
     def test_stop_cannot_release_credits_without_terminal_observation(self):
         self.provider.stop.side_effect = TimeoutError("provider unavailable")

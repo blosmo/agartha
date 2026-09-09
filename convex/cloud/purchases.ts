@@ -54,6 +54,44 @@ export const getPurchaseForPayment = internalQuery({
   handler: async (ctx, args) => ctx.db.query("blenderPurchases").withIndex("by_purchase", q => q.eq("purchaseId", args.purchaseId)).unique(),
 });
 
+// Payment service only: validates the opaque Checkout capability against the
+// immutable purchase binding before exposing the corresponding payment state.
+export const getCheckoutReceipt = internalQuery({
+  args: { purchaseId: v.string(), checkoutSessionId: v.string() },
+  handler: async (ctx, args) => {
+    const purchase = await ctx.db.query("blenderPurchases").withIndex("by_purchase", q => q.eq("purchaseId", args.purchaseId)).unique();
+    if (!purchase || purchase.paymentRail !== "checkout" || purchase.checkoutSessionId !== args.checkoutSessionId) throw new Error("Checkout receipt not found.");
+    const payment = purchase.paymentId
+      ? await ctx.db.query("blenderPayments").withIndex("by_payment", q => q.eq("paymentId", purchase.paymentId!)).unique()
+      : null;
+    if (payment && (payment.purchaseId !== purchase.purchaseId || payment.livemode !== purchase.livemode)) throw new Error("Checkout payment binding is invalid.");
+    return {
+      purchase: {
+        purchaseId: purchase.purchaseId,
+        agentId: purchase.agentId,
+        amountCents: purchase.amountCents,
+        currency: purchase.currency,
+        livemode: purchase.livemode,
+        paymentRail: purchase.paymentRail,
+        status: purchase.status,
+        expiresAt: purchase.expiresAt,
+        checkoutSessionId: purchase.checkoutSessionId,
+        ...(purchase.paymentId ? { paymentId: purchase.paymentId } : {}),
+      },
+      payment: payment ? {
+        paymentId: payment.paymentId,
+        purchaseId: payment.purchaseId,
+        amountCents: payment.amountCents,
+        livemode: payment.livemode,
+        wasPaid: payment.wasPaid,
+        creditedCents: payment.creditedCents,
+        reversedCents: payment.reversedCents,
+        openDispute: payment.openDispute,
+      } : null,
+    };
+  },
+});
+
 export const createPurchase = internalMutation({
   args: { token: v.string(), purchaseId: v.string(), amountCents: v.number(), livemode: v.boolean(), paymentRail: v.union(v.literal("checkout"), v.literal("mpp")), requestId: v.string() },
   handler: async (ctx, args) => {

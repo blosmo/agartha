@@ -69,6 +69,8 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['jsonrpc'], '2.0')
         self.assertIn('serverInfo', response.json()['result'])
+        self.assertIn('BLENDER_EEVEE_NEXT', response.json()['result']['instructions'])
+        self.assertIn('90-second', response.json()['result']['instructions'])
         self.broker.owned.return_value = {'reservationId': 'tools', 'status': 'running'}
         response = self.client.get('/sessions/tools', headers=self.headers)
         self.assertEqual(response.status_code, 200)

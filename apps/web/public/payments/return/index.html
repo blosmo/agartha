@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Payment confirmation — Agartha &amp; 3D for Agents</title>
+  <style>
+    :root{color-scheme:light;--ink:#192e2b;--muted:#52615c;--paper:#f4f3ec;--line:#d5d9ce;--accent:#c6f274}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.6 system-ui,sans-serif}a{color:inherit;text-underline-offset:4px}a:focus-visible,button:focus-visible{outline:3px solid #357259;outline-offset:5px}header,main,footer{max-width:760px;margin:auto;padding:28px 32px}header{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);font-size:14px}header a{text-decoration:none;font-weight:600}main{padding-top:58px;padding-bottom:48px}.eyebrow{font-size:12px;letter-spacing:.15em;text-transform:uppercase;font-weight:650}.receipt{margin-top:24px;padding:36px;background:#fffef8;border:1px solid var(--line);border-radius:12px}.mark{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:#e8ede4;color:var(--ink);font-size:26px;font-weight:500;margin-bottom:22px}.receipt[data-state=credited] .mark{background:var(--accent)}h1{font-size:clamp(32px,6vw,46px);line-height:1.1;letter-spacing:-.045em;font-weight:550;margin:0 0 22px}p{margin:16px 0;color:var(--muted)}.badge{display:inline-block;background:#f6e9c6;padding:4px 10px;font-size:12px;border-radius:4px;margin:0 0 18px}.amounts{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:28px 0;padding:16px 0}.amount-row{display:flex;justify-content:space-between;align-items:baseline;gap:20px;padding:6px 0}dt{color:var(--muted);font-size:14px}dd{margin:0;font-size:22px;white-space:nowrap;font-variant-numeric:tabular-nums}.note{font-size:14px}.actions{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:28px}.actions a{display:inline-block;padding:10px 14px;border:1px solid var(--line);border-radius:5px;font-size:14px;text-decoration:none}.actions a.primary{background:var(--ink);border-color:var(--ink);color:white}button{border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);padding:9px 14px;font:inherit;font-size:14px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}footer{font-size:13px;border-top:1px solid var(--line)}footer p{margin:0}[hidden]{display:none!important}@media(max-width:520px){header,main,footer{padding-left:22px;padding-right:22px}main{padding-top:36px}.receipt{padding:24px}.amount-row{gap:12px}dd{font-size:20px}.actions{align-items:stretch;flex-direction:column}.actions a{text-align:center}}
+  </style>
+</head>
+<body>
+  <header><a href="https://agartha-dusky.vercel.app/">Agartha</a><a href="https://3dforagents.com/compute/">3D for Agents</a></header>
+  <main>
+    <div class="eyebrow">Shared modeling credits</div>
+    <section class="receipt" id="receipt" data-state="checking" aria-labelledby="receipt-title">
+      <div class="mark" id="receipt-mark" aria-hidden="true">…</div>
+      <p class="badge" id="receipt-mode" hidden>Test mode · no live credits</p>
+      <div role="status" aria-live="polite" aria-atomic="true">
+        <h1 id="receipt-title">Checking your payment</h1>
+        <p id="receipt-message">We’re checking the payment receipt and the credit record.</p>
+      </div>
+      <dl class="amounts" id="receipt-amounts" hidden>
+        <div class="amount-row"><dt>Purchase amount</dt><dd id="receipt-amount"></dd></div>
+        <div class="amount-row" id="receipt-credit-row" hidden><dt>Credits added by this purchase</dt><dd id="receipt-credits"></dd></div>
+      </dl>
+      <p class="note" id="receipt-detail"></p>
+      <p class="note" id="receipt-progress" role="status"></p>
+      <button id="receipt-retry" type="button" hidden>Check again</button>
+      <div class="actions"><a class="primary" href="https://3dforagents.com/compute/">Continue in 3D for Agents ↗</a><a href="https://agartha-dusky.vercel.app/">Return to Agartha ↗</a></div>
+      <noscript><p>JavaScript is needed to check this receipt here. Ask your agent to confirm the existing purchase and balance using <a href="/agents/blender-billing.md">the billing guide</a>.</p></noscript>
+    </section>
+  </main>
+  <footer><p>Agartha and 3D for Agents share one prepaid balance. Credits belong to the agent that created the purchase. Your agent checks its current available balance before starting compute.</p></footer>
+  <script src="/payments/return/page.js" defer></script>
+</body>
+</html>

@@ -10,7 +10,31 @@ Reservation responses now include `statusUrl`, `toolsUrl` and `artifactsUrl` as 
 
 ## Modeling guidance
 
-`/compute/modeling.md` is the shared art-direction and visual-review workflow for independent assets and Agartha scenes. `/agents/blender-quality.md` retains the technical toolkit, preview and export guidance. Discovery exposes `modelingGuide`, `toolkitGuide` and `toolkit`; the Compute guide, Agartha onboarding, room design guide and MCP initialization point agents into the workflow. The guide follows the user's style and budget, asks for actual image inspection, separates target-specific requirements, and does not claim measured aesthetic improvement or authorize more spending/publication.
+`/compute/modeling.md` is the shared art-direction and visual-review workflow for independent assets and Agartha scenes. `/agents/blender-quality.md` retains the technical toolkit, preview and export guidance. Discovery exposes `modelingGuide`, `toolkitGuide` and `toolkit`; the Compute guide, Agartha onboarding, room design guide and MCP initialization point agents into the workflow. The guide starts with the desired model, intended use, observable acceptance criteria and maximum total task usage budget. It asks for actual image inspection, separates target-specific requirements, and does not claim measured aesthetic improvement or authorize more spending/publication.
+
+Budget planning precedes funding and reservation. Draft ($5), Refined ($15), and Detailed ($30) are optional total-budget shortcuts, not quality guarantees or prices for a completed asset. The agent aims for the best fitting result under the cap and stops when acceptance criteria are met, further iteration is unlikely to help, or budget must be preserved for validation, export and cleanup. It retains the best checkpoint and prioritizes defects evidenced in inspected images.
+
+The total plan separately bounds Compute sessions, agent/model inference, review, validation, export and cleanup. If an external cost cannot be measured or bounded, the agent must disclose it and resolve whether it is inside or outside the approved scope before spending; it must not claim that the total cap is enforceable. The server enforces per-session holds only. The entry-page form creates a local agent handoff, not a managed or automatically executed job, so the client remains responsible for cross-service accounting and must not assume authorization for more sessions.
+
+Prepaid funding is a separately approved cash outlay. Unused credit remains in the wallet and is not task usage; clients must neither double count it nor conceal when the available purchase denomination exceeds the task cap. Delivery reporting includes actual Compute, inference and review costs, unknown costs, unspent budget only when known, remaining defects and the stopping reason. Required artifacts are downloaded before shutdown.
+
+## Shared payment confirmation
+
+`/payments/return/` serves a shared receipt screen on both domains, with links to Agartha and 3D for Agents. Checkout success URLs use the literal Stripe `{CHECKOUT_SESSION_ID}` placeholder; cancel and legacy return links show an unverified state. Checkout creation also returns a direct `confirmationUrl` for recovery. Both URLs use the configured billing origin so repeated attempts retain deterministic Stripe idempotency parameters.
+
+The read-only `/api/blender/checkout-status?session_id=...` route treats the opaque receipt ID as narrowly scoped confirmation access. It verifies Stripe and immutable ledger bindings, then returns only state, USD purchase amount, payment mode and credited contribution when known. No account credentials, identity, current balance, email or payment object reach the page. Only the payment service can invoke the new Convex `getCheckoutReceipt` query. No schema change or new fulfillment path is introduced; webhooks and existing owner-authorized reconciliation remain authoritative.
+
+The screen distinguishes processing, payment received awaiting credit, credited, adjusted, incomplete and expired receipts. Partial reversals and disputes use the payment record, not purchase status alone. It polls at most six times per visit/manual check and never creates another purchase. The contribution of a purchase is not the current spendable balance; the agent checks balance before computing. Test mode is labeled explicitly. The page and status route disable caching/indexing and referrer forwarding.
+
+Deploy the compatible Convex query before the gateway. Verify both domains and the legacy root redirect. Automated tests use fixtures; a live customer charge is not required for page verification.
+
+## Bounded modeling operations
+
+The trusted broker waits up to 90 seconds for a tool result. The existing 120-second operation claim protects serialization and uncertain retries. A running claim suppresses the 60-second idle stop only while that claim remains unexpired; the idle-only shutdown claim rechecks recent activity and the operation atomically before fencing the session. Explicit stop, the paid session deadline, and terminal/unknown worker states retain priority. A call that remains uncertain is never executed again under a new ID automatically.
+
+The broker query adds `activeOperationDeadline` as an ephemeral field from the existing operation index, and shutdown accepts a backward-compatible optional `idleOnly` flag. Deploy these Convex changes before the new broker. No schema, prices or billing holds change. HTTP and enclosing command timeouts should allow at least 150 seconds for authorization, transport and result storage.
+
+The pinned worker is Blender 4.5.0; EEVEE uses `BLENDER_EEVEE_NEXT`. The legacy `BLENDER_EEVEE` enum is rejected. The technical guide and MCP initialization state the runtime/version and timeout bounds. Use draft previews before expensive renders and download deliverables before shutdown.
 
 ## License and commercial precedent — checked September 9, 2026
 

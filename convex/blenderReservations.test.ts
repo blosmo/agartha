@@ -111,6 +111,41 @@ describe("paid Blender reservations", () => {
     const row = await t.query(anyApi.cloud.blenderSessions.getReservation, { token, reservationId: "r-auto" });
     expect(row).toMatchObject({ status: "settled", responseBytesHeld: 0, responseBytesUsed: 100, chargedCents: 40 });
   });
+  it("reports an active operation deadline to the broker only while it is claimed", async () => {
+    const { t } = await setup();
+    await t.mutation(anyApi.cloud.blenderSessions.createQuote, { token, quoteId: "q-deadline", minutes: 5, livemode: false, requestId: "q-deadline" });
+    await t.mutation(anyApi.cloud.blenderSessions.reserveSession, { token, quoteId: "q-deadline", reservationId: "r-deadline", requestId: "r-deadline" });
+    await t.mutation(anyApi.cloud.blenderSessions.claimLaunch, { reservationId: "r-deadline", launchGeneration: 1, operationId: "launch-deadline" });
+    await t.mutation(anyApi.cloud.blenderSessions.markSessionReady, { reservationId: "r-deadline", launchGeneration: 1, readyAt: Date.now() });
+    expect((await t.query(anyApi.cloud.blenderSessions.getReservationForBroker, { reservationId: "r-deadline" })).activeOperationDeadline).toBeUndefined();
+    const beforeAuthorization = Date.now();
+    await t.mutation(anyApi.cloud.blenderSessions.authorizeOperation, { reservationId: "r-deadline", launchGeneration: 1, operationId: "render-deadline", payloadFingerprint: "render", responseBytes: 100 });
+    const afterAuthorization = Date.now();
+    const active = await t.query(anyApi.cloud.blenderSessions.getReservationForBroker, { reservationId: "r-deadline" });
+    expect(active.activeOperationDeadline).toBeGreaterThanOrEqual(beforeAuthorization + 120_000);
+    expect(active.activeOperationDeadline).toBeLessThanOrEqual(afterAuthorization + 120_000);
+    await t.mutation(anyApi.cloud.blenderSessions.completeOperation, { operationId: "render-deadline", actualResponseBytes: 10, resultRef: "result-deadline", state: "completed" });
+    expect((await t.query(anyApi.cloud.blenderSessions.getReservationForBroker, { reservationId: "r-deadline" })).activeOperationDeadline).toBeUndefined();
+  });
+  it("atomically rejects an idle-only shutdown after activity refresh or a fresh claim", async () => {
+    const { t } = await setup();
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    await t.mutation(anyApi.cloud.blenderSessions.createQuote, { token, quoteId: "q-idle-race", minutes: 5, livemode: false, requestId: "q-idle-race" });
+    await t.mutation(anyApi.cloud.blenderSessions.reserveSession, { token, quoteId: "q-idle-race", reservationId: "r-idle-race", requestId: "r-idle-race" });
+    await t.mutation(anyApi.cloud.blenderSessions.claimLaunch, { reservationId: "r-idle-race", launchGeneration: 1, operationId: "launch-idle-race" });
+    await t.mutation(anyApi.cloud.blenderSessions.markSessionReady, { reservationId: "r-idle-race", launchGeneration: 1, readyAt: now });
+    clock.mockReturnValue(now + 61_000);
+    await t.mutation(anyApi.cloud.blenderSessions.authorizeOperation, { reservationId: "r-idle-race", launchGeneration: 1, operationId: "fresh-activity", payloadFingerprint: "first", responseBytes: 100 });
+    expect(await t.mutation(anyApi.cloud.blenderSessions.claimShutdown, { reservationId: "r-idle-race", launchGeneration: 1, executorId: "idle-monitor-1", idleOnly: true })).toMatchObject({ claimed: false });
+    expect((await t.query(anyApi.cloud.blenderSessions.getReservation, { token, reservationId: "r-idle-race" })).stopRequested).toBe(false);
+    await t.mutation(anyApi.cloud.blenderSessions.completeOperation, { operationId: "fresh-activity", actualResponseBytes: 10, resultRef: "first-result", state: "completed" });
+    await t.mutation(anyApi.cloud.blenderSessions.authorizeOperation, { reservationId: "r-idle-race", launchGeneration: 1, operationId: "fresh-claim", payloadFingerprint: "second", responseBytes: 100 });
+    clock.mockReturnValue(now + 122_000);
+    expect(await t.mutation(anyApi.cloud.blenderSessions.claimShutdown, { reservationId: "r-idle-race", launchGeneration: 1, executorId: "idle-monitor-2", idleOnly: true })).toMatchObject({ claimed: false });
+    expect((await t.query(anyApi.cloud.blenderSessions.getReservation, { token, reservationId: "r-idle-race" })).stopRequested).toBe(false);
+    await t.mutation(anyApi.cloud.blenderSessions.completeOperation, { operationId: "fresh-claim", actualResponseBytes: 10, resultRef: "second-result", state: "completed" });
+  });
   it("atomically reserves one owner/mode wallet and binds request payloads", async () => {
     const { t } = await setup();
     const quote = await t.mutation(anyApi.cloud.blenderSessions.createQuote, { token, quoteId: "q1", minutes: 5, livemode: false, requestId: "quote-1" });

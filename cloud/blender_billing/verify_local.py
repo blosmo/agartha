@@ -87,9 +87,13 @@ def main():
         ledger.call('reserveSession', token=token, quoteId='q-resume', reservationId='r-resume', requestId='r-resume')
         resumed = broker.start(token, 'r-resume')
         assert resumed['status'] == 'running' and provider.restored == b'BLENDER-v405 simulated editable cube'
-        broker.clock = lambda: time.time() + 61
-        assert broker.reconcile('r-resume')['chargedCents'] == 40
-        broker.clock = time.time
+        # The broker and the atomic ledger idle check must see the same elapsed time.
+        request = urllib.request.Request(f"{os.environ['BILLING_FIXTURE_URL']}/fixture/advance-clock", data=b'{}', method='POST')
+        with urllib.request.urlopen(request, timeout=10) as response:
+            offset = json.load(response)['offsetSeconds']
+        broker.clock = lambda: time.time() + offset
+        idle_stopped = broker.reconcile('r-resume')
+        assert idle_stopped['status'] == 'settled' and idle_stopped['chargedCents'] == 40
         ledger.call('createQuote', token=token, quoteId='q-lost', minutes=5, livemode=False, requestId='q-lost')
         ledger.call('reserveSession', token=token, quoteId='q-lost', reservationId='r-lost', requestId='r-lost')
         provider.lose_next_create_reply = True
