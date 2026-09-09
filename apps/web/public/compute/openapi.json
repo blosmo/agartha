@@ -313,7 +313,8 @@
                     "purchaseId",
                     "checkoutSessionId",
                     "checkoutUrl",
-                    "confirmationUrl"
+                    "confirmationUrl",
+                    "paymentUrl"
                   ],
                   "properties": {
                     "purchaseId": {
@@ -327,12 +328,18 @@
                         "string",
                         "null"
                       ],
-                      "format": "uri"
+                      "format": "uri",
+                      "description": "Raw Stripe URL retained for compatibility. Use paymentUrl for handoff. If using this URL, preserve it byte-for-byte including its fragment; never reconstruct it from the session ID."
                     },
                     "confirmationUrl": {
                       "type": "string",
                       "format": "uri",
                       "description": "Shareable receipt confirmation link; no agent token is required in the browser."
+                    },
+                    "paymentUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Preferred link to share with the user. First-party redirect preserving the complete Stripe URL and its opaque fragment. Reuses the existing checkout; no charge is initiated by opening the link."
                     }
                   }
                 }
@@ -1284,6 +1291,47 @@
           },
           "503": {
             "description": "Receipt verification unavailable; retry the same receipt, not a new purchase"
+          }
+        }
+      }
+    },
+    "/api/blender/checkout-redirect": {
+      "get": {
+        "operationId": "openExistingCheckout",
+        "summary": "Open an existing verified checkout through a short first-party link",
+        "description": "Read-only lookup using the opaque Checkout session ID. Verifies the purchase binding, amount, currency and environment before redirecting to Stripe\u2019s exact URL. Completed or expired sessions return to confirmation. Does not create sessions, charge a payment, or update the ledger. Treat this capability link as private.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^cs_(test|live)_[A-Za-z0-9]{8,200}$"
+            }
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Navigate to the existing Stripe checkout or its confirmation page.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid session ID"
+          },
+          "409": {
+            "description": "Checkout binding or destination could not be verified"
+          },
+          "503": {
+            "description": "Checkout temporarily unavailable"
           }
         }
       }

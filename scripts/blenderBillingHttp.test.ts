@@ -7,7 +7,7 @@ import { rawBody, type BillingRequest } from '../packages/billing/http.js';
 import blender from '../api/blender.js';
 import webhook from '../api/stripe-webhook.js';
 
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 function responseRecorder() {
   const state = { statusCode: 200, body: '', headers: new Map<string, string>() };
@@ -89,17 +89,64 @@ describe('billing transport boundaries', () => {
     expect(unauthenticated.state.statusCode).toBe(401);
   });
 
-  it('rejects invalid opaque receipts without auth, upstream calls, or cacheable/indexable output', async () => {
+  it.each(['checkout-status', 'checkout-redirect'])('rejects invalid %s capabilities without auth or upstream calls', async path => {
     const fetcher = vi.fn();
     vi.stubGlobal('fetch', fetcher);
     const response = responseRecorder();
-    await blender({ method: 'GET', query: { path: 'checkout-status', session_id: 'cs_1' }, headers: {} } as unknown as BillingRequest, response.res);
+    await blender({ method: 'GET', query: { path, session_id: 'cs_1' }, headers: {} } as unknown as BillingRequest, response.res);
     expect(response.state.statusCode).toBe(400);
     expect(JSON.parse(response.state.body)).toEqual({ error: 'Checkout receipt unavailable.' });
     expect(response.state.headers.get('Cache-Control')).toBe('no-store');
     expect(response.state.headers.get('X-Robots-Tag')).toBe('noindex');
     expect(response.state.headers.get('Referrer-Policy')).toBe('no-referrer');
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('redirects an existing checkout without payment or ledger mutations and preserves its fragment', async () => {
+    configureTestPayments();
+    vi.stubEnv('AGARTHA_BLENDER_BILLING_ENABLED', 'true');
+    vi.stubEnv('AGARTHA_PUBLIC_URL', 'https://3d.example');
+    const id = 'cs_test_abcdefgh12345678';
+    const url = `https://checkout.stripe.com/c/pay/${id}#opaque%2Bfragment%2Funchanged`;
+    const prototype = Object.getPrototypeOf(new Stripe('sk_test_fixture').checkout.sessions);
+    const retrieve = vi.spyOn(prototype, 'retrieve').mockResolvedValue({ id, url, mode:'payment', status:'open', payment_status:'unpaid', payment_intent:null, client_reference_id:'p1', amount_total:500, currency:'usd', livemode:false, metadata:{agartha_purchase_id:'p1',agartha_agent_id:'a1'} });
+    const create = vi.spyOn(prototype, 'create');
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ purchase:{purchaseId:'p1',agentId:'a1',amountCents:500,currency:'usd',livemode:false,paymentRail:'checkout',status:'pending',expiresAt:Date.now()+60_000,checkoutSessionId:id},payment:null }));
+    vi.stubGlobal('fetch', fetcher);
+    const response = responseRecorder();
+    await blender({method:'GET',query:{path:'checkout-redirect',session_id:id},headers:{}} as unknown as BillingRequest,response.res);
+    expect(response.state.statusCode).toBe(303);
+    expect(response.state.headers.get('Location')).toBe(url);
+    expect(response.state.headers.get('Cache-Control')).toBe('no-store');
+    expect(response.state.headers.get('Referrer-Policy')).toBe('no-referrer');
+    expect(response.state.headers.get('X-Robots-Tag')).toBe('noindex');
+    expect(response.state.body).toBe('');
+    expect(retrieve).toHaveBeenCalledExactlyOnceWith(id);
+    expect(create).not.toHaveBeenCalled();
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(String(fetcher.mock.calls[0][0])).toBe('https://ledger.example/billing/api/getCheckoutReceipt');
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({purchaseId:'p1',checkoutSessionId:id});
+    vi.stubEnv('AGARTHA_BLENDER_BILLING_ENABLED', 'false');
+    fetcher.mockResolvedValueOnce(Response.json({ purchase:{purchaseId:'p1',agentId:'a1',amountCents:500,currency:'usd',livemode:false,paymentRail:'checkout',status:'pending',expiresAt:Date.now()+60_000,checkoutSessionId:id},payment:null }));
+    const disabled = responseRecorder();
+    await blender({method:'GET',query:{path:'checkout-redirect',session_id:id},headers:{}} as unknown as BillingRequest,disabled.res);
+    expect(disabled.state.statusCode).toBe(503);
+    expect(disabled.state.headers.has('Location')).toBe(false);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('adds a short payment link to an owner checkout response while retaining the raw Stripe URL', async () => {
+    configureTestPayments();
+    vi.stubEnv('AGARTHA_PUBLIC_URL','https://3d.example');
+    vi.stubEnv('AGARTHA_BLENDER_BILLING_ENABLED','true');
+    const id='cs_test_abcdefgh12345678';
+    const url=`https://checkout.stripe.com/c/pay/${id}#full%2Bfragment`;
+    vi.spyOn(Object.getPrototypeOf(new Stripe('sk_test_fixture').checkout.sessions),'retrieve').mockResolvedValue({id,url});
+    vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>Response.json({purchaseId:'p1',agentId:'a1',amountCents:500,currency:'usd',livemode:false,paymentRail:'checkout',status:'pending',expiresAt:Date.now()+60_000,checkoutSessionId:id})));
+    const response=responseRecorder();
+    await blender({method:'POST',query:{path:'purchases/p1/checkout'},headers:{authorization:`Bearer ${'a'.repeat(64)}`}} as unknown as BillingRequest,response.res);
+    expect(response.state.statusCode).toBe(200);
+    expect(JSON.parse(response.state.body)).toMatchObject({paymentUrl:`https://3d.example/api/blender/checkout-redirect?session_id=${id}`,checkoutUrl:url,confirmationUrl:`https://3d.example/payments/return/?session_id=${id}`});
   });
 
   it('keeps purchases disabled and separates MPP credentials from agent credentials', async () => {

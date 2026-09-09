@@ -5,7 +5,7 @@ import { handleCreditMpp } from '../packages/billing/mpp.js';
 import { reconcileCreditPayment } from '../packages/billing/reconcile.js';
 import { BillingHttpError } from '../packages/billing/ledgerClient.js';
 import { jsonBody, jsonResponse, paymentEnvironment, reconciliationLedger, sendBillingError, type BillingRequest } from '../packages/billing/http.js';
-import { CheckoutReceiptError, checkoutReturnUrls, confirmCheckoutReceipt, requireCheckoutEnvironmentMode, requireCheckoutSessionId, type CheckoutReceiptLedger } from '../packages/billing/checkoutConfirmation.js';
+import { CheckoutReceiptError, checkoutReturnUrls, checkoutPaymentUrl, checkoutRedirectDestination, confirmCheckoutReceipt, requireCheckoutEnvironmentMode, requireCheckoutSessionId, type CheckoutReceiptLedger } from '../packages/billing/checkoutConfirmation.js';
 
 function publicBase() {
   const value = process.env.AGARTHA_PUBLIC_URL;
@@ -35,7 +35,7 @@ function purchaseResponse(purchase: BillingPurchase) {
       agentTokenScheme: purchase.paymentRail === 'mpp' ? null : 'Bearer',
       instruction: purchase.paymentRail === 'mpp'
         ? 'Expect HTTP 402. Let your authorized MPP payer answer WWW-Authenticate using Authorization: Payment, keeping X-Agartha-Agent-Token. Retry this same URL; do not create another purchase.'
-        : 'Open the returned checkoutUrl for your user. Retry this same URL to recover the same Checkout session. Confirm funding with statusUrl before using credits.',
+        : 'Share the returned paymentUrl with your user. It preserves the full Stripe checkout URL. Retry this same API URL to recover the same Checkout session; never construct a Stripe URL from its ID. Confirm funding with statusUrl before using credits.',
     } : null,
   };
 }
@@ -68,7 +68,7 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
     jsonResponse(res, { ...BLENDER_BILLING, purchasesEnabled: process.env.AGARTHA_BLENDER_BILLING_ENABLED === 'true', paymentMode: /^(sk|rk)_test_/.test(key) ? 'test' : /^(sk|rk)_live_/.test(key) ? 'live' : 'unconfigured' });
     return;
   }
-  if (path === 'checkout-status' && req.method === 'GET') {
+  if ((path === 'checkout-status' || path === 'checkout-redirect') && req.method === 'GET') {
     res.setHeader('X-Robots-Tag', 'noindex');
     res.setHeader('Referrer-Policy', 'no-referrer');
     try {
@@ -79,6 +79,14 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
       const purchaseId = session.metadata?.agartha_purchase_id;
       if (typeof purchaseId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(purchaseId)) throw new CheckoutReceiptError(409);
       const receipt = await ledger<CheckoutReceiptLedger>('getCheckoutReceipt', { purchaseId, checkoutSessionId });
+      if (path === 'checkout-redirect') {
+        const destination = checkoutRedirectDestination(session, receipt, publicBase());
+        if (new URL(destination).hostname === 'checkout.stripe.com' && process.env.AGARTHA_BLENDER_BILLING_ENABLED !== 'true') throw new CheckoutReceiptError(503);
+        res.statusCode = 303;
+        res.setHeader('Location', destination);
+        res.end();
+        return;
+      }
       jsonResponse(res, confirmCheckoutReceipt(session, receipt));
     } catch (error) {
       const status = error instanceof CheckoutReceiptError ? error.status : 503;
@@ -146,7 +154,7 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
       const checkout = await createCreditCheckoutWithLegacyRecovery(stripe, purchase, urls, { successUrl: `${base}/?blenderPayment=complete`, cancelUrl: `${base}/?blenderPayment=canceled` });
       await ledger('attachCheckoutSession', { purchaseId: purchase.purchaseId, checkoutSessionId: checkout.id });
       const { confirmationUrl } = checkoutReturnUrls(base, checkout.id);
-      jsonResponse(res, { purchaseId: purchase.purchaseId, checkoutSessionId: checkout.id, checkoutUrl: checkout.url, confirmationUrl });
+      jsonResponse(res, { purchaseId: purchase.purchaseId, checkoutSessionId: checkout.id, paymentUrl: checkoutPaymentUrl(base, checkout.id), checkoutUrl: checkout.url, confirmationUrl });
       return;
     }
     if (mpp) {
