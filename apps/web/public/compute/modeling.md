@@ -46,7 +46,7 @@ Develop three scales of information: primary masses, secondary structure such as
 
 Establish light/dark separation before fine texture. Reuse materials; distinguish neighboring surfaces with color or roughness where that explains construction. Use metallic response for exposed metal, and treat painted metal, wood and ceramic according to their visible surface.
 
-Use the [shared Agartha material library](../agents/materials.md#use-the-same-library-in-hosted-blender) for bundled scanned PBR maps and reusable portable shader finishes. Inspect its catalog rather than recreating every surface from flat colors.
+Use the [shared Agartha material library](../agents/materials.md) for bundled scanned PBR maps and reusable portable shader finishes. Inspect its catalog rather than recreating every surface from flat colors.
 
 Set texture scale relative to the object: oversized wood grain or fabric weave changes perceived size. Reserve strong contrast for focal areas when appropriate to the brief.
 
