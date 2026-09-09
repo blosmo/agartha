@@ -25,6 +25,16 @@ const create = { token, jobId: "job", requestId: "request", brief: "Build a chai
 const inference = { jobId: "job", executorId: "worker", operationId: "op", maxCostCents: 50, payloadFingerprint: "hash" };
 async function running() { const result = await setup(); await result.t.mutation(api.createManagedJob, create); await result.t.mutation(api.claimManagedJob, { jobId: "job", executorId: "worker" }); return result; }
 describe("managed modeling ledger", () => {
+  it("grants verification credit once and only in the configured test wallet", async () => {
+    const { t } = await setup();
+    const fund = anyApi.cloud.managedVerification.fund;
+    expect(await t.mutation(fund, { token })).toMatchObject({ creditedCents: 200, reused: false, livemode: false });
+    expect(await t.mutation(fund, { token })).toMatchObject({ reused: true });
+    expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: false })).toMatchObject({ availableCents: 700 });
+    expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: true })).toMatchObject({ availableCents: 0 });
+    vi.stubEnv("BLENDER_TEST_OPERATOR_AGENT_IDS", "");
+    await expect(t.mutation(fund, { token })).rejects.toThrow("not configured");
+  });
   it("atomically holds the total budget, retries safely and enforces ownership", async () => {
     const { t } = await setup();
     const row = await t.mutation(api.createManagedJob, create);
