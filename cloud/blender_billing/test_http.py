@@ -50,6 +50,47 @@ class HttpTests(unittest.TestCase):
         response = self.client.get('/sessions/r1', headers=self.headers)
         self.assertEqual(response.json(), {"reservationId": "r1", "status": "running"})
 
+    def test_http_tools_share_mcp_metering_and_retry_identity(self):
+        headers = {**self.headers, 'X-Agartha-Operation-Id': 'create-1'}
+        result = {'content': [{'type': 'text', 'text': 'created'}], 'isError': False}
+        self.broker.call.return_value = {'result': result}
+        params = {'name': 'execute_blender_code', 'arguments': {'code': 'import bpy'}}
+        response = self.client.post('/sessions/r1/tools', headers=headers, json=params)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), result)
+        rest = self.broker.call.call_args.args
+        self.client.post('/mcp/r1', headers=headers, json={'jsonrpc': '2.0', 'id': 'create-1', 'method': 'tools/call', 'params': params})
+        self.assertEqual(rest, self.broker.call.call_args.args)
+        self.assertEqual(rest[3], 'create-1')
+        self.assertEqual(rest[4], 16_777_216)
+
+    def test_http_tool_discovery_and_explicit_response_limit(self):
+        self.broker.call.return_value = {'result': {'tools': [{'name': 'get_scene_info'}]}}
+        response = self.client.get('/sessions/r1/tools', headers={**self.headers, 'X-Agartha-Operation-Id': 'list-1', 'X-Agartha-Response-Limit': '1024'})
+        self.assertEqual(response.json()['tools'][0]['name'], 'get_scene_info')
+        self.assertEqual(self.broker.call.call_args.args[2]['method'], 'tools/list')
+        self.assertEqual(self.broker.call.call_args.args[4], 1024)
+
+    def test_http_rejects_missing_auth_operation_ids_and_invalid_payloads(self):
+        self.assertEqual(self.client.get('/sessions/r1/tools').status_code, 401)
+        self.assertEqual(self.client.get('/sessions/r1/tools', headers=self.headers).status_code, 400)
+        headers = {**self.headers, 'X-Agartha-Operation-Id': 'op-1'}
+        for payload in [[], {}, {'name': 'execute_blender_code', 'arguments': []}, {'name': 'x', 'extra': True}]:
+            self.assertEqual(self.client.post('/sessions/r1/tools', headers=headers, json=payload).status_code, 400)
+        self.assertEqual(self.client.post('/sessions/r1/tools', headers=headers, content=b'x' * 65_537).status_code, 413)
+        self.broker.call.assert_not_called()
+
+    def test_http_checks_owner_and_redacts_worker_failures(self):
+        headers = {**self.headers, 'X-Agartha-Operation-Id': 'op-1'}
+        self.broker.owned.side_effect = LedgerError(403)
+        self.assertEqual(self.client.get('/sessions/r1/tools', headers=headers).status_code, 403)
+        self.broker.call.assert_not_called()
+        self.broker.owned.side_effect = None
+        self.broker.call.return_value = {'error': {'message': 'private worker details'}}
+        response = self.client.post('/sessions/r1/tools', headers=headers, json={'name': 'get_scene_info'})
+        self.assertTrue(response.json()['isError'])
+        self.assertNotIn('private worker details', response.text)
+
 
 if __name__ == '__main__':
     unittest.main()

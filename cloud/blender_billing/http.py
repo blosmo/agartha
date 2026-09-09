@@ -35,7 +35,8 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
             reservation_id = request.path_params["reservation_id"]
             if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", reservation_id):
                 return JSONResponse({"error": "Invalid reservation ID."}, status_code=400)
-            if request.url.path.startswith("/sessions/"):
+            rest_tools = request.url.path.endswith("/tools")
+            if request.url.path.startswith("/sessions/") and not rest_tools:
                 if "name" in request.path_params:
                     name = request.path_params["name"]
                     if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}\.(glb|png|blend)", name):
@@ -63,7 +64,23 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
                 body.extend(chunk)
                 if len(body) > 65_536:
                     return JSONResponse({"error": "MCP request exceeds 64 KiB."}, status_code=413)
-            message = json.loads(body)
+            if rest_tools:
+                operation_id = request.headers.get("x-agartha-operation-id", "")
+                if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", operation_id):
+                    raise ValueError("Provide a stable X-Agartha-Operation-Id.")
+                if request.method == "GET":
+                    message = {"jsonrpc": "2.0", "id": operation_id, "method": "tools/list"}
+                else:
+                    params = json.loads(body)
+                    if (not isinstance(params, dict) or set(params) - {"name", "arguments"}
+                            or not isinstance(params.get("name"), str)
+                            or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", params["name"])
+                            or not isinstance(params.get("arguments", {}), dict)):
+                        raise ValueError("Expected tool name and arguments object.")
+                    message = {"jsonrpc": "2.0", "id": operation_id, "method": "tools/call",
+                               "params": {"name": params["name"], "arguments": params.get("arguments", {})}}
+            else:
+                message = json.loads(body)
             if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
                 raise ValueError("Expected a JSON-RPC 2.0 request.")
             request_id = message.get("id")
@@ -97,7 +114,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
                     result = frame["result"]
             else:
                 return JSONResponse({"jsonrpc": "2.0", "id": request_id, "error": {"code": -32601, "message": "Method not found."}})
-            return JSONResponse({"jsonrpc": "2.0", "id": request_id, "result": result}, headers={"Cache-Control": "no-store"})
+            return JSONResponse(result if rest_tools else {"jsonrpc": "2.0", "id": request_id, "result": result}, headers={"Cache-Control": "no-store"})
         except LedgerError as error:
             return JSONResponse({"error": "Billing authorization or reservation check failed."}, status_code=error.status if 400 <= error.status <= 599 else 503)
         except BrokerConflict as error:
@@ -112,5 +129,6 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
         Route("/sessions/{reservation_id}/start", dispatch, methods=["POST"]),
         Route("/sessions/{reservation_id}/stop", dispatch, methods=["POST"]),
         Route("/sessions/{reservation_id}/artifacts/{name}", dispatch, methods=["GET"]),
+        Route("/sessions/{reservation_id}/tools", dispatch, methods=["GET", "POST"]),
         Route("/mcp/{reservation_id}", dispatch, methods=["POST"]),
     ])
