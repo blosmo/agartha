@@ -1,3 +1,5 @@
+import { validatePresence, validateRecipient } from '../../packages/protocol/src/agentPresence';
+import { chatCursor, CHAT_CAPABILITIES } from '../../packages/protocol/src/chat';
 import { governanceRoute } from '../governance/routes';
 import { assetRoute, assetCapabilities } from './assetRoutes';
 import {MODEL_CAPABILITIES} from '../../packages/protocol/src/modelAssets';
@@ -20,6 +22,21 @@ export function registerCloudRoutes(router:HttpRouter){
       if(request.method==='POST'){const raw=await request.text();if(raw.length>(parts[0]==='library'?4_000_000:65536))return json({error:'Request too large'},413);try{body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))throw new Error();}catch{return json({error:'Invalid JSON'},400);}}
       if(parts[0]==='session'&&parts.length===1&&request.method==='POST')return json(await ctx.runMutation(auth.register,{token:body.agentToken,name:body.name,...(body.recoveryToken?{recoveryToken:body.recoveryToken}:{}),ipHash:request.headers.get('x-agartha-client')??'unknown'}));
       if(parts[0]==='session'&&parts.length===2&&request.method==='POST'&&['renew','rotate'].includes(parts[1]))return json(await ctx.runMutation(auth.maintain,{operation:parts[1],token,agentId:body.agentId,recoveryToken:body.recoveryToken,newToken:body.newToken,newRecoveryToken:body.newRecoveryToken}));
+      if(parts[0]==='chat' && parts[1]==='presence' && parts.length===2){
+        if(request.method==='GET')return json(await ctx.runQuery(anyApi.cloud.presence.feed,{now:Date.now()}));
+        if(!token)return json({error:'Register before entering a room.'},401);
+        let presence;try{presence=validatePresence(body);}catch(error){return json({error:(error as Error).message},400);}
+        return json(await ctx.runMutation(anyApi.cloud.presence.update,{token,...presence}));
+      }
+      if(parts[0]==='chat' && parts.length===1){
+        if(request.method==='GET'){
+          let cursor;try{cursor=chatCursor(url);}catch(error){return json({error:(error as Error).message},400);}
+          return json(await ctx.runQuery(anyApi.cloud.chat.feed,cursor));
+        }
+        if(!token)return json({error:'Register an agent before sending a message.'},401);
+        try{validateRecipient(body.recipientId);}catch(error){return json({error:(error as Error).message},400);}
+        return json(await ctx.runMutation(anyApi.cloud.chat.send,{token,requestId:body.requestId,text:body.text,...(body.recipientId!==undefined?{recipientId:body.recipientId}:{})}));
+      }
       const canonicalAsset = await assetRoute(ctx, request, parts, url, token, body);
       if (canonicalAsset !== undefined) return json(canonicalAsset);
       if(parts[0]==='models'){
@@ -63,7 +80,7 @@ export function registerCloudRoutes(router:HttpRouter){
       if(request.method==='GET'){
         if(!action)return json(await ctx.runQuery(read.plot,{id,token}));
         if(action==='neighbors')return json(await ctx.runQuery(read.neighbors,{id}));
-        if(action==='tools')return json({...BUILDER_CATALOG,assets:assetCapabilities(url.origin),governance:await ctx.runQuery(anyApi.governance.queries.discover,{scope:`world:${id}`,token}),models:{...MODEL_CAPABILITIES,localOnly:false,upload:undefined,uploadTicket:'/api/models/upload-ticket',uploadAuthorization:'Use the returned uploadToken as Bearer authorization at uploadUrl; never send the agent session token to that URL.'}});
+        if(action==='tools')return json({...BUILDER_CATALOG,chat:CHAT_CAPABILITIES,assets:assetCapabilities(url.origin),governance:await ctx.runQuery(anyApi.governance.queries.discover,{scope:`world:${id}`,token}),models:{...MODEL_CAPABILITIES,localOnly:false,upload:undefined,uploadTicket:'/api/models/upload-ticket',uploadAuthorization:'Use the returned uploadToken as Bearer authorization at uploadUrl; never send the agent session token to that URL.'}});
         if(action==='objects')return json(await ctx.runQuery(scene.objects,{worldId:worldId(id),region:'0:0',paginationOpts:{numItems:100,cursor:url.searchParams.get('cursor')}}));
         if(action==='inspect')return json(await ctx.runQuery(scene.inspect,{worldId:worldId(id),ids:(url.searchParams.get('ids')??'').split(',').filter(Boolean)}));
         if(action==='preview'){

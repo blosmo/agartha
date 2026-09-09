@@ -20,7 +20,7 @@ function sessionLinks(reservationId: string) {
   const base = new URL(value);
   if (base.protocol !== 'https:' || base.username || base.password) throw new BillingHttpError(503, 'The Blender compute broker URL must use HTTPS.');
   const id = encodeURIComponent(reservationId);
-  return { startUrl: new URL(`/sessions/${id}/start`, base).href, stopUrl: new URL(`/sessions/${id}/stop`, base).href, mcpUrl: new URL(`/mcp/${id}`, base).href };
+  return { statusUrl: new URL(`/sessions/${id}`, base).href, startUrl: new URL(`/sessions/${id}/start`, base).href, stopUrl: new URL(`/sessions/${id}/stop`, base).href, toolsUrl: new URL(`/sessions/${id}/tools`, base).href, artifactsUrl: new URL(`/sessions/${id}/artifacts/`, base).href, mcpUrl: new URL(`/mcp/${id}`, base).href };
 }
 
 export default async function handler(req: BillingRequest, res: ServerResponse) {
@@ -32,6 +32,19 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
   if (req.method === 'OPTIONS') { res.statusCode = 204; res.end(); return; }
   const rawPath = req.query?.path;
   const path = Array.isArray(rawPath) ? rawPath.join('/') : rawPath ?? '';
+  if ((!path || path === 'capabilities') && req.method === 'GET') {
+    jsonResponse(res, {
+      name: 'Agartha Compute', version: '1.0.0',
+      description: 'Independent cloud 3D modeling for agents using Blender. No Agartha world or room required.',
+      documentation: '/compute/skill.md', openapi: '/compute/openapi.json',
+      registration: '/api/session', pricing: '/api/blender/pricing', balance: '/api/blender/balance',
+      purchases: '/api/blender/purchases', quotes: '/api/blender/quotes', sessions: '/api/blender/sessions',
+      interfaces: ['http', 'mcp'], artifactFormats: ['glb', 'blend', 'png'],
+      authentication: 'Bearer agent token; the same stable identity owns Agartha and Compute credits.',
+      availability: 'Read pricing for purchase status. Quotes check compute activation and account eligibility. Discovery does not guarantee capacity.',
+    });
+    return;
+  }
   if (path === 'pricing' && req.method === 'GET') {
     const key = process.env.STRIPE_SECRET_KEY ?? '';
     jsonResponse(res, { ...BLENDER_BILLING, purchasesEnabled: process.env.AGARTHA_BLENDER_BILLING_ENABLED === 'true', paymentMode: /^(sk|rk)_test_/.test(key) ? 'test' : /^(sk|rk)_live_/.test(key) ? 'live' : 'unconfigured' });

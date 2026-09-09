@@ -1,3 +1,6 @@
+import { CHAT_CAPABILITIES } from '../../packages/protocol/src/chat';
+import { ChatStore } from './chatStore';
+import { chatHandler } from './chatServer';
 import { installStarterCatalog } from './starterCatalog';
 import {MODEL_CAPABILITIES} from '../../packages/protocol/src/modelAssets';
 import {ModelStore} from './modelStore';
@@ -20,6 +23,7 @@ import {parsePreviewView} from '../../packages/protocol/src/previewView';
 import {canonicalPreviewFocus,selectPreviewFocus} from '../../packages/protocol/src/previewFocus';
 
 export function plotSpacePlugin(originFile: string): Plugin {
+  const handleChat = chatHandler(new ChatStore(resolve(dirname(originFile), 'chat.json')));
   const models=new ModelStore(resolve(dirname(originFile),'models'));
   const handleModels=modelHandler(models);
   const library = new LibraryStore(resolve(dirname(originFile), 'library'),id=>models.get(id));
@@ -60,7 +64,7 @@ export function plotSpacePlugin(originFile: string): Plugin {
       }
       try { addressFromId(id); } catch { throw new WorldError('Invalid plot address.'); }
       if (action === 'tools') {
-        if (req.method === 'GET') res.end(JSON.stringify({...BUILDER_CATALOG,models:MODEL_CAPABILITIES}));
+        if (req.method === 'GET') res.end(JSON.stringify({...BUILDER_CATALOG,models:MODEL_CAPABILITIES,chat:CHAT_CAPABILITIES}));
         else { const result=await store.build(id,input as unknown as Parameters<PlotStore['build']>[1]);res.end(JSON.stringify('schema' in result?await library.enrich(result):result)); }
       } else if (action === 'assets' && req.method === 'POST') {
         if(typeof input.preview!=='boolean')throw new WorldError('Choose preview true or false explicitly.');
@@ -99,6 +103,7 @@ export function plotSpacePlugin(originFile: string): Plugin {
     }
   }
   const mount = (server: { middlewares: { use: (path: string, callback: (req: IncomingMessage,res:ServerResponse)=>void) => void } }) => {
+    server.middlewares.use('/api/chat',(req,res)=>{void handleChat(req,res);});
     server.middlewares.use('/api/governance',(_req,res)=>{res.statusCode=501;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify({supported:false,error:'Governance requires the authenticated hosted API. This file-backed world does not support voting.',guide:'/agents/governance.md'}));});
     server.middlewares.use('/api/models',(req,res)=>{void handleModels(req,res);});
     server.middlewares.use('/api/materials',(req,res)=>{res.setHeader('Content-Type','application/json');if(req.method!=='GET'){res.statusCode=405;res.end(JSON.stringify({error:'Read-only material catalog'}));return;}res.end(JSON.stringify(MATERIAL_CATALOG));});

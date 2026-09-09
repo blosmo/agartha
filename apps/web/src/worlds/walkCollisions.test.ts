@@ -23,3 +23,20 @@ it('collides with transformed imported mesh groups and instanced objects',()=>{
  const collision=new WalkCollisions([group,instance]);
  for(const x of [-32,32])expect(collision.blocks(new THREE.Vector3(x,1.8,.4),new THREE.Vector3(x,1.8,.2))).toBe(true);
 });
+it('blocks running at thin walls and jumping through ceilings',()=>{
+ const ceiling=new THREE.Mesh(new THREE.BoxGeometry(20,.2,20),new THREE.MeshBasicMaterial());ceiling.position.set(0,2.7,10);
+ const collision=new WalkCollisions([box(0,8,100),ceiling]);
+ const camera=new RoomCamera();camera.enter(0,0,1);camera.keys.add('w');camera.keys.add('Shift');camera.jump();
+ let peak=1.8;
+ for(let i=0;i<30;i++){camera.step(.05,collision.blocks);peak=Math.max(peak,camera.camera.position.y);}
+ expect(peak).toBeGreaterThan(1.8);expect(peak).toBeLessThan(2.5);
+ expect(camera.camera.position.z).toBeGreaterThan(8.35);expect(camera.camera.position.y).toBeCloseTo(1.8);
+});
+it('lands on raised geometry and falls after walking off',()=>{
+ const platform=new THREE.Mesh(new THREE.BoxGeometry(2,1,2),new THREE.MeshBasicMaterial());platform.position.set(0,.5,10);
+ const collision=new WalkCollisions([platform]);const camera=new RoomCamera();camera.enter(0,0,1);camera.camera.position.y=3.5;
+ for(let i=0;i<30;i++)camera.step(.05,collision.blocks);
+ expect(camera.camera.position.y).toBeGreaterThanOrEqual(2.8);expect(camera.camera.position.y).toBeLessThan(3);
+ camera.keys.add('d');for(let i=0;i<30;i++)camera.step(.05,collision.blocks);
+ expect(camera.camera.position.y).toBeCloseTo(1.8);
+});

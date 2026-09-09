@@ -29,6 +29,29 @@ function configureTestPayments() {
 }
 
 describe('billing transport boundaries', () => {
+  it('discovers standalone access without credentials or payment configuration', async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    for (const path of ['', 'capabilities']) {
+      const response = responseRecorder();
+      await blender({ method: 'GET', query: { path }, headers: {} } as unknown as BillingRequest, response.res);
+      expect(response.state.statusCode).toBe(200);
+      expect(JSON.parse(response.state.body)).toMatchObject({ name: 'Agartha Compute', registration: '/api/session', interfaces: ['http', 'mcp'] });
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('returns trusted standalone connection links without private reservation fields', async () => {
+    configureTestPayments();
+    vi.stubEnv('AGARTHA_BLENDER_BROKER_URL', 'https://broker.example');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ reservationId: 'r1', projectId: 'p1', status: 'reserved', providerWorkerId: 'private-worker' })));
+    const response = responseRecorder();
+    await blender({ method: 'GET', query: { path: 'sessions/r1' }, headers: { authorization: `Bearer ${'a'.repeat(64)}` } } as unknown as BillingRequest, response.res);
+    expect(response.state.statusCode).toBe(200);
+    expect(JSON.parse(response.state.body)).toMatchObject({ statusUrl: 'https://broker.example/sessions/r1', toolsUrl: 'https://broker.example/sessions/r1/tools', artifactsUrl: 'https://broker.example/sessions/r1/artifacts/', mcpUrl: 'https://broker.example/mcp/r1' });
+    expect(response.state.body).not.toContain('private-worker');
+  });
+
   it('preserves webhook bytes and rejects parsed or oversized bodies', async () => {
     const original = Buffer.from('{ "id": "event" }\n');
     const request = Readable.from([original.subarray(0, 3), original.subarray(3)]) as BillingRequest;

@@ -1,3 +1,7 @@
+import { AgentCharacters } from './agentCharacters';
+import { AgentRoomLabels } from './AgentRoomLabels';
+import type { AgentPresence } from '../../../../packages/protocol/src/agentPresence';
+import type { ChatMessage } from '../../../../packages/protocol/src/chat';
 import { WalkCollisions } from './walkCollisions';
 import { cameraExploration } from './cameraExploration';
 import { QuarterTurn } from './quarterTurn';
@@ -24,12 +28,17 @@ import type { ObjectHighlight } from './activity';
 import type { SharedWorld, WorldObject } from './world';
 
 type MovingInstance = { mesh: THREE.InstancedMesh; index: number; position: THREE.Vector3; scale: THREE.Vector3; yaw: number; motion: ObjectMotion };
-type Runtime = { models:ModelLayer; meshGeometries:Map<string,THREE.BufferGeometry>; textures: PbrTextures; moving: MovingInstance[]; movingOutlines: Array<{ outline: THREE.LineSegments; y: number; yaw: number; motion: ObjectMotion }>; scene: THREE.Scene; group: THREE.Group; terrain: THREE.Group; camera: THREE.OrthographicCamera; controls: OrbitControls; aspect: number; time: {value:number}; };
+type Runtime = { characters: AgentCharacters; models:ModelLayer; meshGeometries:Map<string,THREE.BufferGeometry>; textures: PbrTextures; moving: MovingInstance[]; movingOutlines: Array<{ outline: THREE.LineSegments; y: number; yaw: number; motion: ObjectMotion }>; scene: THREE.Scene; group: THREE.Group; terrain: THREE.Group; camera: THREE.OrthographicCamera; controls: OrbitControls; aspect: number; time: {value:number}; };
+const NO_AGENTS: AgentPresence[] = [];
+const NO_MESSAGES: ChatMessage[] = [];
 const NO_HIGHLIGHTS: ObjectHighlight[] = [];
 type Label = { id:string; name:string; x:number; y:number; empty:boolean };
-export function WorldViewport({ plots, empty, activePlotId, selected, proposal, draftShader, animateSurfaces, onSelect, onVisit, onExplore, onPrefetch, focusRequest, onEnterRoom, highlights = NO_HIGHLIGHTS }: {
-  onEnterRoom?:()=>void; highlights?: ObjectHighlight[]; plots: SharedWorld[]; empty: Array<PlotAddress & {id:string}>; activePlotId:string; selected?:string; proposal?:BuildObject[]; draftShader?:SharedShader; animateSurfaces?:boolean; onSelect:(id:string|undefined)=>void; onVisit:(id:string)=>void; onExplore?:(id:string)=>void; onPrefetch?:(id:string)=>void; focusRequest?:{id:string;serial:number};
+export function WorldViewport({ plots, empty, activePlotId, selected, proposal, draftShader, animateSurfaces, onSelect, onVisit, onExplore, onPrefetch, focusRequest, onEnterRoom, highlights = NO_HIGHLIGHTS, agents = NO_AGENTS, messages = NO_MESSAGES, now = Date.now() }: {
+  agents?: AgentPresence[]; messages?: ChatMessage[]; now?: number; onEnterRoom?:()=>void; highlights?: ObjectHighlight[]; plots: SharedWorld[]; empty: Array<PlotAddress & {id:string}>; activePlotId:string; selected?:string; proposal?:BuildObject[]; draftShader?:SharedShader; animateSurfaces?:boolean; onSelect:(id:string|undefined)=>void; onVisit:(id:string)=>void; onExplore?:(id:string)=>void; onPrefetch?:(id:string)=>void; focusRequest?:{id:string;serial:number};
 }) {
+  const agentLabels = useRef(new Map<string, HTMLElement>());
+  const visibleAgents = agents.filter(agent => agent.expiresAt > now && [...plots, ...empty].some(plot => plot.id === agent.plotId));
+  const agentRef = useRef(visibleAgents); agentRef.current = visibleAgents;
   const meshLibrary=useMeshLibrary([...plots.flatMap(plot=>plot.objects),...(proposal??[])].flatMap(object=>object.meshId?[object.meshId]:[]));
   const animateRef=useRef(animateSurfaces);animateRef.current=animateSurfaces;
   const host = useRef<HTMLDivElement>(null), runtime = useRef<Runtime | null>(null);
@@ -98,7 +107,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     try {renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});}catch{setError(true);return;}
     renderer.localClippingEnabled=true;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.setClearColor('#111c23');renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-    renderer.domElement.setAttribute('aria-label','Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Plot buttons and neighboring-plot controls provide keyboard navigation.');renderer.domElement.tabIndex=0;element.appendChild(renderer.domElement);
+    renderer.domElement.setAttribute('aria-label','Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Open Rooms to choose a room by name or coordinates.');renderer.domElement.tabIndex=0;element.appendChild(renderer.domElement);
     const scene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-80,80,60,-60,.1,2000),controls=new OrbitControls(camera,renderer.domElement);
     const sky=createSkybox();scene.add(sky);scene.fog=new THREE.Fog('#dee8df',200,1200);
     controls.enableRotate=false;controls.minZoom=.5;controls.maxZoom=6;controls.listenToKeyEvents(renderer.domElement);
@@ -119,7 +128,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     const ground=new THREE.Mesh(new THREE.PlaneGeometry(4096,4096),new THREE.MeshStandardMaterial({color:'#53636a',roughness:1}));
     ground.rotation.x=-Math.PI/2;ground.position.y=-.08;horizon.add(ground);
     const grid=new THREE.GridHelper(4096,128,'#92a094','#92a094');grid.position.set(16,-.07,16);horizon.add(grid);scene.add(horizon);
-    const group=new THREE.Group(),terrain=new THREE.Group(),models=new ModelLayer(setModelError);scene.add(group,terrain,models.group);runtime.current={models,meshGeometries:new Map(),textures,scene,group,terrain,camera,controls,aspect:1,time:{value:0},moving:[],movingOutlines:[]};
+    const group=new THREE.Group(),terrain=new THREE.Group(),models=new ModelLayer(setModelError);scene.add(group,terrain,models.group);const characters = new AgentCharacters();scene.add(characters.group);runtime.current={characters,models,meshGeometries:new Map(),textures,scene,group,terrain,camera,controls,aspect:1,time:{value:0},moving:[],movingOutlines:[]};
     let cameraPlotId=callbacks.current.activePlotId;
     let previousCameraCell={x:anchor.current.x,z:anchor.current.z};
     const exploration=cameraExploration(()=>{
@@ -136,7 +145,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       horizon.position.set(Math.round(target.x/PLOT_SIZE)*PLOT_SIZE,0,Math.round(target.z/PLOT_SIZE)*PLOT_SIZE);
     });
     const update=()=>{setZoom(Math.round(camera.zoom*100));exploration.schedule();};controls.addEventListener('change',update);
-    const keyDown=(event:KeyboardEvent)=>{if(event.ctrlKey||event.metaKey||event.altKey)return;if(roomCamera.current.active){if(event.key==='Escape'){event.preventDefault();exitRoom();return;}const key=event.key.length===1?event.key.toLowerCase():event.key;if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(key)){event.preventDefault();roomCamera.current.keys.add(key);}return;}if(event.ctrlKey||event.metaKey||event.altKey)return;const action=event.key==='+'||event.key==='='?'in':event.key==='-'?'out':event.key==='0'?'reset':undefined;if(action){event.preventDefault();changeCamera(action);}};
+    const keyDown=(event:KeyboardEvent)=>{if(event.ctrlKey||event.metaKey||event.altKey)return;if(roomCamera.current.active){if(event.shiftKey)roomCamera.current.keys.add('Shift');else roomCamera.current.keys.delete('Shift');if(event.code==='Space'){event.preventDefault();if(!event.repeat)roomCamera.current.jump();return;}if(event.key==='Escape'){event.preventDefault();exitRoom();return;}const key=event.key.length===1?event.key.toLowerCase():event.key;if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Shift'].includes(key)){event.preventDefault();roomCamera.current.keys.add(key);}return;}if(event.ctrlKey||event.metaKey||event.altKey)return;const action=event.key==='+'||event.key==='='?'in':event.key==='-'?'out':event.key==='0'?'reset':undefined;if(action){event.preventDefault();changeCamera(action);}};
     renderer.domElement.addEventListener('keydown',keyDown);
     const keyUp=(event:KeyboardEvent)=>roomCamera.current.keys.delete(event.key.length===1?event.key.toLowerCase():event.key);
     const clearInput=()=>{roomCamera.current.clearInput();lookPointer=null;};
@@ -202,12 +211,13 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       const lightX=Math.round(lightTarget.x/texel)*texel,lightZ=Math.round(lightTarget.z/texel)*texel;
       sun.target.position.set(lightX,0,lightZ);sun.position.set(lightX-30,70,lightZ+30);
       sky.position.copy(renderCamera.position);sky.scale.setScalar(roomCamera.current.active?100:1400);
+      runtime.current?.characters.update(delta, renderCamera, motion.matches, now / 1000);
       renderer.render(scene,renderCamera);
-      if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{roomCount:String(callbacks.current.plots.length+callbacks.current.empty.length),rotationAnimating:String(turn.current.active),skybox:'procedural',cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}
+      if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{agentCount:String(agentRef.current.length),roomCount:String(callbacks.current.plots.length+callbacks.current.empty.length),rotationAnimating:String(turn.current.active),skybox:'procedural',cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraY:roomCamera.current.camera.position.y.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}
     });
-    return()=>{roomCamera.current.exit();window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);exploration.dispose();renderer.domElement.removeEventListener('pointerdown',tunePan,true);renderer.setAnimationLoop(null);resize.disconnect();motion.removeEventListener('change',updateMotion);unbindTrackpadPan();controls.dispose();models.dispose();scene.remove(models.group);scene.traverse(disposeObject);sun.shadow.dispose();textures.dispose();for(const geometry of runtime.current?.meshGeometries.values()??[])geometry.dispose();environment.dispose();renderer.dispose();renderer.domElement.remove();runtime.current=null;};
+    return()=>{roomCamera.current.exit();window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);exploration.dispose();renderer.domElement.removeEventListener('pointerdown',tunePan,true);renderer.setAnimationLoop(null);resize.disconnect();motion.removeEventListener('change',updateMotion);unbindTrackpadPan();controls.dispose();models.dispose();scene.remove(models.group,characters.group);scene.traverse(disposeObject);sun.shadow.dispose();textures.dispose();for(const geometry of runtime.current?.meshGeometries.values()??[])geometry.dispose();environment.dispose();characters.dispose();renderer.dispose();renderer.domElement.remove();runtime.current=null;};
   },[]);
-  useEffect(()=>{host.current?.querySelector('canvas')?.setAttribute('aria-label',inside?'First-person room view. Drag to look, WASD or arrow keys to move, Escape to exit.':'Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Use camera controls to rotate or enter a room.');},[inside]);
+  useEffect(()=>{host.current?.querySelector('canvas')?.setAttribute('aria-label',inside?'First-person room view. Drag to look, WASD or arrow keys to move, hold Shift to run, Space to jump, Escape to exit.':'Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Use camera controls to rotate or enter a room.');},[inside]);
   useEffect(()=>{fitCamera();},[focused]);
   useEffect(()=>{if(focusRequest){focusRef.current=true;setFocused(true);if(roomCamera.current.active)exitRoom();fitCamera();}},[focusRequest]);
   useEffect(()=>{
@@ -271,12 +281,14 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     }
     updateLabels();
   },[plots,empty,selected,activePlotId,proposal,draftShader,highlights,meshLibrary.geometry]);
+  useEffect(() => { runtime.current?.characters.sync(visibleAgents, anchor.current, agentLabels.current); }, [agents, now, plots, empty]);
   return <>
     {modelError&&<p className="world-error" role="alert">{modelError}</p>}
     {meshLibrary.error&&<p className="world-error" role="alert">{meshLibrary.error} Reload to retry.</p>}
     {meshLibrary.loading&&<span className="sr-only" role="status">Loading model geometry…</span>}
     {materialError&&<p className="world-error" role="alert">Some material maps could not load. Reload to retry.</p>}
-    <div className="world-viewport" ref={host}>{error&&<p className="world-render-error">3D rendering is unavailable. Open Rooms to choose another room.</p>}</div>
+    <div className="world-viewport" ref={host}>{error&&<p className="world-render-error" role="alert">3D rendering is unavailable. Try reloading or enable hardware acceleration in your browser. You can still browse Rooms and Inspect objects.</p>}</div>
+    {!error && <AgentRoomLabels agents={visibleAgents} messages={messages} now={now} labels={agentLabels.current}/> }
     {draftShader && <div className="plot-shader-note" role="status">Draft surface preview · not published</div>}
     {proposal && <div className="plot-proposal-note" role="status">Prepared build · {proposal.length} objects · not saved yet</div>}
     {!inside&&<div className="plot-labels" aria-label="Plots in view">{labels.filter(label=>label.x>0&&label.x<100&&label.y>0&&label.y<90).map(label=><button key={label.id} className="world-plot-label" aria-pressed={label.id===activePlotId} style={{left:`${label.x}%`,top:`${label.y}%`}} onClick={()=>onVisit(label.id)} title={label.name}>{label.name}{label.empty&&<span> +</span>}</button>)}</div>}
@@ -289,7 +301,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       <button aria-label="Zoom out" disabled={error} onClick={()=>changeCamera('out')}><Minus size={17}/></button><output aria-label="Camera zoom">{zoom}%</output>
       <button aria-label="Zoom in" disabled={error} onClick={()=>changeCamera('in')}><Plus size={17}/></button>
       <button className="plot-focus-button" aria-label={focused?'Grid view':'Focus plot'} title={focused?'Grid view':'Focus plot'} aria-pressed={focused} disabled={error} onClick={()=>setFocused(value=>!value)}><CornersOut size={16}/></button>
-      <button disabled={error} onClick={enterRoom}>Enter room</button>
+      <button className="enter-room-button" disabled={error} onClick={enterRoom}>Enter room</button>
     </div>}
 
   </>;

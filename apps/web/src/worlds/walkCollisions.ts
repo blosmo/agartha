@@ -9,14 +9,17 @@ export class WalkCollisions {
   constructor(private roots: THREE.Object3D[]) {}
 
   blocks = (from: THREE.Vector3, to: THREE.Vector3) => {
-    this.direction.subVectors(to, from); this.direction.y = 0;
+    this.direction.subVectors(to, from);
     const distance = this.direction.length();
     if (!distance) return false;
     this.direction.divideScalar(distance);
-    this.ray.near = 0; this.ray.far = distance + .28;
+    const vertical = this.direction.y !== 0;
+    this.ray.near = 0; this.ray.far = distance + (vertical ? .02 : .28);
     for (const root of this.roots) root.updateWorldMatrix(true, true);
-    for (const height of [.35, .95, 1.65]) for (const offset of [-.22, 0, .22]) {
-      this.origin.set(from.x - this.direction.z * offset, height, from.z + this.direction.x * offset);
+    const heights = vertical ? [this.direction.y > 0 ? 1.9 : .02] : [.35, .95, 1.65];
+    for (const height of heights) for (const offset of [-.22, 0, .22]) {
+      if (vertical) this.origin.set(from.x + offset, from.y - 1.8 + height, from.z);
+      else this.origin.set(from.x - this.direction.z * offset, from.y - 1.8 + height, from.z + this.direction.x * offset);
       this.ray.set(this.origin, this.direction); this.hits.length = 0;
       this.ray.intersectObjects(this.roots, true, this.hits);
       if (this.hits.some(hit => hit.object instanceof THREE.Mesh && hit.object.visible && !(Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material]).every(material => material.transparent && material.opacity < .5))) return true;

@@ -47,7 +47,7 @@ function fixture() {
 it("explains local support without registering or fetching", () => {
   const fetcher = fixture();
   render(<GovernancePanel roomId="0,0" cloud={false} onClose={() => {}} />);
-  expect(screen.getByText(/hosted version/i)).toBeTruthy();
+  expect(screen.getByText(/local preview with separate world data/i)).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();
 });
 it("shows rules and separate voting eligibility and switches scope", async () => {
@@ -451,5 +451,6 @@ it('moves focus to the selected proposal so its action controls are discoverable
  lifecycle();
  render(<GovernancePanel roomId="the-commons" cloud onClose={()=>{}}/>);
  fireEvent.click(await screen.findByRole('button',{name:/Welcome rule/}));
- expect(await screen.findByRole('region',{name:'Proposal detail'})).toHaveFocus();
+ const detail=await screen.findByRole('region',{name:'Proposal detail'});
+ await waitFor(()=>expect(detail).toHaveFocus());
 });

@@ -32,6 +32,7 @@ export function RoomObjects({ world }: { world: SharedWorld }) {
     {world.hasMoreObjects && <p>This room has more objects than this view has loaded.</p>}
     <label>Find objects<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Name, ID, or author"/></label>
     <p role="status">{matching.length} matching loaded objects</p>
+    {query && matching.length === 0 && <p>No objects match “{query}”. <button onClick={() => setQuery('')}>Clear search</button></p>}
     <ul>{matching.slice(0, 50).map(object => <li key={object.id}>
       <strong>{object.name}</strong>
       <p>ID: <code>{object.id}</code><br/>Shape: {object.shape} · Author: {object.author}<br/>Local XYZ: {object.position.join(', ')}<br/>Scale XYZ: {object.scale.join(', ')}</p>

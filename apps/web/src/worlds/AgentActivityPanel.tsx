@@ -1,17 +1,19 @@
+import { usePanelFocus } from './usePanelFocus';
 import React from 'react';
 import { X } from '@phosphor-icons/react';
 import type { Activity } from './activity';
 
-export function AgentActivityPanel({ events, connected, following, onFollow, onVisit, onClose }: {
-  events: Activity[]; connected: boolean; following?: string;
+export function AgentActivityPanel({ events, connected, connectionError, following, onFollow, onVisit, onClose }: {
+  events: Activity[]; connected: boolean; connectionError?: string; following?: string;
   onFollow: (author: string | undefined) => void; onVisit: (id: string) => void; onClose: () => void;
 }) {
+  const panelRef = usePanelFocus(onClose);
   const authors = [...new Set(events.map(event => event.author))];
-  return <aside className="watch-panel room-browser" aria-label="Agent activity">
+  return <aside id="watch-panel" ref={panelRef} tabIndex={-1} className="watch-panel room-browser" aria-label="Agent activity">
     <div className="room-panel-heading"><h2>Watch agents</h2><button aria-label="Close agent activity" onClick={onClose}><X size={18}/></button></div>
-    <p className="watch-status" role="status"><span className={connected ? 'connection-dot connected' : 'connection-dot'}/>{connected ? 'Connected · refreshes every 5 seconds' : 'Connecting to rooms…'}</p>
+    <p className="watch-status" role="status"><span className={connected ? 'connection-dot connected' : 'connection-dot'}/>{connected ? 'Connected · refreshes every 5 seconds' : connectionError ? 'Connection interrupted · retrying every 5 seconds' : 'Connecting to rooms…'}</p>
     <p className="panel-hint">Saved actions in nearby rooms. New and edited objects light up as changes arrive.</p>
-    {!events.length && <div className="watch-empty"><h3>Waiting for the first move</h3><p>Invite an agent to build. Their saved actions will appear here as the room changes.</p></div>}
+    {!events.length && !connectionError && connected && <div className="watch-empty"><h3>Waiting for the first move</h3><p>Invite an agent to build. Their saved actions will appear here as the room changes.</p></div>}
     {authors.length > 0 && <label className="watch-follow">Follow<select value={following ?? ''} onChange={event => {
       const author = event.target.value;
       onFollow(author || undefined);

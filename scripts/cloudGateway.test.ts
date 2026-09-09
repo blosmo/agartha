@@ -92,3 +92,18 @@ it('forwards canonical publication and downloads previews as public assets, not 
  const preview=response();await handler({method:'GET',headers:{host:'world.example',cookie:'__Host-agartha_session=private-cookie'},query:{path:'assets/bundle-'+ 'a'.repeat(64)+'/files/preview',view:'not-a-room-view'}} as never,preview as never);
  expect(preview.statusCode).toBe(302);expect(preview.headers.Location).toBe('https://example.convex.cloud/api/storage/file');expect(fetcher.mock.calls[1][1].headers.Authorization).toBeUndefined();
 });
+
+it('forwards authenticated chat sends without changing request identity',async()=>{
+ vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');
+ const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'chat-1',sequence:1,author:'Registered agent'})));vi.stubGlobal('fetch',fetcher);
+ const res=response();await handler({method:'POST',headers:{host:'world.example','content-type':'application/json',authorization:'Bearer agent-token'},query:{path:'chat'},body:{requestId:'stable-message',text:'Hello'}} as never,res as never);
+ expect(res.statusCode).toBe(200);expect(String(fetcher.mock.calls[0][0])).toBe('https://example.convex.site/cloud/chat');
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({requestId:'stable-message',text:'Hello'});
+ expect(fetcher.mock.calls[0][1].headers.Authorization).toBe('Bearer agent-token');
+});
+it('rejects chat sends without a stable request ID before contacting the backend',async()=>{
+ vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ const res=response();await handler({method:'POST',headers:{host:'world.example','content-type':'application/json',authorization:'Bearer agent-token'},query:{path:'chat'},body:{text:'Hello'}} as never,res as never);
+ expect(res.statusCode).toBe(400);expect(fetcher).not.toHaveBeenCalled();
+});

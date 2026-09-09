@@ -16,6 +16,14 @@
   },
   "rewrites": [
     {
+      "source": "/compute",
+      "destination": "/compute/index.html"
+    },
+    {
+      "source": "/compute/",
+      "destination": "/compute/index.html"
+    },
+    {
       "source": "/api/blender/webhook",
       "destination": "/api/stripe-webhook"
     },

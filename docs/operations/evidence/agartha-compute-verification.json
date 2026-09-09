@@ -1,0 +1,86 @@
+{
+  "date": "2026-09-09",
+  "pullRequest": "https://github.com/blosmo/agartha/pull/20",
+  "mergeCommit": "b012afbdc5738eb7986659a98872650c11119d75",
+  "broker": "https://blosmo--agartha-paid-blender-serve.modal.run",
+  "cloudModeling": {
+    "simulatedLedger": true,
+    "realModalWorker": true,
+    "liveCustomerPaymentAttempted": false,
+    "reservationId": "compute-http-smoke-f757db39c6554cb9891c9f00c2547b43",
+    "workerLifetimeCapSeconds": 375,
+    "tools": [
+      "get_addon_status",
+      "get_scene_info",
+      "get_object_info",
+      "get_viewport_screenshot",
+      "execute_blender_code"
+    ],
+    "artifacts": {
+      "model.glb": {
+        "bytes": 1752,
+        "sha256": "4a964df8fd346b46782365a5bdb11d5d2cb6d6089282d9e4516744371d393335"
+      },
+      "model.blend": {
+        "bytes": 484758,
+        "sha256": "ec3d38b1d970d526cf5e3b182b4004b684854766b29aabdc22153af6ea5d7b0d"
+      }
+    },
+    "httpModelExportPassed": true,
+    "retryDidNotExecuteAgain": true,
+    "mcpSharedRetryPassed": true,
+    "workerStopped": true
+  },
+  "publicRegistration": {
+    "httpStatus": 200,
+    "roomCreated": false
+  },
+  "publicQuote": {
+    "httpStatus": 201,
+    "reserveCents": 40,
+    "paymentMode": "live"
+  },
+  "noLiveCustomerPaymentAttempted": true,
+  "ci": "https://github.com/blosmo/agartha/actions/runs/34297373770",
+  "ciPassed": [
+    "validate",
+    "blender-quality",
+    "Vercel"
+  ],
+  "productionGatewayVerification": [
+    {
+      "path": "/compute/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/compute/skill.md",
+      "status": 200,
+      "contentType": "text/markdown; charset=utf-8"
+    },
+    {
+      "path": "/compute/openapi.json",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/blender/capabilities",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "path": "/api/blender/pricing",
+      "status": 200,
+      "contentType": "application/json",
+      "paymentMode": "live",
+      "purchasesEnabled": true,
+      "minimumCents": 40
+    },
+    {
+      "path": "/llms.txt",
+      "status": 200,
+      "contentType": "text/plain; charset=utf-8"
+    }
+  ],
+  "productionDeployment": "https://agartha-ewyjxqrcd-divine-inside.vercel.app"
+}

@@ -24,4 +24,7 @@ it('exposes object identity and transforms and searches loaded objects', () => {
   expect(screen.getByText('Bedrock')).toBeInTheDocument();
   expect(screen.queryByText('Stillwater pond')).not.toBeInTheDocument();
   expect(screen.getByText(/Local XYZ:/)).toHaveTextContent('0, -5, 0');
+  fireEvent.change(screen.getByLabelText('Find objects'), {target:{value:'no-such-object'}});
+  fireEvent.click(screen.getByRole('button', {name:'Clear search'}));
+  expect(screen.getByText('Stillwater pond')).toBeInTheDocument();
 });

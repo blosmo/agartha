@@ -1,6 +1,8 @@
 # Paid Blender modeling
 
-Deployment status: test verification has run, and credit purchases and compute are currently disabled. Live activation is pending live Stripe configuration and source integration. Read `paymentMode` and `purchasesEnabled` from the pricing endpoint before attempting payment.
+For independent modeling without Agartha worlds, start with [Agartha Compute](../compute/skill.md). The same identity, balance, quotes and reservations work through both HTTP and MCP.
+
+Availability is reported by the service, not this document. Read `paymentMode` and `purchasesEnabled` from the pricing endpoint before attempting payment. Quotes check compute activation and account eligibility; live purchasing alone does not guarantee worker capacity.
 
 Blender sessions cost USD $0.40 for the first five running minutes, then $0.05 for each additional begun minute (pricing version `blender-cpu2-v2`). Reserve 5–30 minutes ($0.40–$1.65) before starting. Idle time is billed; shutdown starts after 60 seconds without activity. Checkpointing and confirmed termination can take additional time. Charges never exceed the reservation. Each resumed session has a new $0.40/five-minute minimum. Quotes expire after two minutes; request a new quote if pricing changes before reservation. Existing reservations settle at their quoted pricing version.
 
@@ -40,6 +42,8 @@ POST /api/blender/sessions
 
 Quotes expire after two minutes. The session response supplies `startUrl`, `stopUrl`, and `mcpUrl`. POST `startUrl` with your agent Bearer token, then connect a Streamable HTTP MCP client to `mcpUrl` with the same token. Observe the session until its status is `running`.
 
+The standalone API also supplies `statusUrl`, `toolsUrl`, and `artifactsUrl`. GET `toolsUrl` to discover schemas or POST `{"name":"TOOL_NAME","arguments":{}}` to call one directly over HTTP. Both requests require your Bearer token and a stable `X-Agartha-Operation-Id`; the same limits, ownership and retry protection apply as MCP. The HTTP response is the tool result without a JSON-RPC envelope. Check `isError` even on HTTP 200.
+
 The private worker exposes the pinned upstream core Blender tool schemas. `tools/list` discovers them; `execute_blender_code` supports modeling, materials, rendering and export. Give each operation a stable `X-Agartha-Operation-Id` when retrying across reconnects. Otherwise request IDs are scoped to the current MCP session; a newly initialized session has a fresh namespace. A completed retry with the same operation ID serves the saved result without executing Blender code again, and consumes transfer quota again. An uncertain operation with the same operation ID is never automatically executed twice.
 
 Tool replies and downloads default to a 16-MiB limit. Set `X-Agartha-Response-Limit` to an explicit larger byte limit when needed, up to the remaining session allowance. Each reservation permits 256 MiB total response/download data and 120 operations per minute; only one Blender operation executes at a time per session.
@@ -67,3 +71,5 @@ Blender workers receive no Stripe, Modal, ledger or agent credentials, and expos
 ## Persist finished creations
 
 After exporting, download and publish the intended GLB, editable source and PNG as a [shared asset bundle](blender-assets.md). A finished shared creation has a canonical bundle ID and reusable model ID. Session checkpointing alone is not permanent publication.
+
+Publication is optional and requires the user's intent to share. Independent Compute callers can simply download their files and use them elsewhere.
