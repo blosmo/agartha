@@ -11,15 +11,13 @@
 .hero-copy .primary span { margin-left: 11px; }
 .hero-copy .note { margin-top: 15px; font-size: .75rem; }
 .arc-showcase, .arc-canvas, .arc-models { position: absolute; inset: 0; }
-.arc-showcase { overflow: hidden; z-index: 1; }
+.arc-showcase { overflow: hidden; z-index: 1; mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
 .arc-canvas { pointer-events: none; }
 .arc-canvas canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity .6s; }
 .arc-showcase[data-state=ready] canvas { opacity: 1; }
 .arc-model { position: absolute; left: 50%; top: 0; width: 142px; height: 142px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transform: translate(-50%, -50%); touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
 .arc-model img { display: block; width: 100%; height: 100%; object-fit: contain; transition: opacity .45s; filter: drop-shadow(0 20px 13px #3849370b); }
 .arc-model[data-loaded=true] img { opacity: 0; }
-.arc-model span { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 2px); white-space: nowrap; background: var(--paper); color: var(--muted); padding: 2px 8px; border-radius: 4px; font-size: .69rem; font-weight: 500; opacity: 0; transition: opacity .18s, transform .18s; pointer-events: none; }
-.arc-model:is(:hover,:focus-visible) span { opacity: 1; transform: translate(-50%, -4px); }
 .arc-model:hover:not(:disabled) { box-shadow: none; }
 .arc-model:focus-visible { outline: 1px solid var(--muted); outline-offset: 0; }
 /* First paint stays complete even before the renderer is available. */
@@ -75,5 +73,5 @@
   .create-copy > p { max-width: 42ch; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .arc-model img, .arc-model span, .arc-canvas canvas { transition: none; }
+  .arc-model img, .arc-canvas canvas { transition: none; }
 }
