@@ -2,6 +2,7 @@ const form = document.querySelector('#plan-form');
 const promptElement = document.querySelector('#agent-prompt');
 const instructions = document.querySelector('#instructions');
 const brief = document.querySelector('#brief');
+const briefError = document.querySelector('#brief-error');
 const intendedUse = document.querySelector('#intended-use');
 const budget = document.querySelector('#budget');
 const budgetError = document.querySelector('#budget-error');
@@ -14,16 +15,23 @@ const publishedPricing = { currency: 'usd', minimumMinutes: 5, maximumMinutes: 3
 let pricing = publishedPricing;
 let verified = false;
 let copying = false;
+const touched = new Set();
 const money = cents => `$${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
 const estimate = () => pricing.minimumCents + (Number(minutes.value) - pricing.minimumMinutes) * pricing.priceCentsPerMinute;
 function budgetCents(value) {
+  value = value.trim();
   if (!/^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/.test(value)) return null;
   const [whole, fraction = ''] = value.split('.');
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
   return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
 }
-function updatePlan() {
-  brief.setCustomValidity(brief.value.trim() ? '' : 'Describe the model you want to create.');
+function updatePlan({ showErrors = false } = {}) {
+  const briefMessage = brief.value.trim() ? '' : 'Describe the model you want to create.';
+  brief.setCustomValidity(briefMessage);
+  const showBriefError = Boolean(briefMessage) && (showErrors || touched.has(brief));
+  brief.setAttribute('aria-invalid', String(showBriefError));
+  briefError.textContent = showBriefError ? briefMessage : '';
+  briefError.hidden = !showBriefError;
   const cents = budgetCents(budget.value);
   const error = cents === null
     ? 'Enter a positive USD amount with no more than two decimal places.'
@@ -31,9 +39,10 @@ function updatePlan() {
       ? `Allow at least ${money(pricing.minimumCents)} for the ${verified ? 'current' : 'published'} minimum compute charge, plus model and review costs.`
       : '';
   budget.setCustomValidity(error);
-  budget.setAttribute('aria-invalid', String(Boolean(error)));
-  budgetError.textContent = error;
-  budgetError.hidden = !error;
+  const showBudgetError = Boolean(error) && (showErrors || touched.has(budget));
+  budget.setAttribute('aria-invalid', String(showBudgetError));
+  budgetError.textContent = showBudgetError ? error : '';
+  budgetError.hidden = !showBudgetError;
   for (const preset of presets) preset.setAttribute('aria-pressed', String(cents !== null && cents === budgetCents(preset.dataset.budget)));
   copyStatus.textContent = '';
   if (error || !brief.value.trim()) {
@@ -63,6 +72,22 @@ function updateEstimate() {
 }
 brief.addEventListener('input', updatePlan);
 budget.addEventListener('input', updatePlan);
+for (const field of [brief, budget]) {
+  field.addEventListener('blur', () => { touched.add(field); updatePlan(); });
+}
+brief.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
+document.querySelector('a[href="#start"]').addEventListener('click', event => {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  document.querySelector('#start').scrollIntoView({ block: 'start' });
+  brief.focus({ preventScroll: true });
+  if (location.hash !== '#start') history.pushState(null, '', '#start');
+});
 intendedUse.addEventListener('change', updatePlan);
 for (const preset of presets) {
   preset.addEventListener('click', () => {
@@ -74,14 +99,21 @@ minutes.addEventListener('input', updateEstimate);
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (copying) return;
-  const ready = updatePlan();
-  if (!form.reportValidity() || !ready) return;
+  touched.add(brief);
+  touched.add(budget);
+  const ready = updatePlan({ showErrors: true });
+  if (!form.checkValidity() || !ready) {
+    form.querySelector(':invalid')?.focus();
+    return;
+  }
   const text = promptElement.textContent;
   copying = true;
   copy.disabled = true;
+  copy.setAttribute('aria-busy', 'true');
+  copyStatus.textContent = 'Copying plan…';
   try {
     await navigator.clipboard.writeText(text);
-    copyStatus.textContent = text === promptElement.textContent ? 'Copied' : 'Plan changed. Copy again.';
+    copyStatus.textContent = text === promptElement.textContent ? 'Copied. Paste it into your agent.' : 'Plan changed. Copy again.';
   } catch {
     if (text !== promptElement.textContent) {
       copyStatus.textContent = 'Plan changed. Copy again.';
@@ -98,6 +130,7 @@ form.addEventListener('submit', async event => {
   } finally {
     copying = false;
     copy.disabled = false;
+    copy.removeAttribute('aria-busy');
   }
 });
 function validPricing(data) {
@@ -119,7 +152,7 @@ async function checkPricing() {
     pricing = data;
     verified = true;
     document.querySelector('#availability').textContent = data.purchasesEnabled === true && data.paymentMode === 'live'
-      ? 'Live credit purchases enabled. A quote checks compute eligibility and capacity.'
+      ? 'Credit purchases are available. Your agent checks session availability before reserving.'
       : data.purchasesEnabled === true && data.paymentMode === 'test'
         ? 'Test payments only. Live credit purchases are not available.'
         : 'Credit purchases are currently unavailable. You can read the integration guide now.';
@@ -127,17 +160,20 @@ async function checkPricing() {
     pricing = publishedPricing;
     verified = false;
     retry.hidden = false;
-    document.querySelector('#availability').textContent = 'Live pricing could not be checked. This is a published estimate. Retry or verify the pricing API before funding.';
+    document.querySelector('#availability').textContent = 'Unable to check live prices. Published estimates are shown. Retry before approving a purchase.';
   }
   minutes.min = String(pricing.minimumMinutes);
   minutes.max = String(pricing.maximumMinutes);
   minutes.value = String(Math.max(pricing.minimumMinutes, Math.min(Number(minutes.value), pricing.maximumMinutes)));
-  budget.min = money(pricing.minimumCents).slice(1);
   document.querySelector('#price-description').textContent = `${money(pricing.minimumCents)} covers the first ${pricing.minimumMinutes} running minutes. Each additional begun minute costs ${money(pricing.priceCentsPerMinute)}. Prepaid credit options: ${pricing.topUpCents.map(money).join(' or ')} USD.`;
   updateEstimate();
+  if (budgetCents(budget.value) !== null && budgetCents(budget.value) < pricing.minimumCents) touched.add(budget);
   updatePlan();
 }
 retry.addEventListener('click', checkPricing);
+form.hidden = false;
+document.querySelector('#session-calculator').hidden = false;
+document.querySelector('#availability').hidden = false;
 updateEstimate();
 updatePlan();
 checkPricing();

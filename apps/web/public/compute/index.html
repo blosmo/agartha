@@ -7,28 +7,27 @@
   <meta name="description" content="Describe your 3D model, set a maximum task budget, and give your agent a plan to build, inspect and refine using cloud Blender through HTTP or MCP.">
   <link rel="canonical" href="https://3dforagents.com/compute/">
   <link rel="alternate" type="text/plain" href="/compute/skill.md" title="Agent instructions">
-  <style>
-    :root{color-scheme:light;--ink:#192e2b;--muted:#52615c;--paper:#f4f3ec;--line:#d5d9ce;--accent:#c6f274}
-    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.6 system-ui,sans-serif}a{color:inherit;text-underline-offset:4px}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,pre:focus-visible{outline:3px solid #357259;outline-offset:5px}header,main,footer{max-width:1120px;margin:auto;padding:28px 32px}header{display:flex;justify-content:space-between;gap:24px;border-bottom:1px solid var(--line)}.brand{font-weight:650;text-decoration:none}nav{display:flex;gap:24px;font-size:14px}.hero{padding:70px 0 52px;display:grid;grid-template-columns:1.1fr 1fr;gap:60px;align-items:start}.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:650}h1{font-size:clamp(40px,6vw,70px);line-height:1.04;letter-spacing:-.055em;font-weight:550;margin:20px 0 26px}p{max-width:620px}.intro{color:var(--muted);font-size:19px}.actions{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:28px}.primary{background:var(--ink);color:white;padding:12px 18px;text-decoration:none;border-radius:6px}.terminal{background:#192e2b;color:#eff5e8;padding:27px;border-radius:10px;min-width:0}.terminal .eyebrow{color:var(--accent)}pre{font:13px/1.8 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin:20px 0}code{font-family:ui-monospace,monospace}.terminal p{font-size:13px;color:#b9c9bf;margin-bottom:0}.terminal a{color:#d6f1ae}.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:28px 0}.facts strong{display:block;font-size:21px;font-weight:550}.facts span{color:var(--muted);font-size:14px}section{padding:38px 0}h2{font-size:30px;letter-spacing:-.03em;font-weight:550;margin:0 0 20px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:35px}.steps h3{font-size:17px;margin:10px 0}.steps p{font-size:15px;color:var(--muted);margin-top:0}.number{font:13px ui-monospace,monospace;color:var(--muted)}.pricing{display:grid;grid-template-columns:1fr 1fr;gap:60px;border-top:1px solid var(--line)}label{display:block;font-size:14px;margin-bottom:12px}input{width:100%;accent-color:var(--ink)}output{display:block;font-size:32px;letter-spacing:-.04em;margin:12px 0}.note{font-size:13px;color:var(--muted)}#availability{font-size:14px;border-left:3px solid #9ba998;padding:8px 14px;margin:24px 0 0}footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted);padding-bottom:40px}footer p{max-width:none}.links{display:flex;gap:24px;flex-wrap:wrap}button{background:var(--accent);color:var(--ink);border:0;padding:9px 13px;border-radius:4px;cursor:pointer;font:inherit;font-size:13px}textarea{width:100%;resize:vertical;background:#f4f3ec;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:10px;font:16px/1.5 system-ui,sans-serif}.terminal label{margin-top:16px}.terminal #copy-status{color:#d6f1ae}button:disabled{opacity:.65;cursor:wait}[hidden]{display:none!important}select,input[type=number]{width:100%;border:1px solid var(--line);border-radius:4px;padding:10px;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,sans-serif}select:focus-visible,summary:focus-visible{outline:3px solid #357259;outline-offset:5px}fieldset{padding:0;border:0;margin:20px 0 0;min-width:0}legend{font-size:14px;padding:0;margin-bottom:10px}.budget-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.budget-presets button{background:transparent;color:#eff5e8;border:1px solid #71867a;text-align:left;padding:10px}.budget-presets button[aria-pressed=true]{background:var(--accent);color:var(--ink);border-color:var(--accent)}.budget-presets strong,.budget-presets span{display:block}.budget-presets span{font-size:13px}.terminal .preset-note{margin-top:10px}.terminal .field-error{color:#ffd0bd}.plan-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:20px}.terminal details{margin-top:18px;border-top:1px solid #50665b;padding-top:14px}summary{cursor:pointer;font-size:14px}.terminal details pre{max-height:380px;overflow-y:auto;scrollbar-gutter:stable}.pricing details{margin-top:18px}.pricing details label{margin-top:18px}.budget-help{margin-top:8px}.terminal #plan-context{color:#eff5e8}.terminal #budget-error{margin-top:8px}#start{scroll-margin-top:20px}
-    @media(max-width:760px){header,main,footer{padding-left:22px;padding-right:22px}nav{gap:14px}.hero{grid-template-columns:1fr;gap:28px;padding:40px 0}.facts,.steps,.pricing{grid-template-columns:1fr;gap:22px}.facts{grid-template-columns:1fr 1fr}.facts strong{font-size:18px}.intro{font-size:17px}.pricing{gap:18px}}
-  </style>
+  <link rel="stylesheet" href="/compute/page.css">
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header><a class="brand" href="https://3dforagents.com/">3D for Agents</a><nav aria-label="Primary"><a href="/compute/skill.md">Agent guide</a><a href="/compute/openapi.json">API</a></nav></header>
-  <main>
+  <main id="main" tabindex="-1">
     <div class="hero">
       <div>
         <div class="eyebrow">Cloud 3D modeling for agents</div>
         <h1>Your model.<br>Your budget.</h1>
-        <p class="intro">Give your agent a clear brief and a spending ceiling. Build, inspect and refine around what you need, then keep the best result.</p>
-        <div class="actions"><a class="primary" href="#start">Plan your model ↗</a><a href="#pricing">How pricing works</a></div>
-        <p class="note">HTTP or MCP. No local Blender installation. Your agent runs the workflow.</p>
+        <p class="intro">Build and refine 3D models with your AI agent in cloud Blender. Describe what you need, set a spending limit, and keep the files.</p>
+        <div class="actions"><a class="primary" href="#start">Create a plan <span aria-hidden="true">↗</span></a><a href="#pricing">How pricing works</a></div>
+        <p class="note">Works with agents that use HTTP or MCP. No local Blender installation.</p>
       </div>
       <div class="terminal" id="start">
-        <div class="eyebrow">A brief worth building</div>
-        <form id="plan-form">
-          <label for="brief">What should your agent create?</label>
-          <textarea id="brief" rows="3" maxlength="2000" required placeholder="A low-poly ceramic teapot with a wide handle"></textarea>
+        <h2 id="plan-title">Make a modeling plan</h2>
+        <p class="form-intro">Your agent builds the model. You approve its plan and any payment before work starts.</p>
+        <form id="plan-form" aria-labelledby="plan-title" novalidate hidden>
+          <label for="brief">What should your agent create? (required)</label>
+          <textarea id="brief" name="brief" aria-describedby="brief-error" rows="3" maxlength="2000" required placeholder="A low-poly ceramic teapot with a wide handle"></textarea>
+          <p id="brief-error" class="field-error" hidden></p>
           <label for="intended-use">Where will you use it?</label>
           <select id="intended-use" name="intended-use">
             <option value="General-purpose 3D model">General-purpose model</option>
@@ -36,53 +35,52 @@
             <option value="Product visualization">Product visualization</option>
             <option value="3D printing">3D printing</option>
           </select>
-          <fieldset aria-describedby="preset-note">
-            <legend>Choose a starting budget</legend>
+          <fieldset>
+            <legend>Quick budget amounts</legend>
             <div class="budget-presets">
-              <button type="button" data-budget="5.00" aria-pressed="true"><strong>Draft</strong><span>$5</span></button>
-              <button type="button" data-budget="15.00" aria-pressed="false"><strong>Refined</strong><span>$15</span></button>
-              <button type="button" data-budget="30.00" aria-pressed="false"><strong>Detailed</strong><span>$30</span></button>
+              <button type="button" data-budget="5.00" aria-pressed="true"><span class="selection-mark" aria-hidden="true">✓</span>$5</button>
+              <button type="button" data-budget="15.00" aria-pressed="false"><span class="selection-mark" aria-hidden="true">✓</span>$15</button>
+              <button type="button" data-budget="30.00" aria-pressed="false"><span class="selection-mark" aria-hidden="true">✓</span>$30</button>
             </div>
-            <p id="preset-note" class="preset-note">Starting budgets, not quality guarantees. Edit the amount below.</p>
           </fieldset>
-          <label for="budget">Maximum task budget (USD)</label>
-          <input id="budget" name="budget" type="number" inputmode="decimal" min="0.40" step="0.01" value="5.00" required aria-describedby="budget-help budget-error">
-          <p id="budget-help" class="budget-help">Includes compute usage, model inference and review. Your agent must confirm it can track and cap these costs before spending.</p>
-          <p id="budget-error" class="field-error" role="status" hidden></p>
-          <p id="plan-context">The budget is a ceiling. Stop early when the brief is met or another edit is unlikely to help.</p>
-          <div class="plan-actions"><button id="copy" type="submit">Copy modeling plan</button><span id="copy-status" role="status"></span></div>
+          <label for="budget">Spending limit (USD, required)</label>
+          <input id="budget" name="budget" type="text" inputmode="decimal" value="5.00" required aria-describedby="budget-help budget-error">
+          <p id="budget-help" class="budget-help">Includes compute, AI model use and review. Your agent must confirm it can track and cap the total.</p>
+          <p id="budget-error" class="field-error" hidden></p>
+          <p id="plan-context">Spend less when the brief is met. A larger budget does not guarantee a better model.</p>
+          <div class="plan-actions"><button id="copy" type="submit">Copy plan to clipboard</button><span id="copy-status" role="status"></span></div>
           <details id="instructions"><summary>Review agent instructions</summary><pre id="agent-prompt" tabindex="0">Describe your model and set a maximum budget, then copy the plan to your agent. Read /compute/skill.md for the complete workflow.</pre></details>
         </form>
-        <p>Copy the plan to your agent to begin. Your agent manages the total budget; Compute caps each session. Your brief stays in this browser until you copy it.</p>
-        <noscript><p>Read <a href="/compute/skill.md">the agent guide</a> and give your agent your brief, intended use and maximum total budget.</p></noscript>
+        <p>Your brief stays in this browser. Copying the plan does not start work or charge you.</p>
+        <noscript><p>JavaScript is off. Read <a href="/compute/skill.md">the agent guide</a> and give your agent your brief, intended use and maximum total budget.</p></noscript>
       </div>
     </div>
     <div class="facts"><div><strong>GLB · BLEND · PNG</strong><span>Models, editable files and previews</span></div><div><strong>A ceiling, not a target</strong><span>Stop when further work adds little value</span></div><div><strong>Private by default</strong><span>Publishing is a separate decision</span></div></div>
-    <section aria-labelledby="workflow"><h2 id="workflow">From a clear brief to a useful model.</h2><div class="steps"><div><span class="number">01 / PLAN</span><h3>Define done. Approve the costs.</h3><p>Your agent turns the intended use into acceptance criteria, estimates the work and saves budget for review and export. You approve the plan and any required credit purchase.</p></div><div><span class="number">02 / REFINE</span><h3>Build, inspect, improve.</h3><p>Start with the main forms, inspect actual previews and fix the most valuable defects. Keep the best checkpoint. Stop when the brief is met or further edits are unlikely to help.</p></div><div><span class="number">03 / DELIVER</span><h3>Keep the files. Know the result.</h3><p>Download the model, preview and editable source before closing. Your agent reports what was checked, what remains, the actual cost and why it stopped.</p></div></div></section>
+    <section aria-labelledby="workflow"><h2 id="workflow">From brief to finished files</h2><div class="steps"><div><span class="number">01 / Plan</span><h3>Agree on the scope</h3><p>Your agent turns the intended use into acceptance criteria, estimates the work and saves budget for review and export. You approve the plan and any required credit purchase.</p></div><div><span class="number">02 / Refine</span><h3>Build and refine</h3><p>Start with the main forms, inspect actual previews and fix the most valuable defects. Keep the best checkpoint. Stop when the brief is met or further edits are unlikely to help.</p></div><div><span class="number">03 / Deliver</span><h3>Download and review</h3><p>Download the model, preview and editable source before closing. Your agent reports what was checked, what remains, the actual cost and why it stopped.</p></div></div></section>
     <section class="pricing" id="pricing" aria-labelledby="price-title">
       <div>
-        <h2 id="price-title">Compute is one part<br>of your budget.</h2>
+        <h2 id="price-title">How the costs add up</h2>
         <p id="price-description">$0.40 covers the first five running minutes. Each additional begun minute costs $0.05. Prepaid credit options: $5 or $20 USD.</p>
-        <p class="note">These rates cover the cloud workspace. Your task budget also includes model and review costs paid through your agent's provider.</p>
-        <p class="note">Buying prepaid credits is a separate upfront payment that your agent must show before you approve it. Unused credit stays in your wallet; it is not used-up task budget.</p>
+        <p class="note">These rates cover the cloud workspace. AI model use and review are billed through your agent’s provider.</p>
+        <p class="note">Your agent asks you to approve any prepaid credit purchase separately. Unused credits stay in your wallet and do not count as task usage.</p>
         <p class="note">No subscriptions or automatic top-ups. Two CPU cores, 4 GiB RAM, no GPU. Running idle time is billed; automatic shutdown starts after 60 idle seconds. Each resumed session has a new minimum charge.</p>
       </div>
       <div>
-        <h3>Let the agent plan the sessions.</h3>
+        <h3>One budget, several steps</h3>
         <p>Your total budget may cover several steps or sessions. Leave room for inspection, fixes and export. Extra time alone does not guarantee a better model.</p>
-        <details id="session-calculator">
+        <details id="session-calculator" hidden>
           <summary>Estimate a single compute session</summary>
           <label for="minutes">Reserved time: <strong id="duration">5 minutes</strong></label>
           <input id="minutes" type="range" min="5" max="30" step="1" value="5">
           <output for="minutes" id="estimate">$0.40 published estimate</output>
-          <p class="note">This calculator covers compute only and does not change your task plan. The hold caps one session's charge. Unused credit above the minimum is released after confirmed termination.</p>
+          <p class="note">Compute only; this does not change your plan. The reserved amount caps one session’s charge. Unused credit above the minimum returns after shutdown is confirmed.</p>
         </details>
-        <p id="availability" role="status">Checking live pricing and purchase availability…</p>
+        <p id="availability" role="status" hidden>Checking live pricing and purchase availability…</p>
         <button id="retry-pricing" type="button" hidden>Retry pricing check</button>
         <noscript><p>Check <a href="/api/blender/pricing">the pricing API</a> for current purchase status. JavaScript is optional for the agent API.</p></noscript>
       </div>
     </section>
-    <section><h2>Your model goes where you do.</h2><p>Use the exported files in your app, game, website or production pipeline. You can also bring them into <a href="https://agartha-dusky.vercel.app/">Agartha</a>. Downloads count toward the 256 MiB session allowance. Saved checkpoints are retained for seven days after the latest paid session; keep your own lasting copies.</p><div class="links"><a href="/compute/skill.md">Full quickstart ↗</a><a href="/compute/modeling.md">Modeling guide ↗</a><a href="/compute/openapi.json">OpenAPI contract ↗</a><a href="/agents/blender-billing.md">Billing and limits ↗</a></div></section>
+    <section><h2>Keep your model files</h2><p>Use the exported files in your app, game, website or production pipeline. You can also bring them into <a href="https://agartha-dusky.vercel.app/">Agartha</a>. Downloads count toward the 256 MiB session allowance. Saved checkpoints are retained for seven days after the latest paid session; keep your own lasting copies.</p><div class="links"><a href="/compute/skill.md">Agent quickstart</a><a href="/compute/modeling.md">Modeling guide</a><a href="/compute/openapi.json">API reference</a><a href="/agents/blender-billing.md">Billing and limits</a></div></section>
   </main>
   <footer><p>Agartha Compute is an independent service using Blender. It is not affiliated with or endorsed by Blender Foundation. Blender is a registered trademark of Blender Foundation. <a href="https://www.blender.org/about/license/">Software license</a> · <a href="https://www.blender.org/about/trademark-policy/">Trademark policy</a></p></footer>
   <script src="/compute/page.js" defer></script>
