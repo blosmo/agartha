@@ -7,13 +7,16 @@ import { afterEach, expect, it, vi } from 'vitest';
 import schema from './schema';
 
 const modules = import.meta.glob('./**/*.{ts,js}');
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 it('runs the Python broker through real Convex HTTP funding, reservation, checkpoint, settlement and resume', async () => {
   vi.stubEnv('AGARTHA_BILLING_GATEWAY_KEY', 'fixture-gateway');
   vi.stubEnv('AGARTHA_BILLING_BROKER_KEY', 'fixture-broker');
   vi.stubEnv('BLENDER_BILLING_ACTIVE', 'true');
   const t = convexTest({ schema, modules, transactionLimits: true });
+  const realNow = Date.now.bind(Date);
+  let clockOffsetMs = 0;
+  vi.spyOn(Date, 'now').mockImplementation(() => realNow() + clockOffsetMs);
   const token = 'a'.repeat(64);
   const actor = await t.mutation(anyApi.cloud.session.register, { token, name: 'Paid flow test', ipHash: 'paid-flow' });
   vi.stubEnv('BLENDER_TEST_OPERATOR_AGENT_IDS', actor.agentId);
@@ -24,6 +27,12 @@ it('runs the Python broker through real Convex HTTP funding, reservation, checkp
     try {
       const chunks: Buffer[] = [];
       for await (const chunk of req) chunks.push(Buffer.from(chunk));
+      if (req.method === 'POST' && req.url === '/fixture/advance-clock') {
+        clockOffsetMs += 61_000;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ offsetSeconds: clockOffsetMs / 1000 }));
+        return;
+      }
       const headers: Record<string, string> = {};
       for (const [key, value] of Object.entries(req.headers)) if (typeof value === 'string') headers[key] = value;
       const response = await t.fetch(req.url!, { method: req.method, headers, body: Buffer.concat(chunks) });
