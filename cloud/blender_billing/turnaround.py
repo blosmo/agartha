@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 FRAMES = 48
 FPS = 12
-VIDEO_RESERVE_SECONDS = 240
+VIDEO_RESERVE_SECONDS = 360
 
 START_CODE = """
 import bpy, json, os
