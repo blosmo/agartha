@@ -117,6 +117,23 @@
           "value": "no-referrer"
         }
       ]
+    },
+    {
+      "source": "/payments/return/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
     }
   ],
   "redirects": [
@@ -130,6 +147,28 @@
       ],
       "destination": "/payments/return/?legacy=1",
       "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.3dforagents.com"
+        }
+      ],
+      "destination": "https://3dforagents.com/compute/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.3dforagents.com"
+        }
+      ],
+      "destination": "https://3dforagents.com/:path*/",
+      "permanent": true
     },
     {
       "source": "/:path*",
