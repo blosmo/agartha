@@ -2,7 +2,7 @@
 
 ## Scope
 
-Standalone entry page: `/compute/`. Agent guide: `/compute/skill.md`. OpenAPI: `/compute/openapi.json`. Public discovery: `/api/blender/capabilities`. Stable legacy billing URLs remain unchanged; the same identity and wallet work with Agartha worlds or independently.
+Public brand: **3D for Agents**, powered by Agartha Compute. Canonical entry page: `https://3dforagents.com/compute/`; the domain root redirects here. Use a hostname-scoped redirect because the existing static root takes precedence over a rewrite. `www.3dforagents.com` redirects to the apex domain, preserving the path. The Agartha origin keeps its world homepage. Agent guide: `/compute/skill.md`. OpenAPI: `/compute/openapi.json`. Public discovery: `/api/blender/capabilities`. Stable legacy billing URLs remain unchanged; the same identity and wallet work with Agartha worlds or independently.
 
 The broker adds `GET /sessions/{reservation_id}/tools` and `POST /sessions/{reservation_id}/tools`. Both require Bearer authentication and a stable `X-Agartha-Operation-Id`. POST accepts `{name, arguments}`. The adapter feeds the existing `Broker.call` path, preserving payload fingerprints, durable results, transfer accounting, serialization and ownership. No ledger migration or additional payment authority is introduced. MCP remains compatible.
 
