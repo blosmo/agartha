@@ -1,3 +1,4 @@
+import { radioGroupKeyboard } from "../controls/radioGroupKeyboard";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { ActionEnvelope, ActionResult } from "@agartha/protocol/actions";
@@ -927,7 +928,7 @@ export function App({
     const seed = TERRAIN_SEEDS.find((terrainSeed) => terrainSeed.id === terrainSeedId) ?? DEFAULT_TERRAIN_SEED;
     const seededCells = generateTerrain(seed);
     setCells(seededCells);
-    setUndoStack([]);
+    setUndoStack((current) => [cells, ...current].slice(0, 24));
     setRedoStack([]);
     setTick(0);
     setIsPlaying(false);
@@ -1047,7 +1048,7 @@ export function App({
     const seededCells = generateTerrain(seed);
     setTerrainSeedId(seed.id);
     setCells(seededCells);
-    setUndoStack([]);
+    setUndoStack((current) => [cells, ...current].slice(0, 24));
     setRedoStack([]);
     setTick(0);
     setIsPlaying(false);
@@ -1126,7 +1127,7 @@ export function App({
       data-ui-mode={uiMode}
     >
       <h1 className="sr-only" id="agartha-app-title">
-        Agartha first demo
+        Agartha canvas
       </h1>
       <AgentStateBridge
         availableTools={availableAgentTools}
@@ -1193,11 +1194,11 @@ export function App({
               <CollaborationPanel context={collaborationContext} worldSource={worldSource} />
             </div>
             <div className="agartha-side-panel__group" aria-label="Canvas activity" data-agent-region="canvas-activity">
-              <h2>Canvas Activity</h2>
+              <h2>Canvas activity</h2>
               <EventHistoryPanel events={events} />
             </div>
             <div className="agartha-side-panel__group" aria-label="Agent controls" data-agent-region="automation">
-              <h2>Agent Controls</h2>
+              <h2>Agent controls</h2>
               <AgentDeploymentPanel commands={AGENT_DEPLOY_COMMANDS} onAgentsRan={applyAgentRunnerSnapshot} roster={SCRIPTED_AGENT_ROSTER} />
             </div>
             <div className="agartha-side-panel__group" aria-label="Inspect" data-agent-region="inspect">
@@ -1272,11 +1273,11 @@ function ModeSwitch({
   readonly onChangeMode: (mode: UIMode) => void;
 }) {
   return (
-    <div className="mode-switch gradient-border gradient-border-to-r" role="radiogroup" aria-label="Interaction mode" data-agent-region="interaction-mode">
-      <button aria-checked={mode === "human"} data-agent-id="mode-human" onClick={() => onChangeMode("human")} role="radio" type="button">
+    <div className="mode-switch gradient-border gradient-border-to-r" role="radiogroup" onKeyDown={radioGroupKeyboard} aria-label="Interaction mode" data-agent-region="interaction-mode">
+      <button aria-checked={mode === "human"} tabIndex={(mode === "human") ? 0 : -1} data-agent-id="mode-human" onClick={() => onChangeMode("human")} role="radio" type="button">
         Human
       </button>
-      <button aria-checked={mode === "agent"} data-agent-id="mode-agent" onClick={() => onChangeMode("agent")} role="radio" type="button">
+      <button aria-checked={mode === "agent"} tabIndex={(mode === "agent") ? 0 : -1} data-agent-id="mode-agent" onClick={() => onChangeMode("agent")} role="radio" type="button">
         Agent
       </button>
     </div>

@@ -21,6 +21,8 @@ export class RoomCamera {
   pitch = 0;
   readonly keys = new Set<string>();
   movement = { x: 0, y: 0 };
+  private verticalSpeed = 0;
+  private grounded = true;
   private candidate = new THREE.Vector3();
 
   enter(x: number, z: number, aspect: number) {
@@ -28,11 +30,18 @@ export class RoomCamera {
     this.yaw = 0;
     this.pitch = 0;
     this.active = true;
+    this.verticalSpeed = 0;
+    this.grounded = true;
     this.clearInput();
     this.resize(aspect);
     this.look(0, 0);
   }
   exit() { this.active = false; this.clearInput(); }
+  jump() {
+    if (!this.active || !this.grounded) return;
+    this.verticalSpeed = 7;
+    this.grounded = false;
+  }
   clearInput() { this.keys.clear(); this.movement = { x: 0, y: 0 }; }
   resize(aspect: number) { this.camera.aspect = aspect; this.camera.updateProjectionMatrix(); }
   look(dx: number, dy: number) {
@@ -46,7 +55,8 @@ export class RoomCamera {
     const x = this.movement.x + key('d', 'ArrowRight') - key('a', 'ArrowLeft');
     const y = this.movement.y + key('s', 'ArrowDown') - key('w', 'ArrowUp');
     const length = Math.max(1, Math.hypot(x, y));
-    const distance = Math.min(Math.max(seconds, 0), .05) * 8;
+    const dt = Math.min(Math.max(seconds, 0), .05);
+    const distance = dt * (this.keys.has('Shift') ? 14 : 8);
     const dx=(x * Math.cos(this.yaw) + y * Math.sin(this.yaw)) / length * distance;
     const dz=(y * Math.cos(this.yaw) - x * Math.sin(this.yaw)) / length * distance;
     // Resolve axes separately so the player slides along walls.
@@ -54,5 +64,18 @@ export class RoomCamera {
     if(!blocked?.(this.camera.position,this.candidate))this.camera.position.x=this.candidate.x;
     this.candidate.copy(this.camera.position);this.candidate.z+=dz;
     if(!blocked?.(this.camera.position,this.candidate))this.camera.position.z=this.candidate.z;
+    // Gravity also runs when standing on an object, so walking off it starts a fall.
+    this.candidate.copy(this.camera.position);
+    this.candidate.y = Math.max(1.8, this.camera.position.y + this.verticalSpeed * dt - 10 * dt * dt);
+    const descending = this.candidate.y <= this.camera.position.y;
+    this.verticalSpeed -= 20 * dt;
+    if (blocked?.(this.camera.position, this.candidate)) {
+      this.verticalSpeed = 0;
+      this.grounded = descending;
+    } else {
+      this.camera.position.y = this.candidate.y;
+      this.grounded = this.camera.position.y <= 1.8;
+      if (this.grounded) this.verticalSpeed = 0;
+    }
   }
 }

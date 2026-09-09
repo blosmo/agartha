@@ -25,7 +25,7 @@ export function AgentCommandPanel({ commands = [], mode = "human", onRunCommand 
 
   return (
     <section className="inspector-panel agent-command-panel gradient-border gradient-border-to-br" aria-label="Agent command">
-      <h2>Agent Command</h2>
+      <h2>Agent command</h2>
       <form className="agent-command-panel__form" data-agent-id="agent-command-form" onSubmit={submitCommand}>
         <input
           aria-label="Agent command input"
@@ -67,7 +67,7 @@ export function AgentCliBar({ commands = [], context = [], onRunCommand }: Agent
   }
 
   return (
-    <section className="agent-cli-bar gradient-border-2 animate-gradient-border" aria-label="Agent CLI" data-agent-region="agent-cli">
+    <section className="agent-cli-bar gradient-border-2" aria-label="Agent CLI" data-agent-region="agent-cli">
       <div className="agent-cli-bar__context" aria-label="Agent context">
         {context.map((item) => (
           <span key={item.label}>
@@ -75,10 +75,11 @@ export function AgentCliBar({ commands = [], context = [], onRunCommand }: Agent
           </span>
         ))}
       </div>
+      <label htmlFor="agent-cli-input">Agent command</label>
       <form className="agent-cli-bar__form" onSubmit={submitCommand}>
         <span aria-hidden="true">&gt;</span>
         <input
-          aria-label="Agent CLI input"
+          id="agent-cli-input"
           data-agent-id="agent-cli-input"
           onChange={(event) => setCommand(event.currentTarget.value)}
           spellCheck="false"

@@ -48,6 +48,8 @@ export function BoardCanvas({
   const textureCacheRef = useRef(new ChunkTextureCache());
   const gpuSurfaceRef = useRef<BoardGpuSurface | null>(null);
   const cameraRef = useRef(DEFAULT_CAMERA);
+  const keyboardAnchor = useRef<WorldCoord | undefined>(undefined);
+  useEffect(() => { keyboardAnchor.current = undefined; }, [toolSettings.mode]);
   const dragStart = useRef<{
     pointerId: number;
     x: number;
@@ -134,6 +136,27 @@ export function BoardCanvas({
     }
   }
 
+  function resetView() {
+    const host = hostRef.current;
+    if (!host?.clientWidth) return;
+    const point = absoluteCoord(selectedCoord);
+    applyCamera({ zoom: DEFAULT_CAMERA.zoom, x: host.clientWidth / 2 - (point.x + .5) * DEFAULT_CAMERA.zoom, y: host.clientHeight / 2 - (point.y + .5) * DEFAULT_CAMERA.zoom }, true);
+  }
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || typeof ResizeObserver === 'undefined') return;
+    let width = 0, height = 0;
+    const observer = new ResizeObserver(() => {
+      if (!host.clientWidth) return;
+      if (!width) resetView();
+      else applyCamera({ ...cameraRef.current, x: cameraRef.current.x + (host.clientWidth - width) / 2, y: cameraRef.current.y + (host.clientHeight - height) / 2 }, true);
+      width = host.clientWidth; height = host.clientHeight;
+    });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
   function applyZoom(nextZoom: number, anchor?: { readonly x: number; readonly y: number }) {
     const boundedZoom = Math.max(4, Math.min(18, nextZoom));
     const currentCamera = cameraRef.current;
@@ -155,16 +178,24 @@ export function BoardCanvas({
     );
   }
 
-  function selectRelativeCell(deltaX: number, deltaY: number) {
+  function selectRelativeCell(deltaX: number, deltaY: number, extend: boolean) {
     const absolute = absoluteCoord(selectedCoord);
     const nextCoord = screenAbsoluteToCoord(absolute.x + deltaX, absolute.y + deltaY);
+    keyboardAnchor.current = extend ? keyboardAnchor.current ?? selectedCoord : undefined;
+    onMarqueeSelect(keyboardAnchor.current ? selectionFromCoords(keyboardAnchor.current, nextCoord) : { height: 1, origin: nextCoord, width: 1 });
     onSelectCell(nextCoord);
-    onMarqueeSelect({ height: 1, origin: nextCoord, width: 1 });
+    const host = hostRef.current, point = absoluteCoord(nextCoord), current = cameraRef.current;
+    if (host?.clientWidth) {
+      const x = (point.x + .5) * current.zoom + current.x, y = (point.y + .5) * current.zoom + current.y;
+      if (x < 32 || x > host.clientWidth - 32 || y < 100 || y > host.clientHeight - 180) {
+        applyCamera({ ...current, x: host.clientWidth / 2 - (point.x + .5) * current.zoom, y: host.clientHeight / 2 - (point.y + .5) * current.zoom }, true);
+      }
+    }
   }
 
   return (
     <div
-      aria-label="Agartha cellular world board. Use arrow keys to move the selected cell, Enter to apply the active tool, plus and minus to zoom, and 0 to reset view."
+      aria-label="Agartha cellular world board. Use arrow keys to move the selected cell, Shift and arrow keys to extend a selection, Enter to apply the active tool, Escape to clear the selection, plus and minus to zoom, and 0 to reset view."
       className="board-canvas"
       data-agent-id="board-canvas"
       data-tool={toolSettings.mode}
@@ -173,28 +204,46 @@ export function BoardCanvas({
       tabIndex={0}
       data-testid="board-canvas"
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey || event.altKey) return;
+        if (event.key === 'Escape') {
+          keyboardAnchor.current = undefined;
+          onMarqueeSelect({ height: 1, origin: selectedCoord, width: 1 });
+          return;
+        }
         if (event.key === "ArrowUp") {
           event.preventDefault();
-          selectRelativeCell(0, -1);
+          selectRelativeCell(0, -1, event.shiftKey);
           return;
         }
         if (event.key === "ArrowDown") {
           event.preventDefault();
-          selectRelativeCell(0, 1);
+          selectRelativeCell(0, 1, event.shiftKey);
           return;
         }
         if (event.key === "ArrowLeft") {
           event.preventDefault();
-          selectRelativeCell(-1, 0);
+          selectRelativeCell(-1, 0, event.shiftKey);
           return;
         }
         if (event.key === "ArrowRight") {
           event.preventDefault();
-          selectRelativeCell(1, 0);
+          selectRelativeCell(1, 0, event.shiftKey);
           return;
         }
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
+          if (keyboardAnchor.current && selection) {
+            if (toolSettings.mode === 'marquee') return;
+            if (toolSettings.mode === 'shape' || toolSettings.mode === 'line') {
+              const coords = toolSettings.mode === 'shape' ? shapeCoordsFromSelection(selection, toolSettings.shapeMode)
+                : lineCoordsFromEndpoints(keyboardAnchor.current, selectedCoord, { endArrow: toolSettings.lineEndArrow, startArrow: toolSettings.lineStartArrow, thickness: toolSettings.lineThickness });
+              if (onApplyShape) onApplyShape(coords);
+              else if (onApplyStroke) onApplyStroke(coords);
+              else coords.forEach(onApplyTool);
+              keyboardAnchor.current = undefined;
+              return;
+            }
+          }
           onApplyTool(selectedCoord);
           return;
         }
@@ -210,10 +259,12 @@ export function BoardCanvas({
         }
         if (event.key === "0") {
           event.preventDefault();
-          applyCamera(DEFAULT_CAMERA, true);
+          resetView();
         }
       }}
       onPointerDown={(event) => {
+        if ((event.target as HTMLElement).closest('button')) return;
+        keyboardAnchor.current = undefined;
         const canStroke = isStrokeTool(toolSettings.mode);
         const canShapeDrag = toolSettings.mode === "shape";
         const canLineDrag = toolSettings.mode === "line";
@@ -418,7 +469,7 @@ export function BoardCanvas({
         <button
           aria-label="Reset view"
           data-agent-id="reset-view"
-          onClick={() => applyCamera(DEFAULT_CAMERA, true)}
+          onClick={() => resetView()}
           onPointerDown={(event) => event.stopPropagation()}
           type="button"
         >

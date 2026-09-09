@@ -51,7 +51,14 @@ const dir=await mkdtemp(join(tmpdir(),'agartha-hosted-headless-')),artifacts=[];
 for(const group of ['vessel','bench'] as const){
  const hashes=new Set<string>();
  for(const view of ['isometric','front','side','top']){
-  const response=await fetch(`${base}${roomPath}/preview?view=${view}&focus=${focusByGroup[group].join(',')}`,{headers:{Authorization:`Bearer ${identity.token}`},signal:AbortSignal.timeout(120000)});
+  let response:Response|undefined;
+  for(let attempt=0;attempt<3;attempt++){
+   response=await fetch(`${base}${roomPath}/preview?view=${view}&focus=${focusByGroup[group].join(',')}`,{headers:{Authorization:`Bearer ${identity.token}`},signal:AbortSignal.timeout(120000)});
+   if(response.status!==429||attempt===2)break;
+   const seconds=Number(response.headers.get('Retry-After')??60);if(!Number.isFinite(seconds)||seconds<1||seconds>60)throw new Error('Invalid preview retry delay.');
+   await response.body?.cancel();console.log(`Waiting ${seconds} seconds for the preview window.`);await new Promise(resolve=>setTimeout(resolve,seconds*1000+100));
+  }
+  if(!response)throw new Error('No preview response.');
   if(!response.ok||response.headers.get('X-Agartha-Preview-View')!==view||response.headers.get('Content-Type')!=='image/png')throw new Error(`Hosted ${group}/${view} preview failed (${response.status}).`);
   const bytes=Buffer.from(await response.arrayBuffer());if(!bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw new Error('Expected PNG data.');
   const hash=createHash('sha256').update(bytes).digest('hex'),file=join(dir,`${group}-${view}.png`);hashes.add(hash);await writeFile(file,bytes);artifacts.push({group,view,file,hash,snapshot:response.headers.get('X-Agartha-Snapshot')});

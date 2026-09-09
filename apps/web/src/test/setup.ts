@@ -29,3 +29,7 @@ Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
       }) as unknown as CanvasRenderingContext2D,
   ),
 });
+
+// jsdom has no native dialog implementation; browser QA verifies modality.
+HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+HTMLDialogElement.prototype.close = function () { this.open = false; };
