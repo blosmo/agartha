@@ -10,7 +10,7 @@ const response = () => Response.json({ usage: { input_tokens: 1000, output_token
 describe('Flare references', () => {
   it('pins one explicit Flare image and leaves allowance for modeling', () => {
     const request = referenceRequest(input);
-    expect(request.body).toMatchObject({ model: 'openai/gpt-image-2.5-flare', n: 1, size: '1536x1536', quality: 'high', output_format: 'jpeg' });
+    expect(request.body).toMatchObject({ model: 'openai/gpt-image-2.5-flare', n: 1, size: '1536x1536', providerOptions: { openai: { quality: 'high', outputFormat: 'jpeg', outputCompression: 85 } } });
     expect(request.maxCostCents).toBeLessThan(50);
     expect(() => referenceRequest({ ...input, remainingCents: 100 })).toThrow('modeling');
     expect(() => referenceRequest({ ...input, brief: 'x'.repeat(4001) })).toThrow('brief');
@@ -23,6 +23,13 @@ describe('Flare references', () => {
     expect(call.mock.calls[0]).toEqual(['claimManagedInference', expect.objectContaining({ kind: 'reference' })]);
     expect(call).toHaveBeenLastCalledWith('completeManagedInference', expect.objectContaining({ chargeCents: 8 }));
     expect(fetcher.mock.calls[0][0]).toBe('https://ai-gateway.vercel.sh/v1/images/generations');
+  });
+  it('settles known usage before rejecting an unexpected large PNG', async () => {
+    const call = ledger();
+    const png = Buffer.concat([Buffer.from([137, 80, 78, 71]), Buffer.alloc(3_700_000)]).toString('base64');
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ usage: { input_tokens: 467, output_tokens: 2511 }, data: [{ b64_json: png }] }));
+    await expect(generateReference(input, call as LedgerCall, 'credential', fetcher)).rejects.toThrow('usable reference');
+    expect(call).toHaveBeenLastCalledWith('completeManagedInference', expect.objectContaining({ chargeCents: 8 }));
   });
   it('does not retry or fabricate usage for ambiguous requests', async () => {
     const call = ledger(), fetcher = vi.fn().mockRejectedValue(new Error('connection lost'));

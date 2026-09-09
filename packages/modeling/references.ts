@@ -15,7 +15,8 @@ export function referenceRequest(input: ReferenceInput) {
   const inputBound = Buffer.byteLength(prompt) + 2048;
   const maxCostCents = Math.ceil((inputBound * 8 + MAX_OUTPUT_TOKENS * 30) / 10_000);
   if (!Number.isSafeInteger(input.remainingCents) || input.remainingCents < maxCostCents + 100) throw new BillingHttpError(409, 'Keep enough budget for modeling after the reference sheet.');
-  const body = { model: REFERENCE_MODEL, prompt, n: 1, size: '1536x1536', quality: 'high', output_format: 'jpeg', output_compression: 85 };
+  // Gateway forwards OpenAI-specific image options through its provider namespace.
+  const body = { model: REFERENCE_MODEL, prompt, n: 1, size: '1536x1536', providerOptions: { openai: { quality: 'high', outputFormat: 'jpeg', outputCompression: 85 } } };
   return { body, maxCostCents, inputBound, fingerprint: createHash('sha256').update(JSON.stringify(body)).digest('hex') };
 }
 
@@ -32,12 +33,14 @@ export async function generateReference(input: ReferenceInput, ledger: LedgerCal
     throw new BillingHttpError(503, 'Reference generation outcome is uncertain; automatic retries are disabled.');
   }
   if (!response.ok) {
+    console.warn('Reference provider rejected request', { jobId: input.jobId, status: response.status });
     const rejected = [400, 401, 402, 403, 404, 413, 422, 429].includes(response.status);
     await ledger('completeManagedInference', { ...ids, ...(rejected ? { chargeCents: 0 } : { ambiguous: true }) });
     throw new BillingHttpError(503, 'Reference generation is temporarily unavailable.');
   }
   let data: any;
   let chargeCents: number;
+  let stage = 'read_response';
   try {
     const reader = response.body?.getReader();
     if (!reader) throw new Error('Empty response');
@@ -45,10 +48,13 @@ export async function generateReference(input: ReferenceInput, ledger: LedgerCal
     for (;;) {
       const { done, value } = await reader.read(); if (done) break;
       bytes += value.length;
-      if (bytes > 4_000_000) { await reader.cancel(); throw new Error('Image response exceeds its limit.'); }
+      // Allow usage accounting even if a provider unexpectedly returns a larger PNG.
+      if (bytes > 8_000_000) { await reader.cancel(); throw new Error('Image response exceeds its limit.'); }
       raw += decoder.decode(value, { stream: true });
     }
+    stage = 'parse_response';
     data = JSON.parse(raw + decoder.decode());
+    stage = 'validate_usage';
     const usage = data.usage;
     const incoming = usage?.input_tokens, outgoing = usage?.output_tokens;
     if (!Number.isSafeInteger(incoming) || incoming < 0 || incoming > inputBound || !Number.isSafeInteger(outgoing) || outgoing < 0 || outgoing > MAX_OUTPUT_TOKENS) throw new Error('Image usage is missing or exceeds its bound.');
@@ -56,8 +62,10 @@ export async function generateReference(input: ReferenceInput, ledger: LedgerCal
     if (!Number.isSafeInteger(imageTokens) || imageTokens < 0 || imageTokens > incoming) throw new Error('Invalid image input usage.');
     chargeCents = Math.ceil(((incoming - imageTokens) * 5 + imageTokens * 8 + outgoing * 30) / 10_000);
     if (chargeCents > maxCostCents) throw new Error('Reference cost exceeds its reservation.');
+    stage = 'settle_usage';
     await ledger('completeManagedInference', { ...ids, chargeCents });
   } catch {
+    console.warn('Reference response could not be settled', { jobId: input.jobId, stage });
     await ledger('completeManagedInference', { ...ids, ambiguous: true });
     throw new BillingHttpError(503, 'Reference usage requires reconciliation.');
   }
