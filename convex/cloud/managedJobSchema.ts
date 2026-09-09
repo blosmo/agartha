@@ -5,7 +5,7 @@ export const managedJobTables = {
   managedJobs: defineTable({
     jobId: v.string(), requestId: v.string(), agentId: v.string(), livemode: v.boolean(), brief: v.string(), budgetCents: v.number(), reservationId: v.string(),
     status: managedStatus, cancelled: v.boolean(), progress: v.string(), executorId: v.optional(v.string()),
-    reservedAiCents: v.number(), chargedAiCents: v.number(), pendingAiCents: v.number(), releasedAiCents: v.number(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()),
+    reservedAiCents: v.number(), chargedAiCents: v.number(), pendingAiCents: v.number(), releasedAiCents: v.number(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()), videoReady: v.optional(v.boolean()),
     createdAt: v.number(), updatedAt: v.number(), deadlineAt: v.number(), finishedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]).index("by_owner_request", ["agentId", "livemode", "requestId"]).index("by_status", ["status", "createdAt"]),
   managedInferenceOperations: defineTable({

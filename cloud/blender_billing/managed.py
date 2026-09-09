@@ -14,8 +14,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 import httpx
+from .turnaround import render_turnaround, remaining_seconds, VIDEO_RESERVE_SECONDS
 
-NAMES = {'model.glb', 'model.blend', 'preview.png'}
+BASE_NAMES = {'model.glb', 'model.blend', 'preview.png'}
+NAMES = BASE_NAMES | {'turnaround.mp4'}
 FILE_LIMIT = 16 * 1024 * 1024
 EXPORT_CODE = """
 import bpy, os
@@ -56,7 +58,7 @@ class ManagedFiles:
         return self.root / hashlib.sha256(job_id.encode()).hexdigest()
 
     def save(self, job_id: str, files: dict[str, bytes]) -> None:
-        if set(files) != NAMES or any(len(value) > FILE_LIMIT for value in files.values()):
+        if not BASE_NAMES.issubset(files) or set(files) - NAMES or any(len(value) > FILE_LIMIT for value in files.values()):
             raise ValueError('Invalid managed artifact set.')
         with self.storage.transaction():
             directory = self.directory(job_id)
@@ -89,6 +91,13 @@ class ManagedFiles:
             if len(payload) > FILE_LIMIT:
                 raise ValueError('Artifact exceeds its limit.')
             return payload
+
+    def add_video(self, job_id: str, payload: bytes) -> None:
+        if len(payload) > FILE_LIMIT or len(payload) < 1000 or payload[4:8] != b'ftyp':
+            raise ValueError('Invalid MP4 artifact.')
+        with self.storage.transaction():
+            files = {name: self.read(job_id, name) for name in BASE_NAMES}
+            self.save(job_id, {**files, 'turnaround.mp4': payload})
 
     def cleanup(self) -> None:
         import shutil
@@ -129,6 +138,9 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
             row = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
             if row.get('cancelled') or row.get('cancelRequested') or row['status'] == 'cancelled':
                 status, progress = 'cancelled', 'Stopped at your request.'
+                break
+            if saved and running and remaining_seconds(broker.owned(token, reservation)) <= VIDEO_RESERVE_SECONDS:
+                status, progress = 'partial', 'Stopped refining to reserve time for the turnaround video.'
                 break
             done = threading.Event()
             def heartbeat():
@@ -176,7 +188,7 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
             if 'error' in frame or result.get('isError') or f'MANAGED_EXPORT_OK:{executor}:{turn}' not in json.dumps(result):
                 continue
             try:
-                exported = {name: broker.download(token, reservation, name, FILE_LIMIT) for name in sorted(NAMES)}
+                exported = {name: broker.download(token, reservation, name, FILE_LIMIT) for name in sorted(BASE_NAMES)}
                 image = preview_image(exported['preview.png'])
                 if not exported['model.glb'].startswith(b'glTF') or not exported['model.blend'].startswith(b'BLENDER'):
                     raise ValueError('Invalid exported model.')
@@ -194,6 +206,15 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
         status = 'partial' if saved else 'failed'
         progress = 'Stopped because the remaining budget, service availability, or execution limit did not permit another safe step.'
     finally:
+        if saved and status != 'cancelled':
+            try:
+                video = render_turnaround(broker, token, reservation, lambda text: broker.ledger.call('heartbeatManagedJob', jobId=job_id, executorId=executor, progress=text))
+                files.add_video(job_id, video)
+                broker.ledger.call('recordManagedVideo', jobId=job_id, executorId=executor)
+                progress = (progress + ' A 360-degree turnaround MP4 is included.')[:1000]
+            except Exception:
+                status = 'partial'
+                progress = (progress + ' The video could not finish within the available rendering time; model files are preserved.')[:1000]
         try:
             broker.stop(token, reservation)
         finally:

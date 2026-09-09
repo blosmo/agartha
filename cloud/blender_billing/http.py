@@ -44,11 +44,11 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None], managed_star
             if request.url.path.startswith("/sessions/") and not rest_tools:
                 if "name" in request.path_params:
                     name = request.path_params["name"]
-                    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}\.(glb|png|blend)", name):
+                    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}\.(glb|png|blend|mp4)", name):
                         raise ClientRequestError("Invalid export filename.")
                     limit = int(request.headers.get("x-agartha-response-limit", str(DEFAULT_RESPONSE_BYTES)))
                     payload = await run_in_threadpool(broker.download, credential, reservation_id, name, limit)
-                    media_type = "image/png" if name.endswith('.png') else "model/gltf-binary" if name.endswith('.glb') else "application/octet-stream"
+                    media_type = "video/mp4" if name.endswith('.mp4') else "image/png" if name.endswith('.png') else "model/gltf-binary" if name.endswith('.glb') else "application/octet-stream"
                     return Response(payload, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
                 elif request.method == "GET":
                     row = await run_in_threadpool(broker.owned, credential, reservation_id)
@@ -143,7 +143,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None], managed_star
                     raise ClientRequestError('Managed artifacts unavailable.')
                 name = request.path_params['name']
                 payload = await run_in_threadpool(managed_files.read, job_id, name)
-                media = 'image/png' if name.endswith('.png') else 'model/gltf-binary' if name.endswith('.glb') else 'application/octet-stream'
+                media = 'video/mp4' if name.endswith('.mp4') else 'image/png' if name.endswith('.png') else 'model/gltf-binary' if name.endswith('.glb') else 'application/octet-stream'
                 return Response(payload, media_type=media, headers={'Cache-Control': 'no-store', 'Content-Disposition': f'attachment; filename="{name}"'})
             if managed_start is None:
                 return JSONResponse({'error': 'Managed modeling unavailable.'}, status_code=503)

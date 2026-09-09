@@ -157,7 +157,19 @@ export const recordManagedCheckpoint = internalMutation({
   handler: async (ctx, args) => {
     const row = await job(ctx, args.jobId);
     if (!row.executorId || row.executorId !== args.executorId) throw new Error("Stale executor.");
-    await ctx.db.patch(row._id, { artifactsReady: true, visuallyInspected: false, updatedAt: Date.now() });
+    await ctx.db.patch(row._id, { artifactsReady: true, videoReady: false, visuallyInspected: false, updatedAt: Date.now() });
     return { artifactsReady: true, visuallyInspected: false };
+  },
+});
+
+// Video delivery changes artifact metadata only; compute remains on its session ledger.
+export const recordManagedVideo = internalMutation({
+  args: { jobId: v.string(), executorId: v.string() },
+  handler: async (ctx, args) => {
+    const row = await job(ctx, args.jobId);
+    if (!row.executorId || row.executorId !== args.executorId) throw new Error("Stale executor.");
+    if (!row.artifactsReady) throw new Error("A model checkpoint is required before recording video.");
+    await ctx.db.patch(row._id, { videoReady: true, updatedAt: Date.now() });
+    return { videoReady: true };
   },
 });

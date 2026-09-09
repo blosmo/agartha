@@ -60,7 +60,7 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
       registration: '/api/session', pricing: '/api/blender/pricing', balance: '/api/blender/balance',
       purchases: '/api/blender/purchases', quotes: '/api/blender/quotes', sessions: '/api/blender/sessions',
       managed: { enabled: managedEnabled(undefined, req), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, jobs: '/api/blender/jobs' },
-      interfaces: ['http', 'mcp'], artifactFormats: ['glb', 'blend', 'png'],
+      interfaces: ['http', 'mcp'], artifactFormats: ['glb', 'blend', 'png', 'mp4'],
       authentication: 'Bearer agent token; the same stable identity owns Agartha and Compute credits.',
       availability: 'Read pricing for purchase status. Quotes check compute activation and account eligibility. Discovery does not guarantee capacity.',
     });

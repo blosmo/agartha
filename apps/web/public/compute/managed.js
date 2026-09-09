@@ -70,7 +70,7 @@
   function render(data) {
     const done = terminal.has(data.status);
     el('job').hidden = false;
-    el('progress').textContent = `${data.status || 'Request saved'}${typeof data.progress === 'string' ? ` — ${data.progress}` : ''}`;
+    el('progress').textContent = `${data.status || 'Request saved'}${typeof data.progress === 'string' ? ` — ${data.progress}` : ''}${done && typeof data.reason === 'string' && data.reason !== data.progress ? ` — ${data.reason}` : ''}`;
     const charged = (data.chargedAiCents || 0) + (data.computeChargedCents || 0);
     el('cost').textContent = `${money(charged)} charged of ${money(job.budgetCents)} cap. ${money(data.pendingAiCents || 0)} AI usage pending reconciliation.${data.computeStatus ? ` Compute: ${data.computeStatus}.` : ''}`;
     el('inspection').textContent = data.visuallyInspected === true ? 'Astra inspected a preview. Review the downloaded model for your intended use.' : 'Visual inspection has not been confirmed.';
@@ -79,8 +79,8 @@
     for (const artifact of data.artifacts || []) {
       const value = typeof artifact === 'string' ? artifact : artifact.name || artifact.url || '';
       const name = value.split('/').pop()?.split('?')[0];
-      if (!['model.glb', 'model.blend', 'preview.png'].includes(name)) continue;
-      const button = document.createElement('button'); button.type = 'button'; button.textContent = `Download ${name}`; button.addEventListener('click', () => download(name, button)); el('artifacts').append(button);
+      if (!['model.glb', 'model.blend', 'preview.png', 'turnaround.mp4'].includes(name)) continue;
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = name === 'turnaround.mp4' ? 'Download 360° video' : `Download ${name}`; button.addEventListener('click', () => download(name, button)); el('artifacts').append(button);
     }
     return done;
   }

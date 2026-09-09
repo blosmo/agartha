@@ -6,7 +6,7 @@ import { managedEnabled } from './http.js';
 const names = ['model.glb', 'model.blend', 'preview.png'];
 function links(row: Record<string, any>) {
   const base = `/api/blender/jobs/${encodeURIComponent(row.jobId)}`;
-  return { ...row, statusUrl: base, startUrl: `${base}/start`, cancelUrl: `${base}/cancel`, artifacts: row.artifactsReady ? names.map(name => ({ name, url: `${base}/artifacts/${name}` })) : [] };
+  return { ...row, statusUrl: base, startUrl: `${base}/start`, cancelUrl: `${base}/cancel`, artifacts: row.artifactsReady ? [...names, ...(row.videoReady ? ['turnaround.mp4'] : [])].map(name => ({ name, url: `${base}/artifacts/${name}` })) : [] };
 }
 export async function managedJobs(req: BillingRequest, res: ServerResponse, path: string, token: string, ledger: LedgerCall, livemode: boolean) {
   if (path === 'jobs' && req.method === 'POST') {
@@ -16,7 +16,7 @@ export async function managedJobs(req: BillingRequest, res: ServerResponse, path
     jsonResponse(res, links(row), 201);
     return;
   }
-  const match = /^jobs\/([A-Za-z0-9_-]{1,80})(?:\/(start|cancel|artifacts\/(?:model\.glb|model\.blend|preview\.png)))?$/.exec(path);
+  const match = /^jobs\/([A-Za-z0-9_-]{1,80})(?:\/(start|cancel|artifacts\/(?:model\.glb|model\.blend|preview\.png|turnaround\.mp4)))?$/.exec(path);
   if (!match) throw new BillingHttpError(404, 'Job not found.');
   const jobId = match[1], action = match[2];
   const row = await ledger<Record<string, any>>('getManagedJob', { token, jobId });

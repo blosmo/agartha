@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import time
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,11 @@ from .ledger import LedgerError
 from starlette.testclient import TestClient
 
 class ManagedTests(unittest.TestCase):
+    def setUp(self):
+        self.video = patch('cloud.blender_billing.managed.render_turnaround', return_value=b'0000ftyp' + bytes(1000))
+        self.video.start()
+        self.addCleanup(self.video.stop)
+
     def test_files_are_private_bounded_and_expire(self):
         with tempfile.TemporaryDirectory() as directory:
             files = ManagedFiles(Path(directory), StorageCoordinator(), lambda: None)
@@ -47,6 +53,7 @@ class ManagedTests(unittest.TestCase):
 
     def test_saved_checkpoint_published_before_worker_can_finish(self):
         broker = Mock(); events = []
+        broker.owned.return_value = {'status': 'running', 'launchClaimedAt': time.time() * 1000, 'reservedMinutes': 10}
         def ledger(op, **kw):
             events.append(op)
             if op == 'claimManagedJob': return {'claimed': True}
@@ -67,6 +74,7 @@ class ManagedTests(unittest.TestCase):
 
     def test_new_checkpoint_does_not_inherit_previous_inspection_after_record_failure(self):
         broker, files = Mock(), Mock()
+        broker.owned.return_value = {'status': 'running', 'launchClaimedAt': time.time() * 1000, 'reservedMinutes': 10}
         recorded = 0
         def ledger(op, **kw):
             nonlocal recorded

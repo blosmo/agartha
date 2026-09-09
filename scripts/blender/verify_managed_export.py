@@ -51,3 +51,23 @@ assert len(doc['meshes']) == 1
 assert (output / 'preview.png').stat().st_size > 1000
 assert (output / 'model.blend').stat().st_size > 1000
 print('MANAGED_EXPORT_RESULT ' + json.dumps({'modelOnly': True, 'meshes': 1, 'preview': True, 'editableSource': True}))
+
+# Run the actual chunked movie pipeline with the same camera and classified model.
+import importlib.util
+spec = importlib.util.spec_from_file_location('managed_turnaround', source.with_name('turnaround.py'))
+turnaround = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(turnaround)
+def run_video(code):
+    exec(code.replace('/workspace/artifacts', str(output)).replace('/workspace/turnaround', str(output / 'frames')), {})
+try:
+    run_video(turnaround.START_CODE)
+    for start in range(0, turnaround.FRAMES, 8):
+        run_video(turnaround.frames_code(start, start + 8))
+    run_video(turnaround.ENCODE_CODE)
+finally:
+    run_video(turnaround.CLEANUP_CODE)
+video = (output / 'turnaround.mp4').read_bytes()
+assert video[4:8] == b'ftyp' and len(video) > 1000
+assert bpy.context.scene.camera == camera, 'Movie rendering changed the original camera'
+assert bpy.data.objects.get('AGARTHA_TURNAROUND_CAMERA') is None
+print('MANAGED_VIDEO_RESULT ' + json.dumps({'frames': turnaround.FRAMES, 'fps': turnaround.FPS, 'bytes': len(video), 'cameraRestored': True}))

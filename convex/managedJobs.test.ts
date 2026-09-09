@@ -131,4 +131,18 @@ describe("managed modeling ledger", () => {
     expect(await t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ status: "failed", artifactsReady: true, visuallyInspected: false });
   });
 
+  it("fences video metadata and hides stale video after a new checkpoint", async () => {
+    const { t } = await running();
+    await expect(t.mutation(api.recordManagedVideo, { jobId: "job", executorId: "other" })).rejects.toThrow("Stale");
+    await expect(t.mutation(api.recordManagedVideo, { jobId: "job", executorId: "worker" })).rejects.toThrow("checkpoint");
+    await t.mutation(api.recordManagedCheckpoint, { jobId: "job", executorId: "worker" });
+    await t.mutation(api.finishManagedJob, { jobId: "job", executorId: "worker", status: "completed", progress: "Done", visuallyInspected: true });
+    const balance = await t.query(anyApi.cloud.purchases.balance, { token, livemode: false });
+    await t.mutation(api.recordManagedVideo, { jobId: "job", executorId: "worker" });
+    expect(await t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ status: "completed", videoReady: true });
+    expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: false })).toEqual(balance);
+    await t.mutation(api.recordManagedCheckpoint, { jobId: "job", executorId: "worker" });
+    expect(await t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ artifactsReady: true, videoReady: false });
+  });
+
 });

@@ -1342,7 +1342,7 @@
         "summary": "Reserve one managed Astra model job within a total USD cap",
         "responses": {
           "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts."
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 24 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
           },
           "400": {
             "description": "Invalid request"
@@ -1409,7 +1409,7 @@
         "summary": "Observe a private managed job and cost settlement",
         "responses": {
           "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts."
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 24 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
           },
           "400": {
             "description": "Invalid request"
@@ -1442,7 +1442,7 @@
         "summary": "Idempotently start the same reserved managed job",
         "responses": {
           "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts."
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 24 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
           },
           "400": {
             "description": "Invalid request"
@@ -1475,7 +1475,7 @@
         "summary": "Cancel further managed work and observe settlement",
         "responses": {
           "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts."
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 24 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
           },
           "400": {
             "description": "Invalid request"
@@ -1511,7 +1511,8 @@
             "enum": [
               "model.glb",
               "model.blend",
-              "preview.png"
+              "preview.png",
+              "turnaround.mp4"
             ]
           }
         }
