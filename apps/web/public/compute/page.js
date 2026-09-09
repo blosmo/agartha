@@ -81,12 +81,13 @@ brief.addEventListener('keydown', event => {
     form.requestSubmit();
   }
 });
-document.querySelector('a[href="#start"]').addEventListener('click', event => {
+document.querySelector('a[href="#direct"]').addEventListener('click', event => {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
-  document.querySelector('#start').scrollIntoView({ block: 'start' });
+  document.querySelector('#direct').scrollIntoView({ block: 'start' });
+  document.querySelector('#direct > details').open = true;
   brief.focus({ preventScroll: true });
-  if (location.hash !== '#start') history.pushState(null, '', '#start');
+  if (location.hash !== '#direct') history.pushState(null, '', '#direct');
 });
 intendedUse.addEventListener('change', updatePlan);
 for (const preset of presets) {

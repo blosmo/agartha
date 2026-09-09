@@ -1,0 +1,188 @@
+"""Budget-fenced managed modeler. Credentials never enter the Blender sandbox."""
+from __future__ import annotations
+
+import base64
+import hashlib
+import io
+import json
+import os
+import re
+import threading
+import time
+import uuid
+from pathlib import Path
+from typing import Any, Callable
+
+import httpx
+
+NAMES = {'model.glb', 'model.blend', 'preview.png'}
+FILE_LIMIT = 16 * 1024 * 1024
+EXPORT_CODE = """
+import bpy, os
+os.makedirs('/workspace/artifacts', exist_ok=True)
+meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+assert meshes, 'The scene has no model meshes.'
+assert sum(len(o.data.polygons) for o in meshes) <= 100000, 'Simplify the model before export.'
+bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', export_cameras=False, export_lights=False)
+bpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend')
+scene = bpy.context.scene
+scene.render.engine = 'BLENDER_EEVEE_NEXT'
+scene.render.resolution_x = 512
+scene.render.resolution_y = 512
+scene.render.resolution_percentage = 100
+scene.render.image_settings.file_format = 'PNG'
+scene.render.filepath = '/workspace/artifacts/preview.png'
+assert scene.camera, 'Create a camera framing the model.'
+bpy.ops.render.render(write_still=True)
+"""
+
+
+class ManagedFiles:
+    def __init__(self, root: Path, storage: Any, commit: Callable[[], None]):
+        self.root, self.storage, self.commit = root, storage, commit
+
+    def directory(self, job_id: str) -> Path:
+        return self.root / hashlib.sha256(job_id.encode()).hexdigest()
+
+    def save(self, job_id: str, files: dict[str, bytes]) -> None:
+        if set(files) != NAMES or any(len(value) > FILE_LIMIT for value in files.values()):
+            raise ValueError('Invalid managed artifact set.')
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            directory.mkdir(parents=True, exist_ok=True)
+            revision = uuid.uuid4().hex
+            target = directory / revision
+            target.mkdir()
+            for name, value in files.items():
+                (target / name).write_bytes(value)
+            temporary = directory / '.current'
+            temporary.write_text(json.dumps({'revision': revision, 'created': time.time()}))
+            os.replace(temporary, directory / 'current.json')
+            self.commit()
+            # Only the committed best checkpoint is served. Old checkpoints are removed.
+            import shutil
+            for child in directory.iterdir():
+                if child.is_dir() and child.name != revision:
+                    shutil.rmtree(child)
+            self.commit()
+
+    def read(self, job_id: str, name: str) -> bytes:
+        if name not in NAMES:
+            raise ValueError('Unknown artifact.')
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            metadata = json.loads((directory / 'current.json').read_text())
+            if time.time() - metadata['created'] > 7 * 86400 or not re.fullmatch('[a-f0-9]{32}', metadata['revision']):
+                raise ValueError('Artifact retention has expired.')
+            payload = (directory / metadata['revision'] / name).read_bytes()
+            if len(payload) > FILE_LIMIT:
+                raise ValueError('Artifact exceeds its limit.')
+            return payload
+
+    def cleanup(self) -> None:
+        import shutil
+        with self.storage.transaction():
+            if not self.root.exists():
+                return
+            for directory in self.root.iterdir():
+                if directory.is_dir() and time.time() - directory.stat().st_mtime > 7 * 86400:
+                    shutil.rmtree(directory)
+            self.commit()
+
+
+def preview_image(payload: bytes) -> str:
+    from PIL import Image
+    Image.MAX_IMAGE_PIXELS = 1_048_576
+    with Image.open(io.BytesIO(payload)) as source:
+        if source.width > 1024 or source.height > 1024:
+            raise ValueError('Preview is too large.')
+        source.thumbnail((512, 512))
+        sink = io.BytesIO()
+        source.convert('RGB').save(sink, format='JPEG', quality=75)
+    return 'data:image/jpeg;base64,' + base64.b64encode(sink.getvalue()).decode()
+
+
+def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
+                monitor: Callable[[str], None], inference_url: str, broker_key: str) -> None:
+    executor = uuid.uuid4().hex
+    claim = broker.ledger.call('claimManagedJob', jobId=job_id, executorId=executor)
+    if not claim.get('claimed'):
+        return
+    row = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
+    reservation = row['reservationId']
+    status, progress, inspected, saved, running = 'failed', 'The job could not complete.', False, False, False
+    image = None
+    history = 'Plan and create the first coherent version. Include camera and lighting.'
+    try:
+        for turn in range(6):
+            row = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
+            if row.get('cancelled') or row.get('cancelRequested') or row['status'] == 'cancelled':
+                status, progress = 'cancelled', 'Stopped at your request.'
+                break
+            done = threading.Event()
+            def heartbeat():
+                while not done.wait(20):
+                    try:
+                        if not broker.ledger.call('heartbeatManagedJob', jobId=job_id, executorId=executor).get('active'):
+                            return
+                    except Exception:
+                        return
+            thread = threading.Thread(target=heartbeat, daemon=True)
+            thread.start()
+            try:
+                request = {'jobId': job_id, 'executorId': executor, 'operationId': f'{executor}-{turn}', 'history': history[:7000]}
+                if image:
+                    request['image'] = image
+                # No retries: the proxy has already fenced and reserved this operation.
+                with httpx.Client(timeout=240, follow_redirects=False) as client:
+                    response = client.post(inference_url, json=request, headers={'x-agartha-broker-key': broker_key})
+                    response.raise_for_status()
+                    if len(response.content) > 100_000:
+                        raise ValueError('Inference response too large.')
+                    step = response.json()
+            finally:
+                done.set()
+                thread.join(timeout=1)
+            inspected = inspected or bool(image)
+            row = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
+            if row.get('cancelled') or row.get('cancelRequested') or row['status'] == 'cancelled':
+                status, progress = 'cancelled', 'Stopped at your request.'
+                break
+            progress = str(step['summary'])[:1000]
+            broker.ledger.call('heartbeatManagedJob', jobId=job_id, executorId=executor, progress=progress)
+            if step['done'] and not step['code'].strip():
+                status = 'completed' if saved and inspected else 'partial' if saved else 'failed'
+                break
+            if not isinstance(step['code'], str) or len(step['code'].encode()) > 32_000:
+                raise ValueError('Invalid model code.')
+            if not running:
+                broker.start(token, reservation)
+                running = True
+                monitor(reservation)
+            frame = broker.call(token, reservation, {'jsonrpc': '2.0', 'id': turn, 'method': 'tools/call', 'params': {'name': 'execute_blender_code', 'arguments': {'code': step['code'] + '\n' + EXPORT_CODE + f'\nprint("MANAGED_EXPORT_OK:{executor}:{turn}")'}}}, f'{executor}-edit-{turn}', 65_536)
+            result = frame.get('result', {})
+            history = f"Previous edit: {step['code'][-5000:]}\nResult: {json.dumps(result)[:1500]}\nProgress: {progress}"
+            if 'error' in frame or result.get('isError') or f'MANAGED_EXPORT_OK:{executor}:{turn}' not in json.dumps(result):
+                continue
+            try:
+                exported = {name: broker.download(token, reservation, name, FILE_LIMIT) for name in sorted(NAMES)}
+                image = preview_image(exported['preview.png'])
+                if not exported['model.glb'].startswith(b'glTF') or not exported['model.blend'].startswith(b'BLENDER'):
+                    raise ValueError('Invalid exported model.')
+                files.save(job_id, exported)
+                saved = True
+                broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
+                # The next turn must inspect this exact new preview before claiming completion.
+                inspected = False
+            except Exception:
+                history += '\nExports or preview could not be validated. Fix the scene and camera.'
+        else:
+            status, progress = ('partial' if saved else 'failed'), 'Iteration limit reached; delivered the latest validated files.'
+    except Exception:
+        status = 'partial' if saved else 'failed'
+        progress = 'Stopped because the remaining budget, service availability, or execution limit did not permit another safe step.'
+    finally:
+        try:
+            broker.stop(token, reservation)
+        finally:
+            broker.ledger.call('finishManagedJob', jobId=job_id, executorId=executor, status=status, progress=progress, visuallyInspected=inspected, artifactsReady=saved)

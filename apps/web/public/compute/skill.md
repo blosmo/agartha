@@ -8,6 +8,32 @@ Use the origin serving this document as `BASE`. Discover the contract at `GET /a
 
 Before creating or refining a model, read [the modeling guide](modeling.md): define the intended use, acceptance criteria, style and proportions, inspect a blockout, then revise from actual images. It covers independent assets and Agartha placement. Fetch the linked toolkit and prepare your code before starting paid compute.
 
+## Managed creation (default)
+
+Check `GET BASE/api/blender/capabilities`. Proceed only when `managed.enabled` is true. Managed jobs use `openai/gpt-6-astra`; there is no model selection. Register or reuse your stable identity as described below, then check its balance. Obtain approval for one brief and total budget ($1–$20), covering Astra and Blender. Credit purchases require separate approval and never start a job automatically.
+
+Save unique job and request IDs and the exact payload before sending:
+
+```http
+POST BASE/api/blender/jobs
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/json
+
+{"jobId":"model-unique-1","requestId":"model-request-1","brief":"A low-poly ceramic teapot for a game","budgetCents":500}
+```
+
+This atomically reserves the total cap. Start with `POST BASE/api/blender/jobs/model-unique-1/start` and `{}`. Poll `GET BASE/api/blender/jobs/model-unique-1`. After an uncertain create or start response, reuse the exact IDs and payload and observe the same job. Do not replace it with another paid job. `POST BASE/api/blender/jobs/model-unique-1/cancel` stops further work; observe settlement before reporting final cost.
+
+Status is `queued`, `running`, `completed`, `partial`, `failed`, or `cancelled`. Report `chargedAiCents`, `pendingAiCents`, `computeChargedCents`, `computeStatus`, and `visuallyInspected`. Pending inference costs remain held until reconciliation; do not report them as refunded or known usage. Unused settled credits stay in the wallet. A budget is a ceiling, not a quality guarantee. Deliver useful partial files and disclose unverified requirements.
+
+Download returned artifacts with Bearer authentication from `GET BASE/api/blender/jobs/JOB_ID/artifacts/model.glb`, `model.blend`, or `preview.png`. Use only returned available artifacts and save your own copies. Do not publish credentials or private artifact links.
+
+The browser form stores its identity under `agartha-compute-token`. A different browser or cleared storage does not recover that identity's balance. Use the existing token for agents that need the same wallet; never overwrite another saved identity to fund a job.
+
+## Advanced: Direct Blender
+
+Use the following workflow when you want to control Blender yourself with your own agent. Its compute reservation excludes your external model costs. The direct planning form only copies instructions; managed creation above actually starts a job after explicit submission.
+
 ## 1. Set the total task budget
 
 Record three inputs before funding or reserving compute: the desired model, its intended use, and the user's maximum **total task usage budget**. Aim for the best fitting result within that cap. The ceiling is not a spending target, and it does not authorize using every available dollar or starting additional sessions.
@@ -22,7 +48,7 @@ Before spending, estimate and bound each cost category separately:
 
 Add those bounds and keep the planned total within the task cap. If an external cost cannot be measured or bounded, disclose it and resolve whether it is inside or outside the approved budget before spending. Never describe the total cap as enforceable when any included cost cannot be enforced. If the budget cannot cover the acceptance criteria, explain the reduced scope before starting.
 
-The service enforces a hold for each Compute session only. It does not enforce a total-task cap across sessions, inference and review. The website form prepares a local handoff to the user's agent; it does not create or manage an automatic modeling job. Track the total yourself.
+The service enforces a hold for each Compute session only. It does not enforce a total-task cap across sessions, inference and review. The Direct Blender form prepares a local handoff to the user's agent. Track the direct workflow total yourself.
 
 ## 2. Check availability and register once
 

@@ -1,3 +1,5 @@
+import { managedJobs } from '../packages/modeling/jobs.js';
+import { managedEnabled, managedInference } from '../packages/modeling/http.js';
 import type { ServerResponse } from 'node:http';
 import { BLENDER_BILLING } from '../packages/protocol/src/blenderBilling.js';
 import { createCreditCheckoutWithLegacyRecovery, type BillingPurchase } from '../packages/billing/stripe.js';
@@ -57,6 +59,7 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
       modelingGuide: '/compute/modeling.md', toolkitGuide: '/agents/blender-quality.md', toolkit: '/agents/blender-toolkit.py',
       registration: '/api/session', pricing: '/api/blender/pricing', balance: '/api/blender/balance',
       purchases: '/api/blender/purchases', quotes: '/api/blender/quotes', sessions: '/api/blender/sessions',
+      managed: { enabled: managedEnabled(), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, jobs: '/api/blender/jobs' },
       interfaces: ['http', 'mcp'], artifactFormats: ['glb', 'blend', 'png'],
       authentication: 'Bearer agent token; the same stable identity owns Agartha and Compute credits.',
       availability: 'Read pricing for purchase status. Quotes check compute activation and account eligibility. Discovery does not guarantee capacity.',
@@ -95,15 +98,17 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
     return;
   }
   try {
+    if (path === 'inference') { await managedInference(req, res); return; }
     if (!['GET', 'POST'].includes(req.method ?? '')) throw new BillingHttpError(405, 'Use GET or POST.');
     const match = /^purchases\/([a-zA-Z0-9_-]{1,128})(?:\/(checkout|mpp|reconcile))?$/.exec(path);
     const sessionMatch = /^sessions\/([a-zA-Z0-9_-]{1,128})$/.exec(path);
-    if (!['balance', 'purchases', 'quotes', 'sessions'].includes(path) && !match && !sessionMatch) throw new BillingHttpError(404, 'Billing route not found.');
+    if (!['balance', 'purchases', 'quotes', 'sessions', 'jobs'].includes(path) && !path.startsWith('jobs/') && !match && !sessionMatch) throw new BillingHttpError(404, 'Billing route not found.');
     const mpp = match?.[2] === 'mpp';
     const authorization = req.headers.authorization;
     const token = mpp ? req.headers['x-agartha-agent-token'] : authorization?.startsWith('Bearer ') ? authorization.slice(7) : undefined;
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw new BillingHttpError(401, mpp ? 'Use X-Agartha-Agent-Token for agent authentication and Authorization for MPP payment.' : 'Use your agent Bearer token.');
     const { stripe, livemode, ledger } = paymentEnvironment();
+    if (path === 'jobs' || path.startsWith('jobs/')) { await managedJobs(req, res, path, token, ledger, livemode); return; }
     if (path === 'quotes' && req.method === 'POST') {
       const body = await jsonBody(req);
       jsonResponse(res, await ledger('createQuote', { token, quoteId: body.quoteId, requestId: body.requestId, minutes: body.minutes, livemode, ...(body.projectId === undefined ? {} : { projectId: body.projectId }) }), 201);
