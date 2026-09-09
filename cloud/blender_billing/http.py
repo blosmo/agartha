@@ -17,6 +17,10 @@ from .broker import Broker, BrokerConflict, DEFAULT_RESPONSE_BYTES
 from .ledger import LedgerError
 
 
+class ClientRequestError(ValueError):
+    """Only explicitly authored request guidance is safe to return to clients."""
+
+
 def public_session(row: dict[str, Any]) -> dict[str, Any]:
     fields = ("reservationId", "projectId", "status", "reservedMinutes", "reservedCents", "chargedCents", "releasedCents", "readyAt", "stoppedAt", "stopRequested", "responseBytesUsed")
     return {field: row[field] for field in fields if field in row}
@@ -40,7 +44,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
                 if "name" in request.path_params:
                     name = request.path_params["name"]
                     if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}\.(glb|png|blend)", name):
-                        raise ValueError("Invalid export filename.")
+                        raise ClientRequestError("Invalid export filename.")
                     limit = int(request.headers.get("x-agartha-response-limit", str(DEFAULT_RESPONSE_BYTES)))
                     payload = await run_in_threadpool(broker.download, credential, reservation_id, name, limit)
                     media_type = "image/png" if name.endswith('.png') else "model/gltf-binary" if name.endswith('.glb') else "application/octet-stream"
@@ -67,7 +71,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
             if rest_tools:
                 operation_id = request.headers.get("x-agartha-operation-id", "")
                 if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", operation_id):
-                    raise ValueError("Provide a stable X-Agartha-Operation-Id.")
+                    raise ClientRequestError("Provide a stable X-Agartha-Operation-Id.")
                 if request.method == "GET":
                     message = {"jsonrpc": "2.0", "id": operation_id, "method": "tools/list"}
                 else:
@@ -76,20 +80,20 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
                             or not isinstance(params.get("name"), str)
                             or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", params["name"])
                             or not isinstance(params.get("arguments", {}), dict)):
-                        raise ValueError("Expected tool name and arguments object.")
+                        raise ClientRequestError("Expected tool name and arguments object.")
                     message = {"jsonrpc": "2.0", "id": operation_id, "method": "tools/call",
                                "params": {"name": params["name"], "arguments": params.get("arguments", {})}}
             else:
                 message = json.loads(body)
             if not isinstance(message, dict) or message.get("jsonrpc") != "2.0":
-                raise ValueError("Expected a JSON-RPC 2.0 request.")
+                raise ClientRequestError("Expected a JSON-RPC 2.0 request.")
             request_id = message.get("id")
             method = message.get("method")
             await run_in_threadpool(broker.owned, credential, reservation_id)
             if method == "notifications/initialized" and request_id is None:
                 return Response(status_code=202)
             if type(request_id) not in (str, int) or len(str(request_id)) > 128:
-                raise ValueError("An MCP request ID is required.")
+                raise ClientRequestError("An MCP request ID is required.")
             if method == "initialize":
                 version = message.get("params", {}).get("protocolVersion")
                 supported = {"2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}
@@ -100,11 +104,11 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
             elif method in {"tools/list", "tools/call"}:
                 session_id = request.headers.get('mcp-session-id')
                 if session_id is not None and not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', session_id):
-                    raise ValueError('Invalid MCP session ID.')
+                    raise ClientRequestError('Invalid MCP session ID.')
                 scoped_id = hashlib.sha256(f'{session_id}:{json.dumps(request_id)}'.encode()).hexdigest() if session_id else uuid.uuid4().hex
                 operation_id = request.headers.get("x-agartha-operation-id", scoped_id)
                 if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", operation_id):
-                    raise ValueError("Invalid operation ID.")
+                    raise ClientRequestError("Invalid operation ID.")
                 limit = int(request.headers.get("x-agartha-response-limit", str(DEFAULT_RESPONSE_BYTES)))
                 frame = await run_in_threadpool(broker.call, credential, reservation_id, message, operation_id, limit)
                 if "error" in frame:
@@ -119,6 +123,8 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
             return JSONResponse({"error": "Billing authorization or reservation check failed."}, status_code=error.status if 400 <= error.status <= 599 else 503)
         except BrokerConflict as error:
             return JSONResponse({"error": str(error)}, status_code=409)
+        except ClientRequestError as error:
+            return JSONResponse({"error": str(error)}, status_code=400)
         except (ValueError, TypeError, KeyError):
             return JSONResponse({"error": "Invalid Blender request."}, status_code=400)
         except Exception:

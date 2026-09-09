@@ -16,6 +16,16 @@
   },
   "rewrites": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "3dforagents.com"
+        }
+      ],
+      "destination": "/compute/index.html"
+    },
+    {
       "source": "/compute",
       "destination": "/compute/index.html"
     },
@@ -92,6 +102,19 @@
           "value": "public, max-age=0, must-revalidate"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.3dforagents.com"
+        }
+      ],
+      "destination": "https://3dforagents.com/:path*",
+      "permanent": true
     }
   ]
 }
