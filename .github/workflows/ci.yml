@@ -31,7 +31,11 @@ jobs:
           tar -xJf "$runtime/$archive" -C "$runtime"
           "$runtime/blender-${version}-linux-x64/blender" --background --factory-startup --python-exit-code 1 \
             --python scripts/blender/verify_quality.py -- --kit scripts/seed/starter_kit.py \
-            --output "$RUNNER_TEMP/blender-quality-results" --assert-quality --renders
+            --output "$RUNNER_TEMP/blender-quality-results" --assert-quality --renders || {
+              result=$?
+              if [ -f /tmp/blender.crash.txt ]; then cat /tmp/blender.crash.txt; fi
+              exit "$result"
+            }
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
