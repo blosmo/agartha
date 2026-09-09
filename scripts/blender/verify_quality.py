@@ -21,6 +21,8 @@ faulthandler.dump_traceback_later(90, repeat=True)
 
 
 def fixture(kit):
+    # Rebuild fixture data without reloading Blender while addon caches are live.
+    # Full factory reloads invalidate native references retained by the importer.
     kit['reset_scene']('Quality benchmark')
     scene=bpy.context.scene
     scene.render.engine='BLENDER_EEVEE_NEXT'
@@ -96,7 +98,6 @@ def snapshot():
 
 
 def verify_failure_cleanup(kit,output):
-    bpy.ops.wm.read_factory_settings(use_empty=False)
     fixture(kit)
     before=snapshot()
     def failed(**kwargs):
@@ -248,7 +249,6 @@ def main():
         cases=[('baseline',512,8)] if not args.assert_quality else [('draft',256,None),('review',512,None),('final',512,128)]
         for quality,size,samples in cases:
             for attempt in range(args.repeats):
-                bpy.ops.wm.read_factory_settings(use_empty=False)
                 fixture(kit)
                 before=snapshot()
                 kwargs={'size':size}
