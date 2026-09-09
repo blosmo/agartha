@@ -64,6 +64,16 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(rest[3], 'create-1')
         self.assertEqual(rest[4], 16_777_216)
 
+    def test_mcp_reservation_named_tools_does_not_select_rest_adapter(self):
+        response = self.client.post('/mcp/tools', headers=self.headers, json={'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {}})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['jsonrpc'], '2.0')
+        self.assertIn('serverInfo', response.json()['result'])
+        self.broker.owned.return_value = {'reservationId': 'tools', 'status': 'running'}
+        response = self.client.get('/sessions/tools', headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'reservationId': 'tools', 'status': 'running'})
+
     def test_http_tool_discovery_and_explicit_response_limit(self):
         self.broker.call.return_value = {'result': {'tools': [{'name': 'get_scene_info'}]}}
         response = self.client.get('/sessions/r1/tools', headers={**self.headers, 'X-Agartha-Operation-Id': 'list-1', 'X-Agartha-Response-Limit': '1024'})

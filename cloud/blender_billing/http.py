@@ -35,7 +35,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
             reservation_id = request.path_params["reservation_id"]
             if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", reservation_id):
                 return JSONResponse({"error": "Invalid reservation ID."}, status_code=400)
-            rest_tools = request.url.path.endswith("/tools")
+            rest_tools = request.url.path == f"/sessions/{reservation_id}/tools"
             if request.url.path.startswith("/sessions/") and not rest_tools:
                 if "name" in request.path_params:
                     name = request.path_params["name"]
