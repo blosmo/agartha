@@ -8,20 +8,66 @@
   <link rel="canonical" href="https://3dforagents.com/compute/">
   <link rel="alternate" type="text/plain" href="/compute/skill.md" title="Agent instructions">
   <link rel="stylesheet" href="/compute/page.css">
+  <link rel="stylesheet" href="/compute/showcase.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <header><a class="brand" href="https://3dforagents.com/">3D for Agents</a><nav aria-label="Primary"><a href="/compute/skill.md">Agent guide</a><a href="/compute/openapi.json">API</a></nav></header>
   <main id="main" tabindex="-1">
-    <div class="hero">
-      <div>
-        <div class="eyebrow">Cloud 3D modeling for agents</div>
-        <h1>Give your agent<br>access to Astra.</h1>
-        <p class="intro">Your agent brings the brief. We provide Astra to plan, build and review the model in cloud Blender—within one total budget. No separate Astra account needed.</p>
-        <div class="actions"><a class="primary" href="#start">Create a model <span aria-hidden="true">↗</span></a><a href="#pricing">How pricing works</a></div>
-        <p class="note">Works with agents that use HTTP or MCP. No local Blender installation.</p>
+    <section class="hero orbit-hero" aria-labelledby="hero-title">
+      <div class="arc-showcase" role="region" aria-label="Floating 3D model carousel" aria-roledescription="carousel" data-state="poster">
+        <div class="arc-canvas" aria-hidden="true"></div>
+        <div class="arc-models">
+          <button class="arc-model" type="button" data-model="tetrahedron" data-name="Tetrahedron" data-idea="A softly beveled coral tetrahedron with a polished ceramic finish." aria-label="Tetrahedron, model 1 of 7" aria-pressed="false">
+            <img src="/compute/models/tetrahedron.png" alt="" width="384" height="384" loading="eager" decoding="async">
+            <span>Tetrahedron</span>
+          </button>
+          <button class="arc-model" type="button" data-model="cube" data-name="Cube" data-idea="A rounded apricot-colored cube with a smooth ceramic glaze." aria-label="Cube, model 2 of 7" aria-pressed="false">
+            <img src="/compute/models/cube.png" alt="" width="384" height="384" loading="eager" decoding="async">
+            <span>Cube</span>
+          </button>
+          <button class="arc-model" type="button" data-model="octahedron" data-name="Octahedron" data-idea="A sunny yellow octahedron with gently softened edges." aria-label="Octahedron, model 3 of 7" aria-pressed="false">
+            <img src="/compute/models/octahedron.png" alt="" width="384" height="384" loading="eager" decoding="async">
+            <span>Octahedron</span>
+          </button>
+          <button class="arc-model" type="button" data-model="moon-bunny" data-name="Moon bunny" data-idea="A tiny mint-colored porcelain bunny holding a little golden sun, with long ears and rosy cheeks." aria-label="Moon bunny, model 4 of 7" aria-pressed="true">
+            <img src="/compute/models/moon-bunny.png" alt="" width="384" height="384" fetchpriority="high" decoding="async">
+            <span>Moon bunny</span>
+          </button>
+          <button class="arc-model" type="button" data-model="dodecahedron" data-name="Dodecahedron" data-idea="A sky-blue dodecahedron with softly beveled edges and a glossy ceramic finish." aria-label="Dodecahedron, model 5 of 7" aria-pressed="false">
+            <img src="/compute/models/dodecahedron.png" alt="" width="384" height="384" loading="eager" decoding="async">
+            <span>Dodecahedron</span>
+          </button>
+          <button class="arc-model" type="button" data-model="icosahedron" data-name="Icosahedron" data-idea="A cornflower-blue icosahedron with gently softened edges and a satin finish." aria-label="Icosahedron, model 6 of 7" aria-pressed="false">
+            <img src="/compute/models/icosahedron.png" alt="" width="384" height="384" loading="eager" decoding="async">
+            <span>Icosahedron</span>
+          </button>
+          <button class="arc-model" type="button" data-model="cloud-whale" data-name="Cloud whale" data-idea="A cute lavender whale with a cloud-colored tummy, tiny fins, rosy cheeks, and a mint water spout." aria-label="Cloud whale, model 7 of 7" aria-pressed="false">
+            <img src="/compute/models/cloud-whale.png" alt="" width="384" height="384" loading="eager" decoding="async">
+            <span>Cloud whale</span>
+          </button>
+        </div>
       </div>
-      <div class="terminal" id="start">
+      <div class="hero-copy">
+        <div class="eyebrow">A little imagination. A new dimension.</div>
+        <h1 id="hero-title">Give your agent<br>access to Astra.</h1>
+        <p class="intro">Your agent brings the idea. Astra builds it in Blender,<br class="desktop-break"> within your budget.</p>
+        <div class="actions"><a class="primary" href="#start">Create something <span aria-hidden="true">↗</span></a><a href="/compute/skill.md">Meet the API <span aria-hidden="true">↗</span></a></div>
+        <p class="note">No separate Astra account. No local Blender.</p>
+      </div>
+      <div class="arc-controls" aria-label="Model carousel controls">
+        <button type="button" id="arc-previous" aria-label="Previous model"><span aria-hidden="true">←</span></button>
+        <div class="arc-caption"><span class="arc-counter">04 / 07</span><span id="arc-name">Moon bunny</span></div>
+        <button type="button" id="arc-next" aria-label="Next model"><span aria-hidden="true">→</span></button>
+        <span class="arc-divider" aria-hidden="true"></span>
+        <button type="button" id="arc-pause" aria-label="Pause model motion" aria-pressed="false"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M3 2h3v10H3zM8 2h3v10H8z"/></svg></button>
+      </div>
+      <p class="arc-hint">A few shapes of possibility. <button type="button" id="arc-use">Use this idea ↗</button> <a id="arc-download" href="/compute/models/moon-bunny.glb" download>Download model</a></p>
+      <p id="arc-announcement" class="visually-hidden" aria-live="polite"></p>
+    </section>
+    <section class="create-layout" id="start" aria-labelledby="create-heading">
+      <div class="create-copy"><div class="eyebrow">From an idea to a model</div><h2 id="create-heading">What will you make?</h2><p>Describe it, choose your budget, and give Astra room to create. Your files are ready to bring into a game, a scene, or your next project.</p><p class="note">GLB model · Editable Blender source · Preview · 360° video</p></div>
+      <div class="terminal">
         <h2>Create a model</h2>
         <p class="form-intro">Describe it. Astra plans, builds and reviews it in Blender within your total budget.</p>
         <p id="managed-availability" role="status">Checking creation availability…</p>
@@ -40,7 +86,7 @@
         <p><a href="#direct">Advanced: Direct Blender</a></p>
         <noscript><p>JavaScript is required for managed creation. Use the <a href="/compute/skill.md">agent API guide</a>.</p></noscript>
       </div>
-    </div>
+    </section>
     <div class="facts"><div><strong>GLB · BLEND · PNG · MP4</strong><span>Models, editable files, previews and 360° video</span></div><div><strong>A ceiling, not a target</strong><span>Stop when further work adds little value</span></div><div><strong>Private by default</strong><span>Publishing is a separate decision</span></div></div>
     <section aria-labelledby="workflow"><h2 id="workflow">From brief to finished files</h2><div class="steps"><div><span class="number">01 / Plan</span><h3>Agree on the scope</h3><p>Describe the model and intended use. Your submitted budget caps Astra and Blender usage for one managed job. Buy credits separately if needed.</p></div><div><span class="number">02 / Refine</span><h3>Build and refine</h3><p>Start with the main forms, inspect actual previews and fix the most valuable defects. Keep a saved checkpoint. Stop when the brief is met or further edits are unlikely to help.</p></div><div><span class="number">03 / Deliver</span><h3>Download and review</h3><p>Download the model, preview and editable source before closing. Your agent reports what was checked, what remains, the actual cost and why it stopped.</p></div></div></section>
     <section class="pricing" id="pricing" aria-labelledby="price-title">
@@ -103,6 +149,7 @@
     <section><h2>Keep your model files</h2><p>Managed jobs include a four-second, 512-pixel, 12 fps 360° video when rendering fits the approved budget. If time or budget runs out, available model files and previews are still delivered with the reason.</p><p>Use the exported files in your app, game, website or production pipeline. You can also bring them into <a href="https://agartha-dusky.vercel.app/">Agartha</a>. Managed downloads are retained for seven days after creation; keep your own lasting copies.</p><div class="links"><a href="/compute/skill.md">Agent quickstart</a><a href="/compute/modeling.md">Modeling guide</a><a href="/compute/openapi.json">API reference</a><a href="/agents/blender-billing.md">Billing and limits</a></div></section>
   </main>
   <footer><p>Agartha Compute is an independent service using Blender. It is not affiliated with or endorsed by Blender Foundation. Blender is a registered trademark of Blender Foundation. <a href="https://www.blender.org/about/license/">Software license</a> · <a href="https://www.blender.org/about/trademark-policy/">Trademark policy</a></p></footer>
+  <script type="module" src="/compute/showcase.js"></script>
   <script src="/compute/page.js" defer></script>
   <script src="/compute/managed.js" defer></script>
 </body>
