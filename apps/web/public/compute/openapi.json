@@ -1,0 +1,1174 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Agartha Compute",
+    "version": "1.0.0",
+    "description": "Independent cloud modeling using Blender. Same agent identity and prepaid balance as Agartha. No world membership required. Read /compute/skill.md for the complete funding and cleanup flow."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "agentToken": []
+    }
+  ],
+  "paths": {
+    "/api/session": {
+      "post": {
+        "operationId": "registerAgent",
+        "summary": "Register a stable identity without creating a world",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "agentToken": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "recoveryToken": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "agentToken",
+                  "recoveryToken",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blender/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "summary": "Discover independent service links",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/blender/pricing": {
+      "get": {
+        "operationId": "getPricing",
+        "summary": "Read price, limits, paymentMode and purchasesEnabled",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/blender/balance": {
+      "get": {
+        "operationId": "getBalance",
+        "summary": "Read available and held prepaid credit",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        }
+      }
+    },
+    "/api/blender/purchases": {
+      "post": {
+        "operationId": "createPurchase",
+        "summary": "Create an idempotent $5 or $20 top-up intent",
+        "responses": {
+          "201": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "purchaseId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  },
+                  "amountCents": {
+                    "type": "integer",
+                    "enum": [
+                      500,
+                      2000
+                    ]
+                  },
+                  "paymentRail": {
+                    "type": "string",
+                    "enum": [
+                      "checkout",
+                      "mpp"
+                    ]
+                  }
+                },
+                "required": [
+                  "purchaseId",
+                  "requestId",
+                  "amountCents",
+                  "paymentRail"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blender/purchases/{purchaseId}": {
+      "get": {
+        "operationId": "getPurchase",
+        "summary": "Observe funding; redirect alone is not payment confirmation",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchaseId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/blender/purchases/{purchaseId}/checkout": {
+      "post": {
+        "operationId": "createCheckout",
+        "summary": "Get human-assisted Stripe Checkout URL",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchaseId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/blender/purchases/{purchaseId}/mpp": {
+      "post": {
+        "operationId": "payWithMpp",
+        "summary": "HTTP 402 machine payment; Authorization is reserved for the payment credential",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          },
+          "402": {
+            "description": "MPP payment challenge in WWW-Authenticate; set payer spend limit explicitly"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchaseId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "schema": {
+              "type": "string"
+            },
+            "description": "MPP payment credential, not the agent Bearer token"
+          }
+        ],
+        "security": [
+          {
+            "mppAgentToken": []
+          }
+        ]
+      }
+    },
+    "/api/blender/purchases/{purchaseId}/reconcile": {
+      "post": {
+        "operationId": "reconcilePayment",
+        "summary": "Recover a payment after a lost response",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paymentId": {
+                    "type": "string",
+                    "pattern": "^pi_[a-zA-Z0-9]{1,120}$"
+                  }
+                },
+                "required": [
+                  "paymentId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchaseId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/blender/quotes": {
+      "post": {
+        "operationId": "createQuote",
+        "summary": "Check compute eligibility and quote a capped session; inspect before reserving",
+        "responses": {
+          "201": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quoteId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  },
+                  "minutes": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 30
+                  },
+                  "projectId": {
+                    "type": "string",
+                    "description": "Previous project to resume; omit for new project"
+                  }
+                },
+                "required": [
+                  "quoteId",
+                  "requestId",
+                  "minutes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blender/sessions": {
+      "post": {
+        "operationId": "reserveSession",
+        "summary": "Hold prepaid credits and return trusted session links",
+        "responses": {
+          "201": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "startUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "statusUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "stopUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "toolsUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "artifactsUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "mcpUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "reservationId": {
+                      "type": "string"
+                    },
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "reservedCents": {
+                      "type": "integer"
+                    },
+                    "reservedMinutes": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "quoteId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  },
+                  "reservationId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  }
+                },
+                "required": [
+                  "quoteId",
+                  "reservationId",
+                  "requestId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blender/sessions/{reservationId}": {
+      "get": {
+        "operationId": "getReservation",
+        "summary": "Observe reservation and connection links",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        ]
+      }
+    },
+    "/sessions/{reservationId}": {
+      "get": {
+        "operationId": "getSessionStatus",
+        "summary": "Observe running state and final chargedCents/releasedCents",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        ],
+        "servers": [
+          {
+            "url": "{brokerOrigin}",
+            "description": "Use the broker origin from the reservation response. Do not send credentials to arbitrary origins.",
+            "variables": {
+              "brokerOrigin": {
+                "default": "https://blosmo--agartha-paid-blender-serve.modal.run"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/sessions/{reservationId}/start": {
+      "post": {
+        "operationId": "startSession",
+        "summary": "Start the reserved worker; wait for running",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        ],
+        "servers": [
+          {
+            "url": "{brokerOrigin}",
+            "description": "Use the broker origin from the reservation response. Do not send credentials to arbitrary origins.",
+            "variables": {
+              "brokerOrigin": {
+                "default": "https://blosmo--agartha-paid-blender-serve.modal.run"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/sessions/{reservationId}/stop": {
+      "post": {
+        "operationId": "stopSession",
+        "summary": "Checkpoint, confirm termination and settle; retry stop or poll until terminal",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        ],
+        "servers": [
+          {
+            "url": "{brokerOrigin}",
+            "description": "Use the broker origin from the reservation response. Do not send credentials to arbitrary origins.",
+            "variables": {
+              "brokerOrigin": {
+                "default": "https://blosmo--agartha-paid-blender-serve.modal.run"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/sessions/{reservationId}/tools": {
+      "get": {
+        "operationId": "listTools",
+        "summary": "Discover pinned upstream tool schemas in a running paid session",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Agartha-Operation-Id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            },
+            "description": "Stable ID per distinct operation. Retry identical payload with identical ID. Shared with MCP."
+          },
+          {
+            "in": "header",
+            "name": "X-Agartha-Response-Limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 268435456,
+              "default": 16777216
+            },
+            "description": "Explicit accepted response byte limit within remaining session transfer quota"
+          }
+        ],
+        "servers": [
+          {
+            "url": "{brokerOrigin}",
+            "description": "Use the broker origin from the reservation response. Do not send credentials to arbitrary origins.",
+            "variables": {
+              "brokerOrigin": {
+                "default": "https://blosmo--agartha-paid-blender-serve.modal.run"
+              }
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "callTool",
+        "summary": "Execute a tool through the same metering and retry protection as MCP",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "structuredContent": {
+                      "type": "object"
+                    },
+                    "isError": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                  },
+                  "arguments": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Agartha-Operation-Id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            },
+            "description": "Stable ID per distinct operation. Retry identical payload with identical ID. Shared with MCP."
+          },
+          {
+            "in": "header",
+            "name": "X-Agartha-Response-Limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 268435456,
+              "default": 16777216
+            },
+            "description": "Explicit accepted response byte limit within remaining session transfer quota"
+          }
+        ],
+        "servers": [
+          {
+            "url": "{brokerOrigin}",
+            "description": "Use the broker origin from the reservation response. Do not send credentials to arbitrary origins.",
+            "variables": {
+              "brokerOrigin": {
+                "default": "https://blosmo--agartha-paid-blender-serve.modal.run"
+              }
+            }
+          }
+        ],
+        "description": "Request body maximum 65536 bytes. Returns the MCP CallToolResult directly without a JSON-RPC envelope. Check isError even on HTTP 200. Downloads must precede shutdown."
+      }
+    },
+    "/sessions/{reservationId}/artifacts/{name}": {
+      "get": {
+        "operationId": "downloadArtifact",
+        "summary": "Download before stopping; same authentication and transfer allowance",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement.",
+            "content": {
+              "model/gltf-binary": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,80}\\.(glb|png|blend)$"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Agartha-Response-Limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 268435456,
+              "default": 16777216
+            },
+            "description": "Explicit accepted response byte limit within remaining session transfer quota"
+          }
+        ],
+        "servers": [
+          {
+            "url": "{brokerOrigin}",
+            "description": "Use the broker origin from the reservation response. Do not send credentials to arbitrary origins.",
+            "variables": {
+              "brokerOrigin": {
+                "default": "https://blosmo--agartha-paid-blender-serve.modal.run"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/mcp/{reservationId}": {
+      "post": {
+        "operationId": "mcpRequest",
+        "summary": "Existing Streamable HTTP MCP interface",
+        "responses": {
+          "200": {
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing or invalid agent credential"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "409": {
+            "description": "State, quota or idempotency conflict; observe before retrying"
+          },
+          "413": {
+            "description": "Request exceeds byte limit"
+          },
+          "503": {
+            "description": "Unavailable or uncertain outcome; do not blindly repeat mutations"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jsonrpc": {
+                    "const": "2.0"
+                  },
+                  "id": {
+                    "type": [
+                      "string",
+                      "integer"
+                    ]
+                  },
+                  "method": {
+                    "type": "string"
+                  },
+                  "params": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "jsonrpc",
+                  "method"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservationId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        ],
+        "servers": [
+          {
+            "url": "{brokerOrigin}",
+            "description": "Use the broker origin from the reservation response. Do not send credentials to arbitrary origins.",
+            "variables": {
+              "brokerOrigin": {
+                "default": "https://blosmo--agartha-paid-blender-serve.modal.run"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "agentToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "64 lowercase hex agent access token. Registration: POST /api/session."
+      },
+      "mppAgentToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Agartha-Agent-Token"
+      }
+    }
+  }
+}
