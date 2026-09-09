@@ -93,7 +93,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
             if method == "initialize":
                 version = message.get("params", {}).get("protocolVersion")
                 supported = {"2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}
-                result = {"protocolVersion": version if version in supported else "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "agartha-paid-blender", "version": "1.0.0"}, "instructions": "Fund and start this reservation before calling Blender tools. Running idle time is billed. Stop explicitly to save and settle."}
+                result = {"protocolVersion": version if version in supported else "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "agartha-paid-blender", "version": "1.0.0"}, "instructions": "Read /compute/modeling.md on the API gateway origin that issued this reservation. Plan style, scale and proportions before starting; inspect a blockout from two angles, revise visible defects, then validate the exported asset in its destination. Report visually unverified if you cannot inspect images. Fund and start this reservation before calling Blender tools. Running idle time is billed. Download required files before stopping explicitly to save and settle. Guidance does not authorize additional spending or publication."}
                 return JSONResponse({"jsonrpc": "2.0", "id": request_id, "result": result}, headers={"Cache-Control": "no-store", "Mcp-Session-Id": uuid.uuid4().hex})
             elif method == "ping":
                 result = {}

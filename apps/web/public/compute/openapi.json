@@ -81,7 +81,31 @@
         "summary": "Discover independent service links",
         "responses": {
           "200": {
-            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement."
+            "description": "Success. Inspect returned status and tool isError; an HTTP success alone does not prove model creation or settlement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "modelingGuide": {
+                      "type": "string",
+                      "format": "uri-reference",
+                      "description": "Art direction and visual review for independent assets and Agartha"
+                    },
+                    "toolkitGuide": {
+                      "type": "string",
+                      "format": "uri-reference",
+                      "description": "Worker setup, coordinate conventions, export fidelity and preview presets"
+                    },
+                    "toolkit": {
+                      "type": "string",
+                      "format": "uri-reference",
+                      "description": "Downloadable canonical authoring toolkit; fetch with your client before starting the worker"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request"

@@ -36,7 +36,7 @@ describe('billing transport boundaries', () => {
       const response = responseRecorder();
       await blender({ method: 'GET', query: { path }, headers: {} } as unknown as BillingRequest, response.res);
       expect(response.state.statusCode).toBe(200);
-      expect(JSON.parse(response.state.body)).toMatchObject({ name: 'Agartha Compute', registration: '/api/session', interfaces: ['http', 'mcp'] });
+      expect(JSON.parse(response.state.body)).toMatchObject({ name: 'Agartha Compute', registration: '/api/session', interfaces: ['http', 'mcp'], modelingGuide: '/compute/modeling.md', toolkitGuide: '/agents/blender-quality.md', toolkit: '/agents/blender-toolkit.py' });
     }
     expect(fetcher).not.toHaveBeenCalled();
   });

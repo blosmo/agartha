@@ -8,6 +8,10 @@ The broker adds `GET /sessions/{reservation_id}/tools` and `POST /sessions/{rese
 
 Reservation responses now include `statusUrl`, `toolsUrl` and `artifactsUrl` as well as the existing lifecycle/MCP links. Clients download before stopping. World publication is optional, explicit and separate.
 
+## Modeling guidance
+
+`/compute/modeling.md` is the shared art-direction and visual-review workflow for independent assets and Agartha scenes. `/agents/blender-quality.md` retains the technical toolkit, preview and export guidance. Discovery exposes `modelingGuide`, `toolkitGuide` and `toolkit`; the Compute guide, Agartha onboarding, room design guide and MCP initialization point agents into the workflow. The guide follows the user's style and budget, asks for actual image inspection, separates target-specific requirements, and does not claim measured aesthetic improvement or authorize more spending/publication.
+
 ## License and commercial precedent — checked September 9, 2026
 
 The published terms support charging for hosted use. Blender allows use for any purpose, including commercial work: [Blender license](https://www.blender.org/about/license/). GPLv3 section 0 excludes network interaction without a software copy from conveying: [GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html). That supports this server-hosted model; it is not a legal opinion or a license review of every installed dependency.
