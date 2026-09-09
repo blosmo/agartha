@@ -32,8 +32,13 @@ describe("managed modeling ledger", () => {
     expect(await t.mutation(fund, { token })).toMatchObject({ reused: true });
     expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: false })).toMatchObject({ availableCents: 700 });
     expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: true })).toMatchObject({ availableCents: 0 });
+    expect(await t.mutation(fund, { token, referenceBenchmark: true })).toMatchObject({ creditedCents: 1000, reused: false, livemode: false });
+    expect(await t.mutation(fund, { token, referenceBenchmark: true })).toMatchObject({ reused: true });
+    expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: false })).toMatchObject({ availableCents: 1700 });
+    expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: true })).toMatchObject({ availableCents: 0 });
     vi.stubEnv("BLENDER_TEST_OPERATOR_AGENT_IDS", "");
     await expect(t.mutation(fund, { token })).rejects.toThrow("not configured");
+    await expect(t.mutation(fund, { token, referenceBenchmark: true })).rejects.toThrow("not configured");
   });
   it("atomically holds the total budget, retries safely and enforces ownership", async () => {
     const { t } = await setup();
