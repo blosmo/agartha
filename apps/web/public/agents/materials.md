@@ -42,3 +42,23 @@ An object may have both `materialId` and `shaderId`. Expressions based on `color
 ## Inspect the result
 
 Follow [the visual review loop](./visual-review.md). The browser and agent PNG renderer both use the bundled material maps and saved motion/shader definitions. Their lighting differs: use the browser to judge the final interactive appearance, and room/grid PNGs to inspect saved composition and material placement. PNGs show time zero by default; use the preview time parameter for another frame. A map-loading failure is a verification problem, not a reason to claim the material is complete.
+
+## Use the same library in hosted Blender
+
+The Blender worker bundles these same maps and a generated snapshot of this catalog. It does not fetch assets at runtime. Through `execute_blender_code`:
+
+```python
+from cloud.blender_mcp.material_library import list_materials, apply_material
+print(list_materials())
+apply_material(timber_mesh, 'pbr-dark-wood', tile_size=2.0)
+apply_material(dome_mesh, 'pbr-steel', finish_id='weathered-copper',
+               projection='cylindrical', center=(0, 0, 0), tile_size=2.0)
+```
+
+`apply_material` replaces the chosen mesh's material slots; target named parts, preserving glass and other distinct surfaces. It copies shared mesh data before assigning UVs. When applying in a loop, snapshot the collection first with `list(collection.all_objects)` to avoid invalidating Blender's collection iterator. Box and cylindrical projection use Blender-world units; `projection='existing'` preserves authored UVs. Inspect grain size and seams at close range.
+
+`blenderFinishes` in `/api/materials` defines reusable weathered copper, limestone masonry, honed limestone and coastal rock. These derive portable albedo, roughness/metalness and tangent-normal maps from the bundled base maps and procedural finish recipes. They contain no baked lighting. They are PBR adaptations of the listed shader styles, not execution of browser WGSL inside Blender. Animated browser shaders still require a separate destination-specific implementation.
+
+Images are packed into the editable Blender source and exported with Principled BSDF. Validate the GLB's embedded base-color, normal and metallic/roughness textures; a successful render alone does not verify material export. Reuse material instances to stay within the file budget.
+
+When extending the catalog or shader presets, run `npm run materials:blender`. CI checks that the worker snapshot matches the shared catalog, and the image builder rejects stale snapshots. Build the worker image before deploying agent instructions that depend on it.

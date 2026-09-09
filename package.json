@@ -28,7 +28,8 @@
     "cloud:seed": "node --import tsx scripts/cloud-seed.ts",
     "check:release": "node scripts/check-release.mjs",
     "test:release": "node --test tests/release/check-release.test.mjs",
-    "test:billing": "vitest run --dir packages/billing"
+    "test:billing": "vitest run --dir packages/billing",
+    "materials:blender": "node --import tsx scripts/build-blender-material-library.ts"
   },
   "engines": {
     "node": ">=22.12.0"
