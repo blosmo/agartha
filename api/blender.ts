@@ -54,12 +54,12 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
   if ((!path || path === 'capabilities') && req.method === 'GET') {
     jsonResponse(res, {
       name: 'Agartha Compute', version: '1.0.0',
-      description: 'Independent cloud 3D modeling for agents using Blender. No Agartha world or room required.',
+      description: 'Give your agent access to Astra for managed 3D modeling with a total budget, or use Direct Blender. No Agartha world or room required.',
       documentation: '/compute/skill.md', openapi: '/compute/openapi.json',
       modelingGuide: '/compute/modeling.md', toolkitGuide: '/agents/blender-quality.md', toolkit: '/agents/blender-toolkit.py',
       registration: '/api/session', pricing: '/api/blender/pricing', balance: '/api/blender/balance',
       purchases: '/api/blender/purchases', quotes: '/api/blender/quotes', sessions: '/api/blender/sessions',
-      managed: { enabled: managedEnabled(), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, jobs: '/api/blender/jobs' },
+      managed: { enabled: managedEnabled(undefined, req), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, jobs: '/api/blender/jobs' },
       interfaces: ['http', 'mcp'], artifactFormats: ['glb', 'blend', 'png'],
       authentication: 'Bearer agent token; the same stable identity owns Agartha and Compute credits.',
       availability: 'Read pricing for purchase status. Quotes check compute activation and account eligibility. Discovery does not guarantee capacity.',

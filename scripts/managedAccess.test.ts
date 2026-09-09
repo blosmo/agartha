@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
-import { managedEnabled } from '../packages/modeling/http';
+import { managedEnabled, managedCredential } from '../packages/modeling/http';
 afterEach(() => vi.unstubAllEnvs());
 it('keeps public discovery disabled while allowing only the configured verification identity', () => {
   const token = 'a'.repeat(64);
@@ -10,4 +10,12 @@ it('keeps public discovery disabled while allowing only the configured verificat
   expect(managedEnabled()).toBe(false);
   expect(managedEnabled('b'.repeat(64))).toBe(false);
   expect(managedEnabled(token)).toBe(true);
+});
+
+it('uses the Vercel runtime OIDC header without exposing or persisting it', () => {
+  vi.stubEnv('AI_GATEWAY_API_KEY', ''); vi.stubEnv('VERCEL_OIDC_TOKEN', ''); vi.stubEnv('VERCEL', '1');
+  const request = { headers: { 'x-vercel-oidc-token': 'runtime-fixture' } } as any;
+  expect(managedCredential(request)).toBe('runtime-fixture');
+  vi.stubEnv('VERCEL', '0');
+  expect(managedCredential(request)).toBe('');
 });

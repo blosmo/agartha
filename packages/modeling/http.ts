@@ -4,10 +4,14 @@ import { createLedgerClient, BillingHttpError } from '../billing/ledgerClient.js
 import { jsonResponse, paymentEnvironment, type BillingRequest } from '../billing/http.js';
 import { MANAGED_MODEL, runInference } from './inference.js';
 
-export function managedEnabled(token?: string) {
+export function managedCredential(req?: BillingRequest) {
+  const header = req?.headers['x-vercel-oidc-token'];
+  return process.env.AI_GATEWAY_API_KEY || (process.env.VERCEL === '1' && typeof header === 'string' ? header : undefined) || process.env.VERCEL_OIDC_TOKEN;
+}
+export function managedEnabled(token?: string, req?: BillingRequest) {
   const operator = process.env.AGARTHA_MANAGED_MODELING_OPERATOR_AGENT_ID;
   const permittedOperator = Boolean(token && operator && `agent-${createHash('sha256').update(token).digest('hex').slice(0, 24)}` === operator);
-  return (process.env.AGARTHA_MANAGED_MODELING_ENABLED === 'true' || permittedOperator) && Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
+  return (process.env.AGARTHA_MANAGED_MODELING_ENABLED === 'true' || permittedOperator) && Boolean(managedCredential(req));
 }
 export async function managedInference(req: BillingRequest, res: ServerResponse) {
   if (req.method !== 'POST') throw new BillingHttpError(503, 'Managed modeling is not available.');
@@ -20,7 +24,7 @@ export async function managedInference(req: BillingRequest, res: ServerResponse)
   // Validates broker authority before the payment service may authorize any inference.
   const row = await brokerLedger<Record<string, any>>('getManagedJobForBroker', { jobId: body.jobId });
   if (process.env.AGARTHA_MANAGED_MODELING_ENABLED !== 'true' && row.agentId !== process.env.AGARTHA_MANAGED_MODELING_OPERATOR_AGENT_ID) throw new BillingHttpError(503, 'Managed modeling is not available.');
-  const credential = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
+  const credential = managedCredential(req);
   if (!credential) throw new BillingHttpError(503, 'Model access is not configured.');
   const step = await runInference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, history: body.history, ...(body.image === undefined ? {} : { image: body.image }), remainingCents: row.reservedAiCents - row.chargedAiCents - row.pendingAiCents }, ledger, credential);
   jsonResponse(res, { model: MANAGED_MODEL, ...step });

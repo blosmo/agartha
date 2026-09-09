@@ -10,7 +10,7 @@ function links(row: Record<string, any>) {
 }
 export async function managedJobs(req: BillingRequest, res: ServerResponse, path: string, token: string, ledger: LedgerCall, livemode: boolean) {
   if (path === 'jobs' && req.method === 'POST') {
-    if (!managedEnabled(token)) throw new BillingHttpError(503, 'Managed modeling is not available.');
+    if (!managedEnabled(token, req)) throw new BillingHttpError(503, 'Managed modeling is not available.');
     const body = await jsonBody(req);
     const row = await ledger<Record<string, any>>('createManagedJob', { token, jobId: body.jobId, requestId: body.requestId, brief: body.brief, budgetCents: body.budgetCents, livemode });
     jsonResponse(res, links(row), 201);
@@ -23,7 +23,7 @@ export async function managedJobs(req: BillingRequest, res: ServerResponse, path
   if (!action && req.method === 'GET') { jsonResponse(res, links(row)); return; }
   if (action === 'cancel' && req.method === 'POST') { jsonResponse(res, links(await ledger('requestManagedCancel', { token, jobId }))); return; }
   if (action === 'start' && req.method === 'POST' || action?.startsWith('artifacts/') && req.method === 'GET') {
-    if (action === 'start' && !managedEnabled(token)) throw new BillingHttpError(503, 'Managed modeling is not available.');
+    if (action === 'start' && !managedEnabled(token, req)) throw new BillingHttpError(503, 'Managed modeling is not available.');
     const base = new URL(process.env.AGARTHA_BLENDER_BROKER_URL || 'https://invalid.invalid');
     if (base.protocol !== 'https:' || base.username || base.password || base.hostname === 'invalid.invalid') throw new BillingHttpError(503, 'Compute service is unavailable.');
     const response = await fetch(new URL(`/jobs/${encodeURIComponent(jobId)}/${action}`, base), { method: req.method, headers: { authorization: `Bearer ${token}` }, redirect: 'error', signal: AbortSignal.timeout(45_000) });
