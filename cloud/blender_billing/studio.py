@@ -15,6 +15,8 @@ from .turnaround import DELIVERY_RESERVE_SECONDS, remaining_seconds, render_turn
 
 REFERENCE_MODEL = 'openai/gpt-image-2.5-flare'
 MAX_ACTIONS = 24
+# Detailed glTF exports can log one line per mesh/material; history remains truncated below.
+TOOL_RESPONSE_BYTES = 1_000_000
 EXPORT = EXPORT_CODE.replace("bpy.ops.object.select_all(action='DESELECT')", "depsgraph = bpy.context.evaluated_depsgraph_get()\nassert sum(len(o.evaluated_get(depsgraph).data.polygons) for o in meshes) <= 100000, 'Simplify evaluated geometry before export.'\nbpy.ops.object.select_all(action='DESELECT')", 1)
 FINAL_EXPORT = EXPORT.replace('scene.cycles.samples = 32', 'scene.cycles.samples = 64').replace('scene.cycles.time_limit = 10.0', 'scene.cycles.time_limit = 25.0').replace('scene.cycles.adaptive_threshold = 0.05', 'scene.cycles.adaptive_threshold = 0.025').replace('scene.render.resolution_x = 512', 'scene.render.resolution_x = 1024').replace('scene.render.resolution_y = 512', 'scene.render.resolution_y = 1024')
 
@@ -97,7 +99,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
 
     def mcp(name: str, arguments: dict[str, Any], operation: str, marker: str | None = None) -> dict[str, Any]:
         current()
-        frame = broker.call(token, reservation, {'jsonrpc': '2.0', 'id': operation, 'method': 'tools/call', 'params': {'name': name, 'arguments': arguments}}, operation, 65536)
+        frame = broker.call(token, reservation, {'jsonrpc': '2.0', 'id': operation, 'method': 'tools/call', 'params': {'name': name, 'arguments': arguments}}, operation, TOOL_RESPONSE_BYTES)
         result = frame.get('result', {})
         if 'error' in frame or result.get('isError') or marker and marker not in json.dumps(result):
             raise ValueError(json.dumps(result)[:2000] or 'Blender tool failed.')
