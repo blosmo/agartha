@@ -46,6 +46,26 @@ export function requireCheckoutEnvironmentMode(session: Stripe.Checkout.Session,
   if (session.livemode !== livemode) throw new CheckoutReceiptError(409);
 }
 
+export function checkoutPaymentUrl(base: string, checkoutSessionId: string): string {
+  return `${base}/api/blender/checkout-redirect?session_id=${encodeURIComponent(requireCheckoutSessionId(checkoutSessionId))}`;
+}
+
+export function checkoutRedirectDestination(session: Stripe.Checkout.Session, ledger: CheckoutReceiptLedger, base: string): string {
+  const receipt = confirmCheckoutReceipt(session, ledger);
+  if (!Number.isSafeInteger(ledger.purchase.expiresAt) || ledger.purchase.expiresAt <= 0) throw new CheckoutReceiptError(409);
+  if (session.status !== 'open' || receipt.state !== 'not_completed' || ledger.purchase.expiresAt <= Date.now()) {
+    return checkoutReturnUrls(base, session.id).confirmationUrl!;
+  }
+  // Preserve Stripe's opaque URL byte-for-byte, particularly its required fragment.
+  const value = session.url;
+  if (typeof value !== 'string' || value.length > 8192 || /[\u0000-\u0020\u007f]/.test(value)) throw new CheckoutReceiptError(409);
+  let url: URL;
+  try { url = new URL(value); } catch { throw new CheckoutReceiptError(409); }
+  if (url.protocol !== 'https:' || url.hostname !== 'checkout.stripe.com' || url.port || url.username || url.password
+    || ![`/c/pay/${session.id}`, `/pay/${session.id}`].includes(url.pathname)) throw new CheckoutReceiptError(409);
+  return value;
+}
+
 function paymentIntentId(value: Stripe.Checkout.Session['payment_intent']): string | null {
   if (typeof value === 'string') return value;
   return value?.id ?? null;

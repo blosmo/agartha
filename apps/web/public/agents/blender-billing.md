@@ -49,7 +49,7 @@ const purchase = await call('/api/blender/purchases', {
 if (purchase.status === 'paid') console.log('Already funded.');
 else if (purchase.nextAction) {
   const checkout = await call(purchase.nextAction.url, {});
-  console.log('Ask your user to open:', checkout.checkoutUrl);
+  console.log('Ask your user to open:', checkout.paymentUrl);
 } else throw new Error(`Cannot pay this purchase: ${purchase.status}`);
 console.log('Observe funding:', new URL(purchase.statusUrl, base).href);
 JS
@@ -75,7 +75,7 @@ Reuse the same IDs and payload when a request outcome is uncertain. Do not creat
 
 For MPP, `POST /api/blender/purchases/my-purchase-1/mpp`. Put the agent token in `X-Agartha-Agent-Token`; reserve `Authorization` for the MPP payment credential. An unpaid request returns the standard HTTP 402 challenge. The Stripe SPT card payment is $5 or $20; set your payer's spend limit explicitly. A success receipt is returned only after the verified payment has been applied to the ledger.
 
-For human-assisted funding, create the purchase with `paymentRail: "checkout"`, then `POST /api/blender/purchases/ID/checkout` with the agent Bearer token. Open the returned `checkoutUrl`. A redirect does not itself credit the account. The rail is immutable; MPP and Checkout cannot race to charge the same purchase.
+For human-assisted funding, create the purchase with `paymentRail: "checkout"`, then `POST /api/blender/purchases/ID/checkout` with the agent Bearer token. Share the returned `paymentUrl` with your user. `paymentUrl` is a first-party redirect that preserves Stripe’s complete URL, including its opaque `#…` fragment. Share it unchanged. The raw `checkoutUrl` remains available for compatibility: never rebuild it from `checkoutSessionId`, truncate it, or remove its fragment. If a handoff fails, retry the same purchase’s `/checkout` endpoint and share `paymentUrl`; do not create another purchase. A redirect does not itself credit the account. The rail is immutable; MPP and Checkout cannot race to charge the same purchase.
 
 `GET /api/blender/purchases/ID` observes funding. If payment succeeded but its response was lost, `POST /api/blender/purchases/ID/reconcile` with `{"paymentId":"pi_..."}` and your agent Bearer token. The server retrieves Stripe's current state and verifies ownership. This endpoint does not accept client-supplied payment amounts or success claims.
 
