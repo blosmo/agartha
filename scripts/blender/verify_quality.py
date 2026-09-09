@@ -6,6 +6,7 @@ Run without --assert-quality against an earlier kit to record a baseline.
 No network, credentials, paid workers or external Python packages are used.
 """
 import gc
+import faulthandler
 import argparse
 import json
 from pathlib import Path
@@ -14,6 +15,9 @@ import sys
 from types import SimpleNamespace
 
 import bpy
+
+# Keep a native exporter hang diagnosable in CI instead of losing the job timeout.
+faulthandler.dump_traceback_later(90, repeat=True)
 
 
 def fixture(kit):
@@ -273,6 +277,7 @@ def main():
     # Release that cycle while Blender is alive rather than during Python finalization.
     kit.clear()
     gc.collect()
+    faulthandler.cancel_dump_traceback_later()
 
 
 if __name__=='__main__':
