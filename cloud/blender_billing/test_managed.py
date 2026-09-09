@@ -64,3 +64,24 @@ class ManagedTests(unittest.TestCase):
         self.assertLess(events.index('recordManagedCheckpoint'), events.index('finishManagedJob'))
         finish = [call.kwargs for call in broker.ledger.call.call_args_list if call.args[0] == 'finishManagedJob'][0]
         self.assertTrue(finish['artifactsReady']); self.assertTrue(finish['visuallyInspected']); self.assertEqual(finish['status'], 'completed')
+
+    def test_new_checkpoint_does_not_inherit_previous_inspection_after_record_failure(self):
+        broker, files = Mock(), Mock()
+        recorded = 0
+        def ledger(op, **kw):
+            nonlocal recorded
+            if op == 'claimManagedJob': return {'claimed': True}
+            if op == 'recordManagedCheckpoint':
+                recorded += 1
+                if recorded == 2: raise RuntimeError('ledger unavailable')
+            return {'reservationId': 'r', 'status': 'running'}
+        broker.ledger.call.side_effect = ledger
+        broker.call.side_effect = [{'result': {'content': [{'text': f'MANAGED_EXPORT_OK:executor:{turn}'}]}} for turn in range(2)]
+        broker.download.side_effect = lambda token, reservation, name, limit: {'model.glb': b'glTF', 'model.blend': b'BLENDER', 'preview.png': b'png'}[name]
+        response = Mock(); response.content = b'{}'; response.json.return_value = {'summary': 'Revise', 'code': 'import bpy', 'done': False}
+        with patch('cloud.blender_billing.managed.uuid.uuid4', return_value=Mock(hex='executor')), patch('cloud.blender_billing.managed.preview_image', return_value='data:image/jpeg;base64,AA=='), patch('cloud.blender_billing.managed.httpx.Client') as client:
+            client.return_value.__enter__.return_value.post.side_effect = [response, response, RuntimeError('budget exhausted')]
+            run_managed(broker, files, 'a'*64, 'job', Mock(), 'https://example.test', 'key')
+        finish = [call.kwargs for call in broker.ledger.call.call_args_list if call.args[0] == 'finishManagedJob'][0]
+        self.assertEqual(files.save.call_count, 2)
+        self.assertTrue(finish['artifactsReady']); self.assertFalse(finish['visuallyInspected'])

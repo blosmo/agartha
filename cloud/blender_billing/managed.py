@@ -171,9 +171,9 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
                     raise ValueError('Invalid exported model.')
                 files.save(job_id, exported)
                 saved = True
-                broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
-                # The next turn must inspect this exact new preview before claiming completion.
+                # Reset before any network call: these files have not been inspected yet.
                 inspected = False
+                broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
             except Exception:
                 history += '\nExports or preview could not be validated. Fix the scene and camera.'
         else:
