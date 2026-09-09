@@ -8,6 +8,7 @@ export const blenderSessionTables = {
     status: v.union(v.literal("open"), v.literal("reserved"), v.literal("expired")), createdAt: v.number(),
   }).index("by_quote", ["quoteId"]).index("by_owner_request", ["agentId", "livemode", "requestId"]),
   blenderSessionReservations: defineTable({
+    deferredStart: v.optional(v.boolean()),
     monitorExecutorId: v.optional(v.string()), monitorLeaseExpiresAt: v.optional(v.number()),
     reservationId: v.string(), quoteId: v.string(), agentId: v.string(), livemode: v.boolean(), requestId: v.string(), projectId: v.string(),
     reservedMinutes: v.number(), reservedCents: v.number(), status: v.union(v.literal("reserved"), v.literal("launching"), v.literal("running"), v.literal("unknown"), v.literal("settled"), v.literal("failed")),

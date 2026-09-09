@@ -60,9 +60,7 @@ async function releaseFailureBudget(ctx: MutationCtx, reservationId: string, gen
   if (!event || event.released) return;
   await ctx.db.patch(event._id, { released: true, state: "released" });
 }
-export const createQuote = internalMutation({
-  args: { token: v.string(), quoteId: v.string(), minutes: v.number(), livemode: v.boolean(), requestId: v.string(), projectId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
+export async function createQuoteInTransaction(ctx: MutationCtx, args: { token: string; quoteId: string; minutes: number; livemode: boolean; requestId: string; projectId?: string }) {
     const actor = await requireBillingOwner(ctx, args.token); assertActivated(actor.agentId, args.livemode); identifier(args.quoteId, "quoteId"); identifier(args.requestId, "requestId");
     if (args.projectId !== undefined) identifier(args.projectId, "projectId");
     if (args.projectId !== undefined) await validateResumeProject(ctx, actor.agentId, args.livemode, args.projectId);
@@ -73,12 +71,14 @@ export const createQuote = internalMutation({
     const quote = quoteBlenderSession(args.minutes, Date.now());
     const id = await ctx.db.insert("blenderSessionQuotes", { quoteId: args.quoteId, agentId: actor.agentId, livemode: args.livemode, requestId: args.requestId, ...(args.projectId === undefined ? {} : { projectId: args.projectId }), minutes: quote.minutes, reserveCents: quote.reserveCents, pricingVersion: quote.pricingVersion, expiresAt: quote.expiresAt, status: "open", createdAt: Date.now() });
     return (await ctx.db.get(id))!;
-  },
+}
+
+export const createQuote = internalMutation({
+  args: { token: v.string(), quoteId: v.string(), minutes: v.number(), livemode: v.boolean(), requestId: v.string(), projectId: v.optional(v.string()) },
+  handler: createQuoteInTransaction,
 });
 
-export const reserveSession = internalMutation({
-  args: { token: v.string(), quoteId: v.string(), reservationId: v.string(), requestId: v.string() },
-  handler: async (ctx, args) => {
+export async function reserveSessionInTransaction(ctx: MutationCtx, args: { token: string; quoteId: string; reservationId: string; requestId: string }) {
     const actor = await requireBillingOwner(ctx, args.token); identifier(args.reservationId, "reservationId"); identifier(args.requestId, "requestId");
     const quote = await ctx.db.query("blenderSessionQuotes").withIndex("by_quote", q => q.eq("quoteId", args.quoteId)).unique();
     if (!quote || quote.agentId !== actor.agentId) throw new Error("Quote not found.");
@@ -102,7 +102,11 @@ export const reserveSession = internalMutation({
     const id = await ctx.db.insert("blenderSessionReservations", { reservationId: args.reservationId, quoteId: quote.quoteId, agentId: actor.agentId, livemode: quote.livemode, requestId: args.requestId, projectId: quote.projectId ?? args.reservationId, reservedMinutes: quote.minutes, reservedCents: quote.reserveCents, status: "reserved", launchGeneration: 0, retryCount: 0, chargedCents: 0, releasedCents: 0, responseBytesHeld: 0, responseBytesUsed: 0, failureBudgetNanoUsd: 0, stopRequested: false, createdAt: Date.now() });
     await ctx.db.patch(quote._id, { status: "reserved" });
     return (await ctx.db.get(id))!;
-  },
+}
+
+export const reserveSession = internalMutation({
+  args: { token: v.string(), quoteId: v.string(), reservationId: v.string(), requestId: v.string() },
+  handler: reserveSessionInTransaction,
 });
 
 export const getReservation = internalQuery({
@@ -139,7 +143,7 @@ export const listActiveReservations = internalQuery({
   handler: async ctx => {
     const rows = [];
     for (const status of ["launching", "running", "unknown", "reserved"] as const) rows.push(...await ctx.db.query("blenderSessionReservations").withIndex("by_status", q => q.eq("status", status)).take(5));
-    return rows.slice(0, 5);
+    return rows.filter(row => row.status !== "reserved" || !row.deferredStart).slice(0, 5);
   },
 });
 

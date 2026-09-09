@@ -12,7 +12,7 @@ APP_NAME = "agartha-paid-blender"
 app = modal.App(APP_NAME)
 source = Path(__file__).resolve().parents[2] / "cloud"
 image = (modal.Image.debian_slim(python_version="3.12")
-         .pip_install("modal==1.5.3", "mcp==1.26.0", "starlette==1.6.0", "httpx==0.28.1")
+         .pip_install("modal==1.5.3", "mcp==1.26.0", "starlette==1.6.0", "httpx==0.28.1", "Pillow==11.3.0")
          .add_local_dir(source / "blender_billing", "/opt/agartha/cloud/blender_billing", copy=True,
                         ignore=lambda path: path.name.startswith("test_") or "__pycache__" in path.parts)
          .add_local_dir(source / "blender_mcp", "/opt/agartha/cloud/blender_mcp", copy=True,
@@ -55,12 +55,35 @@ def monitor_session(reservation_id: str):
 @modal.asgi_app()
 def serve():
     from .http import create_http_app
-    return create_http_app(controller(), lambda reservation_id: monitor_session.spawn(reservation_id))
+    from .managed import ManagedFiles
+    broker = controller()
+    files = ManagedFiles(Path('/private/managed'), broker.results.storage, storage.commit)
+    return create_http_app(broker, lambda reservation_id: monitor_session.spawn(reservation_id),
+                           lambda token, job_id: managed_job.spawn(token, job_id), files)
 
 
-@app.function(image=image, secrets=secrets, cpu=(0.125, 0.25), memory=256, timeout=60, schedule=modal.Period(seconds=60))
+@app.function(image=image, secrets=secrets, volumes={"/private": storage}, cpu=(0.125, 1), memory=(512, 2048), timeout=1500, max_containers=4)
+def managed_job(token: str, job_id: str):
+    from .managed import ManagedFiles, run_managed
+    broker = controller()
+    files = ManagedFiles(Path('/private/managed'), broker.results.storage, storage.commit)
+    # Fixed first-party inference proxy; no model-controlled network destination.
+    run_managed(broker, files, token, job_id, lambda reservation_id: monitor_session.spawn(reservation_id),
+                'https://3dforagents.com/api/blender/inference', os.environ['AGARTHA_BILLING_BROKER_KEY'])
+
+
+@app.function(image=image, secrets=secrets, volumes={"/private": storage}, cpu=(0.125, 0.25), memory=256, timeout=60, schedule=modal.Period(seconds=60))
 def reconcile_sessions():
     broker = controller()
+    for job in broker.ledger.call('listActiveManagedJobs'):
+        if job['deadlineAt'] <= time.time() * 1000:
+            from .managed import ManagedFiles, recover_managed_files
+            files = ManagedFiles(Path('/private/managed'), broker.results.storage, storage.commit)
+            try:
+                recover_managed_files(broker, files, job)
+            except (FileNotFoundError, ValueError):
+                pass
+            broker.ledger.call('recoverManagedJob', jobId=job['jobId'])
     for row in broker.ledger.call("listActiveReservations"):
         monitor_session.spawn(row["reservationId"])
 
@@ -69,6 +92,8 @@ def reconcile_sessions():
 def expire_projects():
     broker = controller()
     broker.projects.recover()
+    from .managed import ManagedFiles
+    ManagedFiles(Path('/private/managed'), broker.results.storage, storage.commit).cleanup()
     cursor = None
     for _ in range(100):
         page = broker.ledger.call("listExpiredProjects", **({"cursor": cursor} if cursor else {}))

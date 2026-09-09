@@ -27,7 +27,7 @@ def public_session(row: dict[str, Any]) -> dict[str, Any]:
     return {field: row[field] for field in fields if field in row}
 
 
-def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette:
+def create_http_app(broker: Broker, monitor: Callable[[str], None], managed_start=None, managed_files=None) -> Starlette:
     def token(request: Request) -> str:
         auth = request.headers.get("authorization", "")
         if not re.fullmatch(r"Bearer [a-f0-9]{64}", auth):
@@ -44,11 +44,11 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
             if request.url.path.startswith("/sessions/") and not rest_tools:
                 if "name" in request.path_params:
                     name = request.path_params["name"]
-                    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}\.(glb|png|blend)", name):
+                    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}\.(glb|png|blend|mp4)", name):
                         raise ClientRequestError("Invalid export filename.")
                     limit = int(request.headers.get("x-agartha-response-limit", str(DEFAULT_RESPONSE_BYTES)))
                     payload = await run_in_threadpool(broker.download, credential, reservation_id, name, limit)
-                    media_type = "image/png" if name.endswith('.png') else "model/gltf-binary" if name.endswith('.glb') else "application/octet-stream"
+                    media_type = "video/mp4" if name.endswith('.mp4') else "image/png" if name.endswith('.png') else "model/gltf-binary" if name.endswith('.glb') else "application/octet-stream"
                     return Response(payload, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
                 elif request.method == "GET":
                     row = await run_in_threadpool(broker.owned, credential, reservation_id)
@@ -131,7 +131,35 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None]) -> Starlette
         except Exception:
             return JSONResponse({"error": "Blender request could not complete. Observe the session before retrying."}, status_code=503)
 
+    async def managed_dispatch(request: Request) -> Response:
+        try:
+            credential = token(request)
+            job_id = request.path_params['job_id']
+            if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', job_id):
+                raise ClientRequestError('Invalid job ID.')
+            row = await run_in_threadpool(broker.ledger.call, 'getManagedJob', token=credential, jobId=job_id)
+            if 'name' in request.path_params:
+                if managed_files is None:
+                    raise ClientRequestError('Managed artifacts unavailable.')
+                name = request.path_params['name']
+                payload = await run_in_threadpool(managed_files.read, job_id, name)
+                media = 'video/mp4' if name.endswith('.mp4') else 'image/png' if name.endswith('.png') else 'model/gltf-binary' if name.endswith('.glb') else 'application/octet-stream'
+                return Response(payload, media_type=media, headers={'Cache-Control': 'no-store', 'Content-Disposition': f'attachment; filename="{name}"'})
+            if managed_start is None:
+                return JSONResponse({'error': 'Managed modeling unavailable.'}, status_code=503)
+            if row['status'] == 'queued':
+                await run_in_threadpool(managed_start, credential, job_id)
+            return JSONResponse({'jobId': job_id, 'status': row['status']}, headers={'Cache-Control': 'no-store'})
+        except LedgerError as error:
+            return JSONResponse({'error': 'Job authorization failed.'}, status_code=error.status)
+        except (ClientRequestError, ValueError, FileNotFoundError):
+            return JSONResponse({'error': 'Job or artifact unavailable.'}, status_code=404)
+        except Exception:
+            return JSONResponse({'error': 'Job could not start. Retry this same job ID.'}, status_code=503)
+
     return Starlette(routes=[
+        Route("/jobs/{job_id}/start", managed_dispatch, methods=["POST"]),
+        Route("/jobs/{job_id}/artifacts/{name}", managed_dispatch, methods=["GET"]),
         Route("/sessions/{reservation_id}", dispatch, methods=["GET"]),
         Route("/sessions/{reservation_id}/start", dispatch, methods=["POST"]),
         Route("/sessions/{reservation_id}/stop", dispatch, methods=["POST"]),

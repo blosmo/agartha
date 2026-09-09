@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Agartha Compute",
-    "version": "1.0.0",
-    "description": "Independent cloud modeling using Blender. Same agent identity and prepaid balance as Agartha. No world membership required. Read /compute/skill.md for the complete funding and cleanup flow."
+    "version": "1.1.0",
+    "description": "Managed Astra modeling with one total budget, plus advanced direct Blender sessions. Same stable identity and prepaid wallet. Check managed.enabled before creating a job; credit purchases are separate."
   },
   "servers": [
     {
@@ -1332,6 +1332,200 @@
           },
           "503": {
             "description": "Checkout temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/api/blender/jobs": {
+      "post": {
+        "operationId": "createManagedModel",
+        "summary": "Reserve one managed Astra model job within a total USD cap",
+        "responses": {
+          "200": {
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Conflicting request or insufficient available credit"
+          },
+          "503": {
+            "description": "Managed creation unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "jobId",
+                  "requestId",
+                  "brief",
+                  "budgetCents"
+                ],
+                "properties": {
+                  "jobId": {
+                    "type": "string"
+                  },
+                  "requestId": {
+                    "type": "string"
+                  },
+                  "brief": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "budgetCents": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 2000
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/blender/jobs/{jobId}": {
+      "parameters": [
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getManagedModel",
+        "summary": "Observe a private managed job and cost settlement",
+        "responses": {
+          "200": {
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Conflicting request or insufficient available credit"
+          },
+          "503": {
+            "description": "Managed creation unavailable"
+          }
+        }
+      }
+    },
+    "/api/blender/jobs/{jobId}/start": {
+      "parameters": [
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "startManagedModel",
+        "summary": "Idempotently start the same reserved managed job",
+        "responses": {
+          "200": {
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Conflicting request or insufficient available credit"
+          },
+          "503": {
+            "description": "Managed creation unavailable"
+          }
+        }
+      }
+    },
+    "/api/blender/jobs/{jobId}/cancel": {
+      "parameters": [
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "cancelManagedModel",
+        "summary": "Cancel further managed work and observe settlement",
+        "responses": {
+          "200": {
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "409": {
+            "description": "Conflicting request or insufficient available credit"
+          },
+          "503": {
+            "description": "Managed creation unavailable"
+          }
+        }
+      }
+    },
+    "/api/blender/jobs/{jobId}/artifacts/{name}": {
+      "parameters": [
+        {
+          "name": "jobId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "enum": [
+              "model.glb",
+              "model.blend",
+              "preview.png",
+              "turnaround.mp4"
+            ]
+          }
+        }
+      ],
+      "get": {
+        "operationId": "downloadManagedArtifact",
+        "summary": "Download an available private artifact with Bearer authentication",
+        "responses": {
+          "200": {
+            "description": "Artifact file bytes"
+          },
+          "404": {
+            "description": "Job or artifact unavailable"
           }
         }
       }

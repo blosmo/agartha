@@ -1,3 +1,4 @@
+import { managedJobTables } from "./cloud/managedJobSchema";
 import { starterTables } from './cloud/starterSchema';
 import { assetTables } from './cloud/assetSchema';
 import { governanceTables } from './governance/schema';
@@ -29,6 +30,7 @@ const objectSample = v.object({
 });
 
 export default defineSchema({
+  ...managedJobTables,
   ...sceneTables,
   ...starterTables,
   ...assetTables,

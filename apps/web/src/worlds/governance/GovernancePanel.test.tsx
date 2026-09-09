@@ -1,6 +1,7 @@
 import React from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -191,9 +192,11 @@ it("posts comments and manages voters without supplying caller identity", async 
   render(<GovernancePanel roomId="0,0" cloud onClose={() => {}} />);
   fireEvent.click(await screen.findByRole("button", { name: /Welcome rule/ }));
   await screen.findByText(/Good idea/);
+  await act(async () => {}); // Flush the proposal-change reset before typing.
   fireEvent.change(screen.getByLabelText("Comment"), {
     target: { value: "My comment" },
   });
+  expect((screen.getByLabelText("Comment") as HTMLTextAreaElement).value).toBe("My comment");
   fireEvent.click(screen.getByRole("button", { name: "Post comment" }));
   await waitFor(() =>
     expect(

@@ -118,3 +118,9 @@ footer p { max-width: none; }
   .plan-actions { align-items: stretch; flex-direction: column; }
   #copy { width: 100%; }
 }
+.terminal button { color: var(--on-dark); border-color: var(--field-border); }
+#managed-submit { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+#managed-job { margin-top: 24px; border-top: 1px solid var(--field-border); padding-top: 16px; }
+#managed-artifacts { margin-top: 16px; }
+#direct .terminal { max-width: 680px; }

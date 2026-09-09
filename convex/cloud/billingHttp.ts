@@ -15,6 +15,12 @@ const projectOwnerMutations = new Set(['createProject']);
 const projectBrokerQueries = new Set(['getProjectForReservation', 'listArtifactDeletionCandidates', 'listExpiredProjects', 'getArtifactReservation']);
 const projectBrokerMutations = new Set(['ensureProjectForReservation', 'reserveArtifactBytes', 'commitArtifact', 'rollbackArtifact', 'claimArtifactDeletion', 'confirmArtifactDeletion']);
 
+const managedOwnerQueries = new Set(['getManagedJob']);
+const managedOwnerMutations = new Set(['createManagedJob', 'requestManagedCancel']);
+const managedBrokerQueries = new Set(['getManagedJobForBroker', 'listActiveManagedJobs']);
+const managedBrokerMutations = new Set(['claimManagedJob', 'heartbeatManagedJob', 'recordManagedCheckpoint', 'recordManagedVideo', 'finishManagedJob', 'recoverManagedJob']);
+const managedPaymentMutations = new Set(['claimManagedInference', 'completeManagedInference']);
+
 function json(value: unknown, status = 200) {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -24,11 +30,12 @@ export function registerBillingRoutes(router: HttpRouter) {
     const key = process.env.AGARTHA_BILLING_GATEWAY_KEY;
     if (!key || request.headers.get('x-agartha-billing-key') !== key) return json({ error: 'Unauthorized gateway.' }, 401);
     const operation = new URL(request.url).pathname.slice('/billing/api/'.length);
-    const trusted = paymentQueries.has(operation) || paymentMutations.has(operation);
-    const broker = brokerQueries.has(operation) || brokerMutations.has(operation) || projectBrokerQueries.has(operation) || projectBrokerMutations.has(operation);
+    const managed = managedOwnerQueries.has(operation) || managedOwnerMutations.has(operation) || managedBrokerQueries.has(operation) || managedBrokerMutations.has(operation) || managedPaymentMutations.has(operation);
+    const trusted = paymentQueries.has(operation) || paymentMutations.has(operation) || managedPaymentMutations.has(operation);
+    const broker = managedBrokerQueries.has(operation) || managedBrokerMutations.has(operation) || brokerQueries.has(operation) || brokerMutations.has(operation) || projectBrokerQueries.has(operation) || projectBrokerMutations.has(operation);
     const session = sessionQueries.has(operation) || sessionMutations.has(operation) || brokerQueries.has(operation) || brokerMutations.has(operation);
     const project = projectOwnerQueries.has(operation) || projectOwnerMutations.has(operation) || projectBrokerQueries.has(operation) || projectBrokerMutations.has(operation);
-    if (!trusted && !broker && !session && !project && !ownerQueries.has(operation) && !ownerMutations.has(operation)) return json({ error: 'Unknown billing operation.' }, 404);
+    if (!managed && !trusted && !broker && !session && !project && !ownerQueries.has(operation) && !ownerMutations.has(operation)) return json({ error: 'Unknown billing operation.' }, 404);
     if (trusted) {
       const paymentKey = process.env.AGARTHA_BILLING_PAYMENT_KEY;
       if (!paymentKey || request.headers.get('x-agartha-payment-key') !== paymentKey) return json({ error: 'Unauthorized payment service.' }, 401);
@@ -54,8 +61,8 @@ export function registerBillingRoutes(router: HttpRouter) {
       for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
       const args = JSON.parse(new TextDecoder().decode(bytes));
       if (!args || typeof args !== 'object' || Array.isArray(args)) return json({ error: 'Invalid request.' }, 400);
-      const module = project ? anyApi.cloud.blenderProjects : session ? anyApi.cloud.blenderSessions : purchases;
-      const query = ownerQueries.has(operation) || paymentQueries.has(operation) || sessionQueries.has(operation) || brokerQueries.has(operation) || projectOwnerQueries.has(operation) || projectBrokerQueries.has(operation);
+      const module = managed ? anyApi.cloud.managedJobs : project ? anyApi.cloud.blenderProjects : session ? anyApi.cloud.blenderSessions : purchases;
+      const query = managedOwnerQueries.has(operation) || managedBrokerQueries.has(operation) || ownerQueries.has(operation) || paymentQueries.has(operation) || sessionQueries.has(operation) || brokerQueries.has(operation) || projectOwnerQueries.has(operation) || projectBrokerQueries.has(operation);
       const result = query ? await ctx.runQuery(module[operation], args) : await ctx.runMutation(module[operation], args);
       return json(result);
     } catch (error) {

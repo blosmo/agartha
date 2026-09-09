@@ -16,12 +16,57 @@
     <div class="hero">
       <div>
         <div class="eyebrow">Cloud 3D modeling for agents</div>
-        <h1>Your model.<br>Your budget.</h1>
-        <p class="intro">Build and refine 3D models with your AI agent in cloud Blender. Describe what you need, set a spending limit, and keep the files.</p>
-        <div class="actions"><a class="primary" href="#start">Create a plan <span aria-hidden="true">↗</span></a><a href="#pricing">How pricing works</a></div>
+        <h1>Give your agent<br>access to Astra.</h1>
+        <p class="intro">Your agent brings the brief. We provide Astra to plan, build and review the model in cloud Blender—within one total budget. No separate Astra account needed.</p>
+        <div class="actions"><a class="primary" href="#start">Create a model <span aria-hidden="true">↗</span></a><a href="#pricing">How pricing works</a></div>
         <p class="note">Works with agents that use HTTP or MCP. No local Blender installation.</p>
       </div>
       <div class="terminal" id="start">
+        <h2>Create a model</h2>
+        <p class="form-intro">Describe it. Astra plans, builds and reviews it in Blender within your total budget.</p>
+        <p id="managed-availability" role="status">Checking creation availability…</p>
+        <button id="managed-check" type="button">Refresh availability</button>
+        <form id="managed-form">
+          <label for="managed-brief">What should we create?</label>
+          <textarea id="managed-brief" rows="4" maxlength="2000" required placeholder="A low-poly ceramic teapot with a wide handle, for a game"></textarea>
+          <label for="managed-budget">Total budget (USD)</label>
+          <input id="managed-budget" type="text" inputmode="decimal" value="5.00" required aria-describedby="managed-budget-help">
+          <p id="managed-budget-help">$1–$20, including Astra and Blender. Charged for actual usage; unused credits stay in your wallet. A higher budget does not guarantee a better model.</p>
+          <div class="plan-actions"><button id="managed-submit" type="submit" disabled>Create a model</button></div>
+        </form>
+        <p id="managed-error" class="field-error" role="alert"></p>
+        <div id="managed-job" hidden><h3>Your model</h3><p id="managed-progress" role="status"></p><p id="managed-cost"></p><p id="managed-inspection"></p><div id="managed-artifacts" class="links"></div><div class="plan-actions"><button id="managed-retry" type="button">Retry same job</button><button id="managed-cancel" type="button">Cancel job</button><button id="managed-new" type="button" hidden>Create another model</button></div></div>
+        <details><summary>Credits and browser identity</summary><p id="managed-balance" role="status">Your balance appears when you connect this browser.</p><p>Credits belong to the identity saved in this browser. Another browser or cleared browser storage creates a different identity and will not recover these credits. Keep this browser storage to retain access.</p><button id="managed-connect" type="button">Connect browser wallet</button><div class="plan-actions"><button type="button" data-fund="500" disabled>$5 credits</button><button type="button" data-fund="2000" disabled>$20 credits</button></div><p>Credit purchases are separate from your job budget. No automatic purchases or top-ups. Return here after Checkout to refresh your balance, then explicitly create your model.</p><p id="managed-funding" role="status"></p><a id="managed-checkout" hidden target="_blank" rel="noopener">Open secure checkout</a></details>
+        <p><a href="#direct">Advanced: Direct Blender</a></p>
+        <noscript><p>JavaScript is required for managed creation. Use the <a href="/compute/skill.md">agent API guide</a>.</p></noscript>
+      </div>
+    </div>
+    <div class="facts"><div><strong>GLB · BLEND · PNG · MP4</strong><span>Models, editable files, previews and 360° video</span></div><div><strong>A ceiling, not a target</strong><span>Stop when further work adds little value</span></div><div><strong>Private by default</strong><span>Publishing is a separate decision</span></div></div>
+    <section aria-labelledby="workflow"><h2 id="workflow">From brief to finished files</h2><div class="steps"><div><span class="number">01 / Plan</span><h3>Agree on the scope</h3><p>Describe the model and intended use. Your submitted budget caps Astra and Blender usage for one managed job. Buy credits separately if needed.</p></div><div><span class="number">02 / Refine</span><h3>Build and refine</h3><p>Start with the main forms, inspect actual previews and fix the most valuable defects. Keep a saved checkpoint. Stop when the brief is met or further edits are unlikely to help.</p></div><div><span class="number">03 / Deliver</span><h3>Download and review</h3><p>Download the model, preview and editable source before closing. Your agent reports what was checked, what remains, the actual cost and why it stopped.</p></div></div></section>
+    <section class="pricing" id="pricing" aria-labelledby="price-title">
+      <div>
+        <h2 id="price-title">How the costs add up</h2>
+        <p id="price-description">$0.40 covers the first five running minutes. Each additional begun minute costs $0.05. Prepaid credit options: $5 or $20 USD.</p>
+        <p class="note">These rates cover the cloud workspace. Managed creation also includes Astra usage within your submitted total cap. Direct Blender uses your own agent provider.</p>
+        <p class="note">Your agent asks you to approve any prepaid credit purchase separately. Unused credits stay in your wallet and do not count as task usage.</p>
+        <p class="note">No subscriptions or automatic top-ups. Two CPU cores, 4 GiB RAM, no GPU. Running idle time is billed; automatic shutdown starts after 60 idle seconds. Each resumed session has a new minimum charge.</p>
+      </div>
+      <div>
+        <h3>One budget, several steps</h3>
+        <p>Managed jobs reserve one session of up to 10 minutes, plus Astra usage. Leave room for inspection, fixes and export. Extra time alone does not guarantee a better model.</p>
+        <details id="session-calculator" hidden>
+          <summary>Estimate a single compute session</summary>
+          <label for="minutes">Reserved time: <strong id="duration">5 minutes</strong></label>
+          <input id="minutes" type="range" min="5" max="30" step="1" value="5">
+          <output for="minutes" id="estimate">$0.40 published estimate</output>
+          <p class="note">Compute only; this does not change your plan. The reserved amount caps one session’s charge. Unused credit above the minimum returns after shutdown is confirmed.</p>
+        </details>
+        <p id="availability" role="status" hidden>Checking live pricing and purchase availability…</p>
+        <button id="retry-pricing" type="button" hidden>Retry pricing check</button>
+        <noscript><p>Check <a href="/api/blender/pricing">the pricing API</a> for current purchase status. JavaScript is optional for the agent API.</p></noscript>
+      </div>
+    </section>
+    <section id="direct"><details><summary>Advanced: Direct Blender — use your own agent</summary>      <div class="terminal" id="direct-start">
         <h2 id="plan-title">Make a modeling plan</h2>
         <p class="form-intro">Your agent builds the model. You approve its plan and any payment before work starts.</p>
         <form id="plan-form" aria-labelledby="plan-title" novalidate hidden>
@@ -54,35 +99,11 @@
         <p>Your brief stays in this browser. Copying the plan does not start work or charge you.</p>
         <noscript><p>JavaScript is off. Read <a href="/compute/skill.md">the agent guide</a> and give your agent your brief, intended use and maximum total budget.</p></noscript>
       </div>
-    </div>
-    <div class="facts"><div><strong>GLB · BLEND · PNG</strong><span>Models, editable files and previews</span></div><div><strong>A ceiling, not a target</strong><span>Stop when further work adds little value</span></div><div><strong>Private by default</strong><span>Publishing is a separate decision</span></div></div>
-    <section aria-labelledby="workflow"><h2 id="workflow">From brief to finished files</h2><div class="steps"><div><span class="number">01 / Plan</span><h3>Agree on the scope</h3><p>Your agent turns the intended use into acceptance criteria, estimates the work and saves budget for review and export. You approve the plan and any required credit purchase.</p></div><div><span class="number">02 / Refine</span><h3>Build and refine</h3><p>Start with the main forms, inspect actual previews and fix the most valuable defects. Keep the best checkpoint. Stop when the brief is met or further edits are unlikely to help.</p></div><div><span class="number">03 / Deliver</span><h3>Download and review</h3><p>Download the model, preview and editable source before closing. Your agent reports what was checked, what remains, the actual cost and why it stopped.</p></div></div></section>
-    <section class="pricing" id="pricing" aria-labelledby="price-title">
-      <div>
-        <h2 id="price-title">How the costs add up</h2>
-        <p id="price-description">$0.40 covers the first five running minutes. Each additional begun minute costs $0.05. Prepaid credit options: $5 or $20 USD.</p>
-        <p class="note">These rates cover the cloud workspace. AI model use and review are billed through your agent’s provider.</p>
-        <p class="note">Your agent asks you to approve any prepaid credit purchase separately. Unused credits stay in your wallet and do not count as task usage.</p>
-        <p class="note">No subscriptions or automatic top-ups. Two CPU cores, 4 GiB RAM, no GPU. Running idle time is billed; automatic shutdown starts after 60 idle seconds. Each resumed session has a new minimum charge.</p>
-      </div>
-      <div>
-        <h3>One budget, several steps</h3>
-        <p>Your total budget may cover several steps or sessions. Leave room for inspection, fixes and export. Extra time alone does not guarantee a better model.</p>
-        <details id="session-calculator" hidden>
-          <summary>Estimate a single compute session</summary>
-          <label for="minutes">Reserved time: <strong id="duration">5 minutes</strong></label>
-          <input id="minutes" type="range" min="5" max="30" step="1" value="5">
-          <output for="minutes" id="estimate">$0.40 published estimate</output>
-          <p class="note">Compute only; this does not change your plan. The reserved amount caps one session’s charge. Unused credit above the minimum returns after shutdown is confirmed.</p>
-        </details>
-        <p id="availability" role="status" hidden>Checking live pricing and purchase availability…</p>
-        <button id="retry-pricing" type="button" hidden>Retry pricing check</button>
-        <noscript><p>Check <a href="/api/blender/pricing">the pricing API</a> for current purchase status. JavaScript is optional for the agent API.</p></noscript>
-      </div>
-    </section>
-    <section><h2>Keep your model files</h2><p>Use the exported files in your app, game, website or production pipeline. You can also bring them into <a href="https://agartha-dusky.vercel.app/">Agartha</a>. Downloads count toward the 256 MiB session allowance. Saved checkpoints are retained for seven days after the latest paid session; keep your own lasting copies.</p><div class="links"><a href="/compute/skill.md">Agent quickstart</a><a href="/compute/modeling.md">Modeling guide</a><a href="/compute/openapi.json">API reference</a><a href="/agents/blender-billing.md">Billing and limits</a></div></section>
+</details></section>
+    <section><h2>Keep your model files</h2><p>Managed jobs include a four-second, 512-pixel, 12 fps 360° video when rendering fits the approved budget. If time or budget runs out, available model files and previews are still delivered with the reason.</p><p>Use the exported files in your app, game, website or production pipeline. You can also bring them into <a href="https://agartha-dusky.vercel.app/">Agartha</a>. Managed downloads are retained for seven days after creation; keep your own lasting copies.</p><div class="links"><a href="/compute/skill.md">Agent quickstart</a><a href="/compute/modeling.md">Modeling guide</a><a href="/compute/openapi.json">API reference</a><a href="/agents/blender-billing.md">Billing and limits</a></div></section>
   </main>
   <footer><p>Agartha Compute is an independent service using Blender. It is not affiliated with or endorsed by Blender Foundation. Blender is a registered trademark of Blender Foundation. <a href="https://www.blender.org/about/license/">Software license</a> · <a href="https://www.blender.org/about/trademark-policy/">Trademark policy</a></p></footer>
   <script src="/compute/page.js" defer></script>
+  <script src="/compute/managed.js" defer></script>
 </body>
 </html>

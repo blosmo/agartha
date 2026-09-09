@@ -4,7 +4,7 @@ export class BillingHttpError extends Error {
 
 export type LedgerCall = <T = unknown>(operation: string, args: Record<string, unknown>) => Promise<T>;
 
-export function createLedgerClient(config: { siteUrl: string; gatewayKey: string; paymentKey?: string }, fetcher: typeof fetch = fetch): LedgerCall {
+export function createLedgerClient(config: { siteUrl: string; gatewayKey: string; paymentKey?: string; brokerKey?: string }, fetcher: typeof fetch = fetch): LedgerCall {
   const base = new URL(config.siteUrl);
   if (base.protocol !== 'https:' && !(base.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(base.hostname))) throw new Error('Ledger URL must use HTTPS.');
   if (!config.gatewayKey) throw new Error('Billing gateway key is required.');
@@ -12,7 +12,7 @@ export function createLedgerClient(config: { siteUrl: string; gatewayKey: string
     if (!/^[a-zA-Z]+$/.test(operation)) throw new Error('Invalid billing operation.');
     const response = await fetcher(new URL(`/billing/api/${operation}`, base), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-agartha-billing-key': config.gatewayKey, ...(config.paymentKey ? { 'x-agartha-payment-key': config.paymentKey } : {}) },
+      headers: { 'content-type': 'application/json', 'x-agartha-billing-key': config.gatewayKey, ...(config.paymentKey ? { 'x-agartha-payment-key': config.paymentKey } : {}), ...(config.brokerKey ? { 'x-agartha-broker-key': config.brokerKey } : {}) },
       body: JSON.stringify(args),
       signal: AbortSignal.timeout(15_000),
       redirect: 'error',

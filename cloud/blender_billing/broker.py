@@ -216,6 +216,8 @@ class Broker:
 
     def reconcile(self, reservation_id: str) -> dict[str, Any]:
         row = self._row(reservation_id)
+        if row["status"] == "reserved" and row.get("deferredStart") and not row.get("stopRequested"):
+            return row
         if row["status"] in {"settled", "failed"}:
             return row
         if row["status"] in {"reserved", "launching"} and not row.get("stopRequested"):

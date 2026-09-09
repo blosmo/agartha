@@ -29,9 +29,18 @@ jobs:
           curl --fail --silent --show-error --location --retry 3 --max-time 60 "https://download.blender.org/release/Blender4.5/blender-${version}.sha256" -o "$runtime/SHA256SUMS"
           (cd "$runtime" && grep -F "  $archive" SHA256SUMS | sha256sum --check -)
           tar -xJf "$runtime/$archive" -C "$runtime"
-          "$runtime/blender-${version}-linux-x64/blender" --background --factory-startup --python-exit-code 1 \
+          timeout 240s "$runtime/blender-${version}-linux-x64/blender" --background --factory-startup --python-exit-code 1 \
             --python scripts/blender/verify_quality.py -- --kit scripts/seed/starter_kit.py \
-            --output "$RUNNER_TEMP/blender-quality-results" --assert-quality --renders
+            --output "$RUNNER_TEMP/blender-quality-results" --assert-quality --renders || {
+              result=$?
+              if [ -f /tmp/blender.crash.txt ]; then cat /tmp/blender.crash.txt; fi
+              exit "$result"
+            }
+      - name: Verify managed model export excludes the studio
+        run: |
+          version="$(python3 -c 'from cloud.blender_mcp.config import BLENDER_VERSION; print(BLENDER_VERSION)')"
+          "$RUNNER_TEMP/blender-quality/blender-${version}-linux-x64/blender" --background --factory-startup --python-exit-code 1 \
+            --python scripts/blender/verify_managed_export.py -- "$RUNNER_TEMP/managed-export-results"
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20

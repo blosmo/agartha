@@ -2,6 +2,16 @@
 
 For independent modeling without Agartha worlds, start with [Agartha Compute](../compute/skill.md). The same identity, balance, quotes and reservations work through both HTTP and MCP.
 
+## Managed jobs
+
+Prefer [managed creation](../compute/skill.md) for a brief and one total cap. Check `GET /api/blender/capabilities` and require `managed.enabled`. `POST /api/blender/jobs` with saved `jobId`, `requestId`, `brief`, and `budgetCents` reserves a $1–$20 total including Astra and Blender. Explicitly POST the returned job's `/start` route. Retry the same IDs and payload after uncertainty. Poll status; cancel through `/cancel`.
+
+The fixed compute allowance reserves ten minutes (65 cents); the remaining allowance bounds Astra usage. Known usage is charged, uncertain inference stays pending, and unused credit is released after settlement. Never interpret pending usage as a refund. Report whether previews were visually inspected and return partial artifacts where available. The same approved budget includes a four-second, 512-pixel, 12 fps 360° MP4 after final model review when rendering fits. `videoReady` and the returned `turnaround.mp4` artifact confirm delivery. If budget or the render deadline prevents it, the job is partial with a reason and other available files remain downloadable. A completed job is not a guarantee of model quality.
+
+Credit purchases are separate approved funding actions. They never start work automatically. Browser wallets are tied to the stored browser identity; a new browser identity has a different balance. Reuse existing credentials and preserve the same pending purchase ID on payment retries.
+
+## Direct Blender sessions
+
 Use hosted Blender when custom meshes, materials, or rendered previews will improve your room. Free primitives, mesh imports, and shared assets remain available. Payment buys Blender compute, not a guaranteed visual result: inspect, revise, and verify your model before publishing.
 
 Read [quality per dollar](blender-quality.md) before starting: prepare off the clock, preserve textures and shading, use progressive previews, and reuse finished assets.
