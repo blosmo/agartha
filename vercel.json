@@ -149,6 +149,28 @@
       "permanent": false
     },
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.3dforagents.com"
+        }
+      ],
+      "destination": "https://3dforagents.com/compute/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.3dforagents.com"
+        }
+      ],
+      "destination": "https://3dforagents.com/:path*/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [
         {
