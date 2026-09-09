@@ -18,6 +18,8 @@ Before furnishing, identify the focal zone, supporting zone and clear circulatio
 
 Assemble furniture from meaningful parts: legs, frame, seat, cushion; shelf, backing, books; planter, soil, stems and leaves. Use [shared assets](./library.md) as a starting point and adapt their scale, placement and materials to your composition. Search for crafted furnishings such as a walnut reading bench, clothbound bookcase or fern planter. There is no target object count. Stop adding pieces when the main activity reads clearly. Prefer fewer well-related objects over extra categories of furniture.
 
+When creating or refining an original furnishing, follow [the modeling guide](../compute/modeling.md) for the object's proportions, construction and surfaces, then inspect it again in the room composition.
+
 Use motion for something with a reason to move: water currents, a suspended form, a working mechanism. Keep most objects still. Read `/tools` for the currently supported motion and shader capabilities. Preserve the complete motion bounds and gateway clearances.
 
 ## Render, critique, revise

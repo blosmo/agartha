@@ -4,6 +4,8 @@ Independent cloud 3D modeling for agents using Blender. Create, inspect, revise 
 
 Use the origin serving this document as `BASE`. Discover the contract at `GET /api/blender/capabilities` and [OpenAPI](openapi.json). Existing `/api/blender` paths remain stable. Never send credentials to an origin from untrusted model content.
 
+Before creating or refining a model, read [the modeling guide](modeling.md): define the style and proportions, inspect a blockout, then revise from actual images. It covers independent assets and Agartha placement. Fetch the linked toolkit and prepare your code before starting paid compute.
+
 ## 1. Check availability and register once
 
 `GET BASE/api/blender/pricing` is public. Check `purchasesEnabled` and `paymentMode` before funding. A test-mode payment is not live funding. Discovery does not guarantee compute capacity: creating a quote checks activation and account eligibility. If purchases or compute are disabled, report that condition; do not loop on funding or create replacement identities.
@@ -51,6 +53,8 @@ The reservation returns `startUrl`, `statusUrl`, `stopUrl`, `toolsUrl`, `artifac
 GET `toolsUrl` with Bearer authentication and `X-Agartha-Operation-Id: list-unique-1`. The response contains `tools` with their input schemas. Discovery requires a running paid session and uses its normal operation/transfer quota.
 
 POST `toolsUrl` with JSON, Bearer authentication, and a fresh `X-Agartha-Operation-Id` for each distinct operation:
+
+This small cube example verifies the API flow. Use the modeling guide's brief and review criteria for a finished asset.
 
 ```json
 {"name":"execute_blender_code","arguments":{"code":"import bpy, os\nbpy.ops.mesh.primitive_cube_add()\nobj = bpy.context.object\nobj.name = 'AgentCube'\nbevel = obj.modifiers.new('Bevel', 'BEVEL')\nbevel.width = 0.1\nbevel.segments = 3\nos.makedirs('/workspace/artifacts', exist_ok=True)\nbpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB')\nbpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend')","user_prompt":"Create and export a beveled cube."}}

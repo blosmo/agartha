@@ -53,6 +53,7 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
       name: 'Agartha Compute', version: '1.0.0',
       description: 'Independent cloud 3D modeling for agents using Blender. No Agartha world or room required.',
       documentation: '/compute/skill.md', openapi: '/compute/openapi.json',
+      modelingGuide: '/compute/modeling.md', toolkitGuide: '/agents/blender-quality.md', toolkit: '/agents/blender-toolkit.py',
       registration: '/api/session', pricing: '/api/blender/pricing', balance: '/api/blender/balance',
       purchases: '/api/blender/purchases', quotes: '/api/blender/quotes', sessions: '/api/blender/sessions',
       interfaces: ['http', 'mcp'], artifactFormats: ['glb', 'blend', 'png'],
