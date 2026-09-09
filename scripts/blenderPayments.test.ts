@@ -4,6 +4,7 @@ import { Challenge, Credential } from 'mppx';
 import {
   BILLING_WEBHOOK_EVENTS,
   createCreditCheckout,
+  createCreditCheckoutWithLegacyRecovery,
   parseStripeWebhook,
   verifyCreditPayment,
   type BillingPurchase,
@@ -73,6 +74,47 @@ describe('Stripe Blender adapters', () => {
     });
     expect(result.id).toBe('cs_existing');
     expect(retrieve).toHaveBeenCalledWith('cs_existing');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('recovers an unbound legacy Checkout using the same purchase idempotency key', async () => {
+    const idempotencyError = new Stripe.errors.StripeIdempotencyError({ message: 'Parameters differ from the first request.' });
+    const create = vi.fn()
+      .mockRejectedValueOnce(idempotencyError)
+      .mockResolvedValueOnce({ id: 'cs_test_legacy', url: 'https://checkout.stripe.test/legacy' });
+    const stripe = { checkout: { sessions: { create, retrieve: vi.fn() } } } as unknown as Stripe;
+    const result = await createCreditCheckoutWithLegacyRecovery(stripe, purchase(), {
+      successUrl: 'https://agartha.test/payments/return/?session_id={CHECKOUT_SESSION_ID}',
+      cancelUrl: 'https://agartha.test/payments/return/?canceled=1',
+    }, {
+      successUrl: 'https://agartha.test/?blenderPayment=complete',
+      cancelUrl: 'https://agartha.test/?blenderPayment=canceled',
+    });
+    expect(result.id).toBe('cs_test_legacy');
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[0][0]).toMatchObject({ success_url: 'https://agartha.test/payments/return/?session_id={CHECKOUT_SESSION_ID}', cancel_url: 'https://agartha.test/payments/return/?canceled=1' });
+    expect(create.mock.calls[1][0]).toMatchObject({ success_url: 'https://agartha.test/?blenderPayment=complete', cancel_url: 'https://agartha.test/?blenderPayment=canceled' });
+    expect(create.mock.calls[0][1]).toEqual({ idempotencyKey: 'purchase_123' });
+    expect(create.mock.calls[1][1]).toEqual({ idempotencyKey: 'purchase_123' });
+    const firstPayload = { ...create.mock.calls[0][0], success_url: undefined, cancel_url: undefined };
+    const secondPayload = { ...create.mock.calls[1][0], success_url: undefined, cancel_url: undefined };
+    expect(secondPayload).toEqual(firstPayload);
+  });
+
+  it('does not attempt legacy recovery for unrelated errors', async () => {
+    const create = vi.fn().mockRejectedValue(new Error('network unavailable'));
+    const stripe = { checkout: { sessions: { create, retrieve: vi.fn() } } } as unknown as Stripe;
+    await expect(createCreditCheckoutWithLegacyRecovery(stripe, purchase(), { successUrl: 'https://agartha.test/new', cancelUrl: 'https://agartha.test/new-cancel' }, { successUrl: 'https://agartha.test/old', cancelUrl: 'https://agartha.test/old-cancel' })).rejects.toThrow('network unavailable');
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('never applies legacy recovery to a bound Checkout retrieval', async () => {
+    const error = new Stripe.errors.StripeIdempotencyError({ message: 'unexpected retrieve error' });
+    const retrieve = vi.fn().mockRejectedValue(error);
+    const create = vi.fn();
+    const stripe = { checkout: { sessions: { create, retrieve } } } as unknown as Stripe;
+    await expect(createCreditCheckoutWithLegacyRecovery(stripe, purchase({ checkoutSessionId: 'cs_existing' }), { successUrl: 'https://agartha.test/new', cancelUrl: 'https://agartha.test/new-cancel' }, { successUrl: 'https://agartha.test/old', cancelUrl: 'https://agartha.test/old-cancel' })).rejects.toBe(error);
+    expect(retrieve).toHaveBeenCalledOnce();
     expect(create).not.toHaveBeenCalled();
   });
 

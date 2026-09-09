@@ -109,4 +109,22 @@ describe("paid Blender wallet ledger", () => {
     const ledgerTotal = await t.run(async ctx => (await ctx.db.query("blenderLedger").collect()).filter(entry => !entry.livemode).reduce((sum, entry) => sum + entry.deltaCents, 0));
     expect(ledgerTotal).toBe(balance.availableCents);
   });
+
+  it("reads a Checkout-bound payment receipt without changing ledger state", async () => {
+    const { t } = await setup();
+    await t.mutation(anyApi.cloud.purchases.createPurchase, { token: tokenA, purchaseId: "receipt", amountCents: 500, livemode: false, paymentRail: "checkout", requestId: "receipt" });
+    await t.mutation(anyApi.cloud.purchases.attachCheckoutSession, { purchaseId: "receipt", checkoutSessionId: "cs_test_receipt" });
+    await expect(t.query(anyApi.cloud.purchases.getCheckoutReceipt, { purchaseId: "receipt", checkoutSessionId: "cs_test_wrong" })).rejects.toThrow("not found");
+    const before = await t.run(async ctx => ({ ledger: await ctx.db.query("blenderLedger").collect(), payments: await ctx.db.query("blenderPayments").collect() }));
+    expect(await t.query(anyApi.cloud.purchases.getCheckoutReceipt, { purchaseId: "receipt", checkoutSessionId: "cs_test_receipt" })).toMatchObject({ purchase: { purchaseId: "receipt", paymentRail: "checkout" }, payment: null });
+    const generation = await t.mutation(anyApi.cloud.purchases.beginPaymentReconciliation, { paymentId: "pi_receipt", eventId: "evt_receipt" });
+    await t.mutation(anyApi.cloud.purchases.fulfillPurchase, { purchaseId: "receipt", paymentId: "pi_receipt", generation: generation.generation, amountCents: 500, currency: "usd", livemode: false, paid: true, refundedCents: 0, disputedCents: 0, disputeOpen: false });
+    const beforePaidRead = await t.run(async ctx => ({ ledger: await ctx.db.query("blenderLedger").collect(), payments: await ctx.db.query("blenderPayments").collect(), purchases: await ctx.db.query("blenderPurchases").collect() }));
+    const paid = await t.query(anyApi.cloud.purchases.getCheckoutReceipt, { purchaseId: "receipt", checkoutSessionId: "cs_test_receipt" });
+    expect(paid).toMatchObject({ purchase: { paymentId: "pi_receipt" }, payment: { paymentId: "pi_receipt", purchaseId: "receipt", creditedCents: 500, reversedCents: 0, openDispute: false } });
+    const afterRead = await t.run(async ctx => ({ ledger: await ctx.db.query("blenderLedger").collect(), payments: await ctx.db.query("blenderPayments").collect(), purchases: await ctx.db.query("blenderPurchases").collect() }));
+    expect(before.ledger).toHaveLength(0);
+    expect(before.payments).toHaveLength(0);
+    expect(afterRead).toEqual(beforePaidRead);
+  });
 });

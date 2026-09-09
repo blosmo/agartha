@@ -18,6 +18,7 @@ from .durable_storage import StorageCoordinator, storage_transaction
 
 MAX_RESPONSE_BYTES = 268_435_456
 DEFAULT_RESPONSE_BYTES = 16_777_216
+TOOL_TIMEOUT_SECONDS = 90
 
 
 class BrokerConflict(RuntimeError):
@@ -169,10 +170,13 @@ class Broker:
             return canceled
         return self._stop(reservation_id)
 
-    def _stop(self, reservation_id: str) -> dict[str, Any]:
+    def _stop(self, reservation_id: str, *, idle_only: bool = False) -> dict[str, Any]:
         row = self._row(reservation_id)
         executor = uuid.uuid4().hex
-        claim = self.ledger.call("claimShutdown", reservationId=reservation_id, launchGeneration=row["launchGeneration"], executorId=executor)
+        claim_args = {"reservationId": reservation_id, "launchGeneration": row["launchGeneration"], "executorId": executor}
+        if idle_only:
+            claim_args["idleOnly"] = True
+        claim = self.ledger.call("claimShutdown", **claim_args)
         if not claim.get("claimed"):
             return row
         worker_id = row.get("providerWorkerId")
@@ -218,11 +222,15 @@ class Broker:
             return self._start(reservation_id)
         now = int(self.clock() * 1000)
         deadline = row.get("launchClaimedAt", now) + row["reservedMinutes"] * 60_000 + 60_000
-        idle = now - row.get("lastActivityAt", now) >= 60_000
+        active_operation_deadline = row.get("activeOperationDeadline")
+        operation_active = isinstance(active_operation_deadline, (int, float)) and now < active_operation_deadline
+        idle = now - row.get("lastActivityAt", now) >= 60_000 and not operation_active
         worker_id = row.get("providerWorkerId")
         terminal = worker_id is not None and self.provider.poll(worker_id) is not None
-        if row.get("stopRequested") or row["status"] == "unknown" or now >= deadline or idle or terminal:
+        if row.get("stopRequested") or row["status"] == "unknown" or now >= deadline or terminal:
             return self._stop(reservation_id)
+        if idle:
+            return self._stop(reservation_id, idle_only=True)
         return row
 
     def call(self, token: str, reservation_id: str, request: dict[str, Any], operation_id: str,
@@ -250,7 +258,7 @@ class Broker:
             self.ledger.call("completeOperation", operationId=delivery_id, actualResponseBytes=count, state="completed")
             return result
         # Keep uncertain operations claimed. A crash or timeout must never re-execute arbitrary code.
-        result = self.provider.call(row["providerWorkerId"], request, max_bytes=response_limit, timeout=30)
+        result = self.provider.call(row["providerWorkerId"], request, max_bytes=response_limit, timeout=TOOL_TIMEOUT_SECONDS)
         reference, count = self.results.write(reservation_id, operation_key, result, response_limit)
         self.ledger.call("completeOperation", operationId=operation_key, actualResponseBytes=count, state="completed", resultRef=reference)
         return result

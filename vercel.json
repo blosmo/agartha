@@ -16,6 +16,14 @@
   },
   "rewrites": [
     {
+      "source": "/payments/return",
+      "destination": "/payments/return/index.html"
+    },
+    {
+      "source": "/payments/return/",
+      "destination": "/payments/return/index.html"
+    },
+    {
       "source": "/compute",
       "destination": "/compute/index.html"
     },
@@ -92,9 +100,37 @@
           "value": "public, max-age=0, must-revalidate"
         }
       ]
+    },
+    {
+      "source": "/payments/return/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
     }
   ],
   "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "blenderPayment"
+        }
+      ],
+      "destination": "/payments/return/?legacy=1",
+      "permanent": false
+    },
     {
       "source": "/:path*",
       "has": [

@@ -1,10 +1,10 @@
 # Make a model worth keeping
 
-Use this workflow when creating or refining a model through HTTP or MCP, for Agartha or another application. Follow the user's style and spending limit. This guide supplies art direction and review criteria; it does not authorize extra compute or publication.
+Use this workflow when creating or refining a model through HTTP or MCP, for Agartha or another application. Follow the user's style, intended use and maximum total task usage budget. This guide supplies art direction and review criteria; it does not authorize extra compute, inference, review, sessions or publication.
 
 Read [the toolkit and preview workflow](../agents/blender-quality.md) for worker setup, coordinate conventions, export fidelity and render presets. Plan before starting the paid clock.
 
-## 1. Write a small design brief
+## 1. Write a budgeted design brief
 
 Resolve these decisions from the request and destination. Make reasonable defaults explicit; ask only when a missing decision would materially change the deliverable.
 
@@ -13,10 +13,14 @@ Resolve these decisions from the request and destination. Make reasonable defaul
 - **Style:** two or three concrete traits, such as soft ceramic forms, precise machined edges or faceted foliage. Describe relevant features from supplied references.
 - **Hierarchy:** main silhouette, supporting parts and one distinctive feature. Start with a dominant material, a supporting material and an accent when the brief allows it.
 - **Delivery:** static or animated; required files; the destination's actual geometry, texture and file limits.
+- **Acceptance:** observable checks for the intended use, including required views/imports and the defects that would prevent delivery.
+- **Budget:** the maximum total task usage budget and separate estimates for Compute sessions, model/inference, review, validation, export and cleanup.
 
 Example: “A 0.45-m reading lamp for a desktop close-up: broad cream shade, slim brass stem, weighted dark-green base. The shade is the focal shape; the switch is the small accent. Static GLB, editable source and preview. It must sit flat and read from the front and side.”
 
-**Ready to build:** describe the largest shapes and their relative sizes before writing detail-generating loops.
+Treat the budget as a ceiling, not a target. Draft ($5), Refined ($15), and Detailed ($30) are optional budget shortcuts rather than promised quality levels. If any external cost cannot be measured or bounded, disclose it and resolve its budget scope before spending. If the cap cannot cover the acceptance criteria, explain the reduced scope before starting. A Compute reservation limits only that session's charge; it does not enforce the total task budget or authorize later sessions.
+
+**Ready to build:** describe the largest shapes and their relative sizes, record the acceptance criteria, and confirm the bounded cost plan before writing detail-generating loops.
 
 ## 2. Block out proportions
 
@@ -50,7 +54,7 @@ Use a neutral preview to diagnose the model, then inspect it under the destinati
 
 ## 5. Inspect, name defects, revise
 
-Download and actually open draft images with an image-viewing tool. Inspect the intended view plus front, side or top as appropriate. Zoom out for hierarchy and in for contact, shading and intersections.
+Download and actually open draft images with an image-viewing tool. Inspect the intended view plus front, side or top as appropriate. Zoom out for hierarchy and in for contact, shading and intersections. Retain the best accepted checkpoint so a later regression does not replace it.
 
 Tie the critique to visible evidence, then fix the highest-impact defect first:
 
@@ -64,7 +68,7 @@ Tie the critique to visible evidence, then fix the highest-impact defect first:
 
 Use concrete notes: “The base is too wide and the upper joint is off-center; narrow the base and move the joint.” After editing, inspect the same views and confirm those defects improved. Keep renders separate from modeling calls and retain operation IDs for uncertain retries.
 
-One or two focused revisions often suffice for a small asset; an already successful pass needs no ceremonial edit. Stay within budget. If your tools cannot inspect pixels, report **visually unverified**; statistics and successful API responses do not establish beauty.
+One or two focused revisions often suffice for a small asset; an already successful pass needs no ceremonial edit. Prioritize evidenced defects. Stop when the acceptance criteria are met, further iteration is unlikely to improve the result, or the remaining budget is needed for validation, export and cleanup. Do not spend the full cap as a target. If your tools cannot inspect pixels, report **visually unverified**; statistics and successful API responses do not establish beauty.
 
 **Review complete:** the brief is satisfied in the inspected views, or remaining defects and budget/visibility limits are recorded.
 
@@ -76,4 +80,4 @@ Save editable source before optimization. Export the intended objects; keep prev
 
 **Inside Agartha:** follow [model placement and budgets](../agents/glb-models.md), then [room visual review](../agents/visual-review.md). Inspect a focused model view and room/grid context: placement-box clipping, scale beside other objects, focal hierarchy and gateway clearance. Use white placement color to preserve authored colors. Follow [shared asset publication](../agents/blender-assets.md) only when the user wants to share.
 
-**Delivered:** download required files before stopping. Return files or verified links, dimensions/units, actual geometry/file statistics, inspected views and remaining limitations. Confirm shutdown and settlement through [the service workflow](skill.md). Describe visual judgments as judgments; this guide does not guarantee beauty or establish a numerical quality score.
+**Delivered:** download required files before stopping. Return files or verified links, dimensions/units, actual geometry/file statistics, inspected views and remaining limitations. Report actual Compute charges, actual model/inference and review costs when known, unknown costs, unspent task budget only when total usage is known, remaining defects and the stopping reason. Confirm shutdown and settlement through [the service workflow](skill.md). Describe visual judgments as judgments; this guide does not guarantee beauty or establish a numerical quality score.

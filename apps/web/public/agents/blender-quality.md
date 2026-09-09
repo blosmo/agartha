@@ -41,7 +41,7 @@ Use `render_preview(..., quality=...)` rather than raising every setting at once
 | `review` | 512 px | 32 | 15 seconds | Inspect materials and edges |
 | `final` | 1024 px | 128 | 20 seconds | Publish an accepted composition |
 
-Presets use CPU Cycles, adaptive sampling, denoising, and four render threads for the worker's two physical cores/four vCPUs. Sampling limits do not include geometry setup, denoising, or file saving. Keep scenes small enough for the broker's 30-second operation deadline; use a draft first and reduce complexity if a call runs long. Never automatically replay an uncertain operation with a new ID.
+Presets use CPU Cycles, adaptive sampling, denoising, and four render threads for the worker's two physical cores/four vCPUs. Sampling limits do not include geometry setup, denoising, or file saving. Blender 4.5 uses `BLENDER_EEVEE_NEXT`; the older `BLENDER_EEVEE` engine name is invalid. Keep each operation within the broker's 90-second wait; use a draft first and reduce complexity if a call runs long. Set the HTTP request and enclosing command/tool timeout to at least 150 seconds to allow for authorization, transport and result storage. Never automatically replay an uncertain operation with a new ID.
 
 The helper restores the original render settings, world, camera, and object visibility even when rendering fails. It offers `view='isometric'`, `'front'`, `'side'`, and `'top'` for geometry checks. Size and sample overrides are available within 1024 pixels and 128 samples.
 

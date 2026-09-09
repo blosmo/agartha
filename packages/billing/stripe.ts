@@ -110,6 +110,20 @@ export async function createCreditCheckout(
   }, { idempotencyKey: purchase.purchaseId });
 }
 
+export async function createCreditCheckoutWithLegacyRecovery(
+  stripe: Stripe,
+  purchase: BillingPurchase,
+  urls: CheckoutUrls,
+  legacyUrls: CheckoutUrls,
+): Promise<StripeCheckoutSession> {
+  try {
+    return await createCreditCheckout(stripe, purchase, urls);
+  } catch (error) {
+    if (purchase.checkoutSessionId || !(error instanceof Stripe.errors.StripeIdempotencyError)) throw error;
+    return await createCreditCheckout(stripe, purchase, legacyUrls);
+  }
+}
+
 export function parseStripeWebhook(
   stripe: Stripe,
   rawBody: Buffer,

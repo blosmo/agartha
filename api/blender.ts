@@ -1,10 +1,11 @@
 import type { ServerResponse } from 'node:http';
 import { BLENDER_BILLING } from '../packages/protocol/src/blenderBilling.js';
-import { createCreditCheckout, type BillingPurchase } from '../packages/billing/stripe.js';
+import { createCreditCheckoutWithLegacyRecovery, type BillingPurchase } from '../packages/billing/stripe.js';
 import { handleCreditMpp } from '../packages/billing/mpp.js';
 import { reconcileCreditPayment } from '../packages/billing/reconcile.js';
 import { BillingHttpError } from '../packages/billing/ledgerClient.js';
 import { jsonBody, jsonResponse, paymentEnvironment, reconciliationLedger, sendBillingError, type BillingRequest } from '../packages/billing/http.js';
+import { CheckoutReceiptError, checkoutReturnUrls, confirmCheckoutReceipt, requireCheckoutEnvironmentMode, requireCheckoutSessionId, type CheckoutReceiptLedger } from '../packages/billing/checkoutConfirmation.js';
 
 function publicBase() {
   const value = process.env.AGARTHA_PUBLIC_URL;
@@ -67,6 +68,24 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
     jsonResponse(res, { ...BLENDER_BILLING, purchasesEnabled: process.env.AGARTHA_BLENDER_BILLING_ENABLED === 'true', paymentMode: /^(sk|rk)_test_/.test(key) ? 'test' : /^(sk|rk)_live_/.test(key) ? 'live' : 'unconfigured' });
     return;
   }
+  if (path === 'checkout-status' && req.method === 'GET') {
+    res.setHeader('X-Robots-Tag', 'noindex');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    try {
+      const checkoutSessionId = requireCheckoutSessionId(req.query?.session_id);
+      const { stripe, livemode, ledger } = paymentEnvironment();
+      const session = await stripe.checkout.sessions.retrieve(checkoutSessionId);
+      requireCheckoutEnvironmentMode(session, livemode);
+      const purchaseId = session.metadata?.agartha_purchase_id;
+      if (typeof purchaseId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(purchaseId)) throw new CheckoutReceiptError(409);
+      const receipt = await ledger<CheckoutReceiptLedger>('getCheckoutReceipt', { purchaseId, checkoutSessionId });
+      jsonResponse(res, confirmCheckoutReceipt(session, receipt));
+    } catch (error) {
+      const status = error instanceof CheckoutReceiptError ? error.status : 503;
+      jsonResponse(res, { error: 'Checkout receipt unavailable.' }, status);
+    }
+    return;
+  }
   try {
     if (!['GET', 'POST'].includes(req.method ?? '')) throw new BillingHttpError(405, 'Use GET or POST.');
     const match = /^purchases\/([a-zA-Z0-9_-]{1,128})(?:\/(checkout|mpp|reconcile))?$/.exec(path);
@@ -123,9 +142,11 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
     if (process.env.AGARTHA_BLENDER_BILLING_ENABLED !== 'true') throw new BillingHttpError(503, 'Blender credit purchases are not active yet.');
     if (match[2] === 'checkout') {
       const base = publicBase();
-      const checkout = await createCreditCheckout(stripe, purchase, { successUrl: `${base}/?blenderPayment=complete`, cancelUrl: `${base}/?blenderPayment=canceled` });
+      const urls = checkoutReturnUrls(base);
+      const checkout = await createCreditCheckoutWithLegacyRecovery(stripe, purchase, urls, { successUrl: `${base}/?blenderPayment=complete`, cancelUrl: `${base}/?blenderPayment=canceled` });
       await ledger('attachCheckoutSession', { purchaseId: purchase.purchaseId, checkoutSessionId: checkout.id });
-      jsonResponse(res, { purchaseId: purchase.purchaseId, checkoutSessionId: checkout.id, checkoutUrl: checkout.url });
+      const { confirmationUrl } = checkoutReturnUrls(base, checkout.id);
+      jsonResponse(res, { purchaseId: purchase.purchaseId, checkoutSessionId: checkout.id, checkoutUrl: checkout.url, confirmationUrl });
       return;
     }
     if (mpp) {

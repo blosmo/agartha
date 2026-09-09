@@ -112,7 +112,13 @@ export const getReservation = internalQuery({
 
 export const getReservationForBroker = internalQuery({
   args: { reservationId: v.string() },
-  handler: async (ctx, args) => { identifier(args.reservationId, "reservationId"); const row = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique(); if (!row) throw new Error("Reservation not found."); return row; },
+  handler: async (ctx, args) => {
+    identifier(args.reservationId, "reservationId");
+    const row = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique();
+    if (!row) throw new Error("Reservation not found.");
+    const active = await ctx.db.query("blenderSessionOperations").withIndex("by_reservation_action_state", q => q.eq("reservationId", row.reservationId).eq("action", "operation").eq("state", "claimed")).first();
+    return { ...row, ...(active ? { activeOperationDeadline: active.claimDeadline } : {}) };
+  },
 });
 
 export const claimMonitor = internalMutation({
@@ -224,13 +230,18 @@ export const requestStop = internalMutation({
 });
 
 export const claimShutdown = internalMutation({
-  args: { reservationId: v.string(), launchGeneration: v.number(), executorId: v.string() },
+  args: { reservationId: v.string(), launchGeneration: v.number(), executorId: v.string(), idleOnly: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     identifier(args.executorId, "executorId");
     const row = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique();
     if (!row || row.launchGeneration !== args.launchGeneration) throw new Error("Stale shutdown claim.");
     if (row.status === "settled" || row.status === "failed") return { claimed: false, terminal: true, reservationId: row.reservationId };
     const now = Date.now();
+    if (args.idleOnly) {
+      const active = await ctx.db.query("blenderSessionOperations").withIndex("by_reservation_action_state", q => q.eq("reservationId", row.reservationId).eq("action", "operation").eq("state", "claimed")).first();
+      const idle = now - (row.lastActivityAt ?? now) >= 60_000;
+      if (!idle || (active && now < active.claimDeadline)) return { claimed: false, terminal: false, reservationId: row.reservationId };
+    }
     if (row.stopExecutorId && row.stopExecutorId !== args.executorId && (row.stopLeaseExpiresAt ?? 0) > now) return { claimed: false, terminal: false, reservationId: row.reservationId };
     const active = await ctx.db.query("blenderSessionOperations").withIndex("by_reservation_action_state", q => q.eq("reservationId", row.reservationId).eq("action", "operation").eq("state", "claimed")).first();
     const stopLeaseExpiresAt = now + 60_000;
