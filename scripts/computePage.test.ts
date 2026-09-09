@@ -32,7 +32,7 @@ it('copies the custom brief, intended use and total budget without submitting pr
   el('intended-use').dispatchEvent(new Event('change'));
   input('budget','12.75');
   el('copy').click();
-  await vi.waitFor(()=>expect(el('copy-status').textContent).toBe('Copied'));
+  await vi.waitFor(()=>expect(el('copy-status').textContent).toBe('Copied. Paste it into your agent.'));
   const prompt=writeText.mock.calls[0][0];
   expect(prompt).toContain('Task: <script>private teapot</script>');
   expect(prompt).toContain('Intended use: 3D printing');
@@ -137,8 +137,40 @@ it('does not report an outdated plan as copied when the budget changes during cl
   let finish!: () => void;
   clipboard(vi.fn(()=>new Promise<void>(resolve=>{finish=resolve;})));
   el('copy').click();
+  expect(el('copy').getAttribute('aria-busy')).toBe('true');
+  expect(el('copy-status').textContent).toBe('Copying plan…');
   input('budget','20');
   finish();
   await vi.waitFor(()=>expect(el('copy-status').textContent).toBe('Plan changed. Copy again.'));
   expect((el('copy') as HTMLButtonElement).disabled).toBe(false);
+  expect(el('copy').hasAttribute('aria-busy')).toBe(false);
+});
+
+it('shows persistent field errors on submission and focuses the first invalid field',async()=>{
+  await boot();
+  input('brief','');
+  input('budget','');
+  expect(el('brief-error').hidden).toBe(true);
+  el('copy').click();
+  expect(document.activeElement).toBe(el('brief'));
+  expect(el('brief').getAttribute('aria-invalid')).toBe('true');
+  expect(el('brief').getAttribute('aria-describedby')).toContain('brief-error');
+  expect(el('brief-error').textContent).toContain('Describe the model');
+  expect(el('brief-error').hidden).toBe(false);
+  expect(el('budget-error').hidden).toBe(false);
+  input('brief','A teapot');
+  el('copy').click();
+  expect(document.activeElement).toBe(el('budget'));
+  expect(el('brief-error').hidden).toBe(true);
+  input('budget',' 12.75 ');
+  expect(el('budget-error').hidden).toBe(true);
+  expect(el('agent-prompt').textContent).toContain('$12.75 USD');
+});
+
+it('allows the textarea keyboard shortcut to copy the plan without a pointer',async()=>{
+  await boot();
+  const writeText=clipboard();
+  el('brief').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',ctrlKey:true,bubbles:true,cancelable:true}));
+  await vi.waitFor(()=>expect(writeText).toHaveBeenCalledOnce());
+  expect(writeText.mock.calls[0][0]).toContain('A ceramic teapot with a wide handle');
 });
