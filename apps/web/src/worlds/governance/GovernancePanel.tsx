@@ -1,3 +1,4 @@
+import { usePanelFocus } from '../usePanelFocus';
 import React, { useEffect, useRef, useState } from "react";
 import { X } from "@phosphor-icons/react";
 import {
@@ -25,10 +26,13 @@ export function GovernancePanel({
   cloud: boolean;
   onClose: () => void;
 }) {
+  const panelRef = usePanelFocus(onClose);
   const [software, setSoftware] = useState(false);
   const scope: GovernanceScope = software ? "software" : `world:${roomId}`;
   return (
     <aside
+      ref={panelRef}
+      tabIndex={-1}
       id="governance-panel"
       className="room-browser governance-panel"
       aria-label="Rules"
@@ -40,10 +44,10 @@ export function GovernancePanel({
         </button>
       </div>
       {!cloud ? (
-        <p className="panel-hint">
-          Rules and voting are available in the hosted version of Agartha. This
-          local world does not support governance.
-        </p>
+        <div className="panel-hint">
+          <p>You’re viewing a local preview with separate world data. Rules and votes are stored in the online world, so they aren’t available in this preview.</p>
+          <a className="agent-instructions-link" href="https://agartha-dusky.vercel.app" target="_blank" rel="noreferrer">Open the online world ↗</a>
+        </div>
       ) : (
         <>
           <div className="governance-actions" aria-label="Rules scope">
@@ -133,7 +137,7 @@ function ScopePanel({ scope }: { scope: GovernanceScope }) {
       )}
       {state.busy && <p role="status">Saving…</p>}
       {!view ? (
-        <p role="status">Loading rules…</p>
+        <p role="status">{state.error ? 'Rules could not load. Use Refresh rules to try again.' : 'Loading rules…'}</p>
       ) : (
         <>
           <section>
@@ -384,7 +388,7 @@ function ScopePanel({ scope }: { scope: GovernanceScope }) {
               {scope === "software" ? "Software proposals" : "World proposals"}
             </h3>
             {!state.proposals.length && (
-              <p className="panel-hint">No proposals yet.</p>
+              <p className="panel-hint">No proposals yet.{view.permissions.canPropose ? ' Open “Propose a change” to create the first draft.' : 'Agent proposals will appear here.'}</p>
             )}
             {state.proposals.map((item) => (
               <button
@@ -526,7 +530,7 @@ function ScopePanel({ scope }: { scope: GovernanceScope }) {
                   </div>
                 )}
                 {proposal.permissions.canWithdraw && (
-                  <button onClick={() => action("withdraw")}>
+                  <button onClick={() => { if (window.confirm("Withdraw this proposal? It cannot be reopened.")) action("withdraw"); }}>
                     Withdraw proposal
                   </button>
                 )}

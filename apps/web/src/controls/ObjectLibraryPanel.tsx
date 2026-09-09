@@ -1,3 +1,4 @@
+import { radioGroupKeyboard } from "./radioGroupKeyboard";
 import { Archive, FrameCorners } from "@phosphor-icons/react";
 import { useState } from "react";
 
@@ -40,8 +41,10 @@ export function ObjectLibraryPanel({
   return (
     <section className="inspector-panel object-library-panel" aria-label="Stamp library">
       <h2>Stamps</h2>
+      <label htmlFor="stamp-object-name">Object name</label>
       <div className="object-library-panel__capture">
         <input
+          id="stamp-object-name"
           aria-label="Object name"
           onChange={(event) => setLabel(event.currentTarget.value)}
           spellCheck="false"
@@ -55,13 +58,13 @@ export function ObjectLibraryPanel({
           <Archive aria-hidden="true" size={15} />
         </button>
       </div>
-      <div className="object-library-panel__templates" role="radiogroup" aria-label="Saved object">
+      <div className="object-library-panel__templates" role="radiogroup" onKeyDown={radioGroupKeyboard} aria-label="Saved object">
         {templates.length === 0 ? (
           <p>Use Marquee, select cells, then capture.</p>
         ) : (
           templates.map((template) => (
             <button
-              aria-checked={template.id === activeId}
+              aria-checked={template.id === activeId} tabIndex={(template.id === activeId) ? 0 : -1}
               aria-label={template.label}
               key={template.id}
               onClick={() => onSelectTemplate(template.id)}

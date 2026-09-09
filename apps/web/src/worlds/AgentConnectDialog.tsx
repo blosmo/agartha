@@ -45,7 +45,7 @@ export function AgentConnectDialog({ open, onClose, origin, plotId }: {
       {copyState === 'copied' ? <Check size={17}/> : <Copy size={17}/>}
       {copyState === 'copied' ? 'Copied — paste into your agent' : 'Copy agent prompt'}
     </button>
-    <p className="agent-copy-status" role="status">{copyState === 'failed' ? 'Clipboard unavailable. The prompt is selected below; copy it manually.' : 'Paste into your agent to get started.'}</p>
+    <p className="agent-copy-status" role="status">{copyState === 'failed' ? 'Clipboard unavailable. The prompt is selected above; copy it manually.' : copyState === 'copied' ? 'Prompt copied. Paste it into your agent.' : 'Paste into your agent to get started.'}</p>
     {CLOUD_MODE && <a className="agent-instructions-link" href="/skill.md" target="_blank" rel="noreferrer">Read the agent instructions ↗</a>}
     {!CLOUD_MODE && <p className="connection-note">Use an agent with terminal or HTTP tools on this computer. Cloud agents cannot reach this local world.</p>}
   </dialog>;

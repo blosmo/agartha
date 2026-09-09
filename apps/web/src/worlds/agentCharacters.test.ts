@@ -1,0 +1,28 @@
+import * as THREE from 'three';
+import { expect, it } from 'vitest';
+import { AgentCharacters } from './agentCharacters';
+import type { AgentPresence } from '../../../../packages/protocol/src/agentPresence';
+const agent: AgentPresence = { agentId: 'moss', name: 'Moss', plotId: 'plot-1-1', position: [2, 3], yaw: 0, expiresAt: 90000 };
+it('uses room coordinates, moves only on presence updates, and removes departed characters', () => {
+  const layer = new AgentCharacters();
+  const label = document.createElement('div');
+  const labels = new Map([['moss', label]]);
+  const camera = new THREE.PerspectiveCamera(70, 1, .1, 200);
+  camera.position.set(0, 2, 12); camera.lookAt(0, 2, 0);
+  layer.sync([agent], { x: 1, z: 1 }, labels);
+  expect(layer.group.children[0].position.toArray()).toEqual([2, 0, 3]);
+  layer.update(.1, camera, true, 1);
+  expect(label.hidden).toBe(false);
+  layer.sync([{ ...agent, position: [4, 3] }], { x: 1, z: 1 }, labels);
+  layer.update(.1, camera, false, 2);
+  expect(layer.group.children[0].position.x).toBeGreaterThan(2);
+  expect(layer.group.children[0].position.x).toBeLessThan(4);
+  layer.update(.1, camera, true, 3);
+  expect(layer.group.children[0].position.x).toBe(4);
+  expect(layer.group.children[0].children[0].position.y).toBe(0);
+  layer.sync([{ ...agent, plotId: 'plot-3-1' }], { x: 1, z: 1 }, labels);
+  expect(layer.group.children[0].position.x).toBe(66);
+  layer.sync([], { x: 1, z: 1 }, labels);
+  expect(layer.group.children).toHaveLength(0);
+  layer.dispose();
+});

@@ -43,3 +43,21 @@ it('keeps every corner of a wide portrait overview in front of the ground plane'
   }
  }
 });
+
+it('runs faster with Shift, normalizes diagonal running, and stops running on release', () => {
+  const room = new RoomCamera(); room.enter(0,0,1);
+  room.keys.add('w'); room.keys.add('d'); room.keys.add('Shift'); room.step(.05);
+  expect(Math.hypot(room.camera.position.x, room.camera.position.z-10)).toBeCloseTo(.7);
+  const start=room.camera.position.clone(); room.keys.delete('Shift'); room.step(.05);
+  expect(room.camera.position.distanceTo(start)).toBeCloseTo(.4);
+  room.clearInput(); const stopped=room.camera.position.clone(); room.step(.05);
+  expect(room.camera.position.equals(stopped)).toBe(true);
+});
+it('jumps once, rejects airborne jumps, lands, and resets on re-entry', () => {
+  const room=new RoomCamera(); room.enter(0,0,1); room.jump(); room.step(.05);
+  expect(room.camera.position.y).toBeGreaterThan(1.8);
+  for(let i=0;i<30;i++){room.jump();room.step(.05); if(room.camera.position.y===1.8)break;}
+  expect(room.camera.position.y).toBe(1.8);
+  room.jump();room.step(.05);expect(room.camera.position.y).toBeGreaterThan(1.8);
+  room.exit();room.enter(0,0,1);room.step(.05);expect(room.camera.position.y).toBe(1.8);
+});

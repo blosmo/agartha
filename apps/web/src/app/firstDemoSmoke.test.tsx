@@ -196,27 +196,27 @@ describe("first demo viewer smoke", () => {
     expect(screen.getByText("Runner summary: all agents checked in.")).toBeInTheDocument();
     expect(document.querySelector('[data-agent-id="agartha-agent-state"]')).toHaveTextContent('"presenceCount":5');
     expect(document.querySelector('[data-agent-id="agartha-agent-state"]')).toHaveTextContent('"total":5');
-    fireEvent.change(screen.getByLabelText("Agent CLI input"), { target: { value: "flower 70 52" } });
+    fireEvent.change(screen.getByLabelText("Agent command"), { target: { value: "flower 70 52" } });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: built flower", { exact: false }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "masterpiece phoenix 70 52" })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Agent CLI input"), { target: { value: "masterpiece phoenix 94 84 0.75" } });
+    fireEvent.change(screen.getByLabelText("Agent command"), { target: { value: "masterpiece phoenix 94 84 0.75" } });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: rendered phoenix masterpiece", { exact: false }).length).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByLabelText("Agent CLI input"), {
+    fireEvent.change(screen.getByLabelText("Agent command"), {
       target: { value: "object save house 66 48 18 16" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: saved object house", { exact: false }).length).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByLabelText("Agent CLI input"), {
+    fireEvent.change(screen.getByLabelText("Agent command"), {
       target: { value: "object stamp house 92 52" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));
     expect(screen.getAllByText("Agent command: stamped object house", { exact: false }).length).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByLabelText("Agent CLI input"), {
+    fireEvent.change(screen.getByLabelText("Agent command"), {
       target: { value: "object stamp house 112 52 3 18 0" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Run agent CLI command" }));

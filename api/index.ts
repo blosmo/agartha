@@ -1,3 +1,5 @@
+import { hostedChatStream } from '../apps/web/hostedChatStream.js';
+import { ChatValidationError, validateChatSend } from '../packages/protocol/src/chat.js';
 import { MATERIAL_CATALOG } from '../packages/protocol/src/materials.js';
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
@@ -21,7 +23,12 @@ export default async function handler(req:Request,res:ServerResponse){
     if(!base||!key){send({error:'Cloud configuration is incomplete'},503);return;}
     if(!['GET','POST'].includes(req.method??'')){send({error:'Method not allowed'},405);return;}
     const governancePath=/^governance(?:\/(?:voters|proposals(?:\/[a-zA-Z0-9_-]{1,80}(?:\/(?:open|vote|withdraw|finalize|comments|implementation))?)?))?$/.test(path);
-    if(!governancePath&&!/^(session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2}|assets(?:\/[^/?]+){0,3})$/.test(path)){send({error:'Not found'},404);return;}
+    if(!governancePath&&!/^(chat(?:\/(?:events|presence))?|session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2}|assets(?:\/[^/?]+){0,3})$/.test(path)){send({error:'Not found'},404);return;}
+    if(path==='chat/events' && req.method==='GET'){
+      const streamUrl=new URL('/api/chat/events',`https://${req.headers.host}`);
+      for(const name of ['after','before'])if(typeof req.query[name]==='string')streamUrl.searchParams.set(name,req.query[name] as string);
+      await hostedChatStream(req,res,streamUrl,base);return;
+    }
     let previewView:PreviewView='isometric';
     const roomPreview = path.startsWith('plots/') && path.endsWith('/preview');
     if(roomPreview){try{previewView=parsePreviewView(req.query.view);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview view.'},400);return;}}
@@ -33,6 +40,7 @@ export default async function handler(req:Request,res:ServerResponse){
       body=typeof req.body==='string'?JSON.parse(req.body):req.body as Record<string,any>;
       if(!body||typeof body!=='object'||Array.isArray(body)||Buffer.byteLength(JSON.stringify(body))>(path==='library'?4_000_000:65536)){send({error:'Invalid or oversized request'},413);return;}
     }
+    if(path==='chat' && req.method==='POST')validateChatSend({requestId:body.requestId,text:body.text});
     const externalRegistration=path==='session'&&typeof body.agentToken==='string';
     if(req.method==='POST'&&origin&&origin!==`https://${req.headers.host}`&&!headerToken&&!externalRegistration){send({error:'Origin not allowed'},403);return;}
     let token=headerToken??req.headers.cookie?.split(';').map(c=>c.trim()).find(c=>c.startsWith(`${cookieName}=`))?.slice(cookieName.length+1);
@@ -74,5 +82,5 @@ export default async function handler(req:Request,res:ServerResponse){
       res.setHeader('Content-Type','image/png');res.setHeader('X-Agartha-Renderer','vgpu-cloud');res.setHeader('X-Agartha-Revision',String(source.revision));res.setHeader('X-Agartha-Snapshot',rendered.digest);res.setHeader('X-Agartha-Plot',source.id);res.setHeader('X-Agartha-Preview-Time',String(previewTime));res.setHeader('X-Agartha-Preview-View',previewView);res.end(Buffer.from(await image.arrayBuffer()));return;
     }
     send(data);
-  }catch(error){console.error('Agartha gateway failure',error instanceof Error?error.name:'unknown');send({error:'Cloud request could not complete. Observe the world before retrying a write.'},503);}
+  }catch(error){if(res.headersSent){res.end();return;}if(error instanceof ChatValidationError){send({error:error.message},400);return;}console.error('Agartha gateway failure',error instanceof Error?error.name:'unknown');send({error:'Cloud request could not complete. Observe the world before retrying a write.'},503);}
 }

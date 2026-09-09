@@ -1,3 +1,4 @@
+import { radioGroupKeyboard } from "./radioGroupKeyboard";
 import type { TerrainSeed } from "../app/demoWorld";
 
 export interface TerrainSeedPanelProps {
@@ -12,10 +13,10 @@ export function TerrainSeedPanel({ seeds, selectedSeedId, onSelectSeed }: Terrai
   return (
     <section className="inspector-panel terrain-seed-panel" aria-label="Terrain preset">
       <h2>Terrain</h2>
-      <div className="terrain-seed-panel__options" role="radiogroup" aria-label="Terrain seed">
+      <div className="terrain-seed-panel__options" role="radiogroup" onKeyDown={radioGroupKeyboard} aria-label="Terrain seed">
         {seeds.map((seed) => (
           <button
-            aria-checked={seed.id === selectedSeedId}
+            aria-checked={seed.id === selectedSeedId} tabIndex={(seed.id === selectedSeedId) ? 0 : -1}
             key={seed.id}
             onClick={() => onSelectSeed(seed.id)}
             role="radio"

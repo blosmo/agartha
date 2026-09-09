@@ -1,3 +1,4 @@
+import { radioGroupKeyboard } from "./radioGroupKeyboard";
 import {
   ArrowCounterClockwise,
   ArrowClockwise,
@@ -126,8 +127,8 @@ export function ToolDock({ paintSwatches, settings, onUpdateSettings }: ToolDock
   }
 
   return (
-    <div className="tool-dock gradient-border-2 animate-gradient-border" role="radiogroup" aria-label="Tool">
-      <div className="tool-dock__tools">
+    <div className="tool-dock gradient-border-2">
+      <div className="tool-dock__tools" role="radiogroup" onKeyDown={radioGroupKeyboard} aria-label="Tool">
         {TOOL_OPTIONS.map((tool) => {
           const ToolIcon = tool.Icon;
           return (
@@ -155,7 +156,7 @@ export function ToolDock({ paintSwatches, settings, onUpdateSettings }: ToolDock
                 />
               ) : null}
               <button
-                aria-checked={tool.id === settings.mode}
+                aria-checked={tool.id === settings.mode} tabIndex={(tool.id === settings.mode) ? 0 : -1}
                 aria-label={tool.label}
                 className="tool-dock__button"
                 data-submenu-open={isBrushSizeTool(tool.id) && tool.id === settings.mode ? "true" : undefined}
@@ -172,10 +173,10 @@ export function ToolDock({ paintSwatches, settings, onUpdateSettings }: ToolDock
           );
         })}
       </div>
-      <div className="tool-dock__colors" role="radiogroup" aria-label="Dock material palette">
+      <div className="tool-dock__colors" role="radiogroup" onKeyDown={radioGroupKeyboard} aria-label="Dock material palette">
         {materialPalette.map((item) => (
           <button
-            aria-checked={isActiveMaterialPaletteItem(item, settings)}
+            aria-checked={isActiveMaterialPaletteItem(item, settings)} tabIndex={(isActiveMaterialPaletteItem(item, settings)) ? 0 : -1}
             aria-label={item.ariaLabel}
             className="tool-dock__color"
             data-kind={item.kind}
@@ -224,12 +225,12 @@ export function ShapeModeBar({
   readonly onChangeMode: (mode: ShapeMode) => void;
 }) {
   return (
-    <div className="shape-mode-bar" role="radiogroup" aria-label="Shape mode">
+    <div className="shape-mode-bar" role="radiogroup" onKeyDown={radioGroupKeyboard} aria-label="Shape mode">
       {SHAPE_OPTIONS.map((shape) => {
         const ShapeIcon = shape.Icon;
         return (
           <button
-            aria-checked={shape.id === mode}
+            aria-checked={shape.id === mode} tabIndex={(shape.id === mode) ? 0 : -1}
             aria-label={shape.label}
             data-tooltip={shape.label}
             key={shape.id}
@@ -378,7 +379,7 @@ export function MaterialEditorPanel({
   const activeMaterialLabel = isPaint ? activePaintSwatch?.label ?? "Paint" : materialDisplayName(settings.material);
   const activeMaterialColor = isPaint ? activePaintColor : MATERIAL_SWATCH_COLORS[settings.material];
   const createMaterialButtonRef = useRef<HTMLButtonElement | null>(null);
-  const createMaterialDialogRef = useRef<HTMLFormElement | null>(null);
+  const createMaterialDialogRef = useRef<HTMLDialogElement | null>(null);
   const [paintColorDraft, setPaintColorDraft] = useState(activePaintColor);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newMaterial, setNewMaterial] = useState<NewPaintSwatch>({
@@ -400,12 +401,9 @@ export function MaterialEditorPanel({
   useEffect(() => {
     if (!isCreateModalOpen) return;
 
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeCreateModal();
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    createMaterialDialogRef.current?.showModal();
+    createMaterialDialogRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+    return () => { createMaterialButtonRef.current?.focus({ preventScroll: true }); };
   }, [isCreateModalOpen]);
 
   function updatePaintColor(color: string) {
@@ -429,29 +427,6 @@ export function MaterialEditorPanel({
   function closeCreateModal() {
     setIsCreateModalOpen(false);
     window.requestAnimationFrame(() => createMaterialButtonRef.current?.focus());
-  }
-
-  function keepModalFocus(event: React.KeyboardEvent<HTMLFormElement>) {
-    if (event.key !== "Tab") return;
-
-    const focusableElements = createMaterialDialogRef.current?.querySelectorAll<HTMLElement>(
-      "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [href], [tabindex]:not([tabindex='-1'])",
-    );
-    const focusable = Array.from(focusableElements ?? []).filter((element) => element.offsetParent !== null);
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (!first || !last) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-      return;
-    }
-
-    if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
   }
 
   function updateNewMaterialNumber(key: keyof Pick<NewPaintSwatch, "density" | "friction" | "flow" | "heat" | "growth" | "emissive" | "stability">, value: string) {
@@ -590,21 +565,16 @@ export function MaterialEditorPanel({
         </button>
       </div>
       {isCreateModalOpen ? (
-        <div className="material-modal" role="presentation" onMouseDown={closeCreateModal}>
+        <dialog className="material-modal" aria-label="New material" ref={createMaterialDialogRef} onCancel={closeCreateModal} onClose={closeCreateModal}>
           <form
             aria-label="New material"
-            aria-modal="true"
             className="material-modal__dialog gradient-border-2 gradient-border-to-br"
-            onKeyDown={keepModalFocus}
-            onMouseDown={(event) => event.stopPropagation()}
             onSubmit={createMaterial}
-            ref={createMaterialDialogRef}
-            role="dialog"
           >
             <div className="material-modal__header">
               <div>
-                <h2>New Material</h2>
-                <p>Define the material once. Cells only store material id and variant.</p>
+                <h2>New material</h2>
+                <p>Choose a color and properties, then save it to your palette.</p>
               </div>
               <button aria-label="Close new material modal" onClick={closeCreateModal} type="button">
                 <X aria-hidden="true" size={16} />
@@ -653,7 +623,7 @@ export function MaterialEditorPanel({
               <button type="submit">Save material</button>
             </div>
           </form>
-        </div>
+        </dialog>
       ) : null}
     </section>
   );
