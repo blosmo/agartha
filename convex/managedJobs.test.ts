@@ -30,6 +30,7 @@ describe("managed modeling ledger", () => {
     const row = await t.mutation(api.createManagedJob, create);
     expect(row).toMatchObject({ reservedAiCents: 135, computeReservedCents: 65 });
     expect(row).not.toHaveProperty("executorId");
+    expect(await t.run(ctx => ctx.db.query("blenderSessionReservations").first())).toMatchObject({ deferredStart: true });
     expect(await t.mutation(api.createManagedJob, create)).toEqual(row);
     await expect(t.mutation(api.createManagedJob, { ...create, brief: "Different" })).rejects.toThrow("different payload");
     await t.mutation(anyApi.cloud.session.register, { token: tokenB, name: "Other", ipHash: "other" });
@@ -45,6 +46,11 @@ describe("managed modeling ledger", () => {
     await expect(t.mutation(api.createManagedJob, { ...create, brief: "😀".repeat(1001) })).rejects.toThrow("UTF-8");
     await expect(t.mutation(api.createManagedJob, { ...create, budgetCents: 100.5 })).rejects.toThrow();
     await expect(t.mutation(api.createManagedJob, { ...create, jobId: "unreachable/job" })).rejects.toThrow("invalid");
+  });
+  it("does not spend more on inference after compute stops", async () => {
+    const { t } = await running();
+    await t.run(async ctx => { const reservation = await ctx.db.query("blenderSessionReservations").first(); await ctx.db.patch(reservation!._id, { status: "failed" }); });
+    await expect(t.mutation(api.claimManagedInference, inference)).rejects.toThrow("no longer available");
   });
   it("fences workers, dispatches once and settles only actual usage", async () => {
     const { t } = await running();

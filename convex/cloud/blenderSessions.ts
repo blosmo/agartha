@@ -143,7 +143,7 @@ export const listActiveReservations = internalQuery({
   handler: async ctx => {
     const rows = [];
     for (const status of ["launching", "running", "unknown", "reserved"] as const) rows.push(...await ctx.db.query("blenderSessionReservations").withIndex("by_status", q => q.eq("status", status)).take(5));
-    return rows.slice(0, 5);
+    return rows.filter(row => row.status !== "reserved" || !row.deferredStart).slice(0, 5);
   },
 });
 

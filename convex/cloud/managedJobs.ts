@@ -61,7 +61,8 @@ export const createManagedJob = internalMutation({
     const reservationId = `managed-${args.jobId}`;
     const quote = await createQuoteInTransaction(ctx, { token: args.token, quoteId: reservationId, requestId: reservationId, minutes: 10, livemode: args.livemode });
     if (quote.reserveCents !== 65) throw new Error("Managed compute pricing requires review.");
-    await reserveSessionInTransaction(ctx, { token: args.token, quoteId: reservationId, reservationId, requestId: reservationId });
+    const reservation = await reserveSessionInTransaction(ctx, { token: args.token, quoteId: reservationId, reservationId, requestId: reservationId });
+    await ctx.db.patch(reservation._id, { deferredStart: true });
     const ai = args.budgetCents - quote.reserveCents;
     const wallet = await getOrCreateWallet(ctx, actor.agentId, args.livemode);
     if (wallet.frozen || wallet.availableCents < ai) throw new Error("Insufficient available Blender credits.");
@@ -101,6 +102,8 @@ export const claimManagedInference = internalMutation({ args: { jobId: v.string(
   if (prior) { if (prior.jobId !== row.jobId || prior.executorId !== args.executorId || prior.payloadFingerprint !== args.payloadFingerprint || prior.maxCostCents !== args.maxCostCents) throw new Error("Inference operation reused with different payload."); return { claimed: false, state: prior.state }; }
   const wallet = await getOrCreateWallet(ctx, row.agentId, row.livemode);
   if (row.status !== "running" || row.cancelled || row.deadlineAt <= Date.now() || wallet.frozen) throw new Error("Inference is not authorized.");
+  const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", row.reservationId)).unique();
+  if (!reservation || reservation.stopRequested || ["settled", "failed", "unknown"].includes(reservation.status)) throw new Error("Compute is no longer available for this job.");
   if (row.pendingAiCents) throw new Error("Another inference is in flight.");
   if (args.maxCostCents > row.reservedAiCents - row.chargedAiCents - row.releasedAiCents) throw new Error("AI budget exhausted.");
   await ctx.db.insert("managedInferenceOperations", { ...args, state: "claimed", createdAt: Date.now() });

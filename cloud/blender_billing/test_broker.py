@@ -26,6 +26,12 @@ class BrokerTests(unittest.TestCase):
         self.ledger.call.side_effect = self.call_ledger
         self.broker = Broker(self.ledger, self.provider, ResultStore(Path(self.temporary.name)), self.projects, clock=lambda: 101)
 
+    def test_managed_reservation_waits_for_explicit_start(self):
+        self.row.update(status='reserved', deferredStart=True)
+        self.assertEqual(self.broker.reconcile('r1')['status'], 'reserved')
+        self.provider.ensure_worker.assert_not_called()
+        self.assertFalse(any(operation == 'claimLaunch' for operation, _ in self.events))
+
     def call_ledger(self, operation: str, **args):
         self.events.append((operation, args))
         if operation in {"getReservation", "getReservationForBroker"}:
