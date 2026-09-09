@@ -1,6 +1,6 @@
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { assertCents, getOrCreateWallet, requireBillingOwner } from "./common";
 import { createQuoteInTransaction, reserveSessionInTransaction } from "./blenderSessions";
 
@@ -10,7 +10,7 @@ function identifier(value: string, name: string, max = 128) { if (!value || valu
 function terminal(row: Job) { return row.status !== "queued" && row.status !== "running"; }
 async function job(ctx: QueryCtx | MutationCtx, jobId: string) {
   const row = await ctx.db.query("managedJobs").withIndex("by_job", q => q.eq("jobId", jobId)).unique();
-  if (!row) throw new Error("Managed job not found.");
+  if (!row) throw new ConvexError({ code: "not_found", message: "Managed job not found." });
   return row;
 }
 async function entry(ctx: MutationCtx, row: Job, suffix: string, action: string, deltaCents: number) {
@@ -73,7 +73,7 @@ export const createManagedJob = internalMutation({
     return sanitized(ctx, row);
   },
 });
-export const getManagedJob = internalQuery({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => { const actor = await requireBillingOwner(ctx, args.token); const row = await job(ctx, args.jobId); if (row.agentId !== actor.agentId) throw new Error("Managed job not found."); return sanitized(ctx, row); } });
+export const getManagedJob = internalQuery({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => { const actor = await requireBillingOwner(ctx, args.token); const row = await job(ctx, args.jobId); if (row.agentId !== actor.agentId) throw new ConvexError({ code: "not_found", message: "Managed job not found." }); return sanitized(ctx, row); } });
 export const getManagedJobForBroker = internalQuery({ args: { jobId: v.string() }, handler: async (ctx, args) => job(ctx, args.jobId) });
 export const listActiveManagedJobs = internalQuery({ args: {}, handler: async ctx => {
   const rows = [...await ctx.db.query("managedJobs").withIndex("by_status", q => q.eq("status", "queued")).take(5), ...await ctx.db.query("managedJobs").withIndex("by_status", q => q.eq("status", "running")).take(5)];
@@ -88,7 +88,7 @@ export const claimManagedJob = internalMutation({ args: { jobId: v.string(), exe
 } });
 export const requestManagedCancel = internalMutation({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => {
   const actor = await requireBillingOwner(ctx, args.token); const row = await job(ctx, args.jobId);
-  if (row.agentId !== actor.agentId) throw new Error("Managed job not found.");
+  if (row.agentId !== actor.agentId) throw new ConvexError({ code: "not_found", message: "Managed job not found." });
   if (!terminal(row)) { await ctx.db.patch(row._id, { cancelled: true }); await finish(ctx, { ...row, cancelled: true }, "cancelled", "Cancelled", row.visuallyInspected); }
   return sanitized(ctx, await job(ctx, args.jobId));
 } });

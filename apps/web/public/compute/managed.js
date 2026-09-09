@@ -3,6 +3,8 @@
   const el = id => document.getElementById(`managed-${id}`);
   const money = cents => `$${(cents / 100).toFixed(2)}`;
   const tokenKey = 'agartha-compute-token';
+  const recoveryKey = 'agartha-compute-recovery';
+  const randomToken = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), n => n.toString(16).padStart(2, '0')).join('');
   const jobKey = 'agartha-compute-job';
   const purchaseKey = 'agartha-compute-purchase';
   const terminal = new Set(['completed', 'partial', 'failed', 'cancelled']);
@@ -23,11 +25,22 @@
       token = localStorage.getItem(tokenKey);
       if (token && !/^[a-f0-9]{64}$/.test(token)) throw new Error('The saved browser identity is invalid. Restore your original token before continuing.');
       if (!token) {
-        token = Array.from(crypto.getRandomValues(new Uint8Array(32)), n => n.toString(16).padStart(2, '0')).join('');
+        token = randomToken();
         localStorage.setItem(tokenKey, token);
       }
     }
-    await api('/api/session', { agentToken: token, name: 'Compute creator' }, false);
+    let recovery = localStorage.getItem(recoveryKey);
+    if (!recovery) { recovery = randomToken(); localStorage.setItem(recoveryKey, recovery); }
+    if (!/^[a-f0-9]{64}$/.test(recovery) || recovery === token) throw new Error('The saved wallet recovery credential is invalid.');
+    try {
+      const registered = await api('/api/session', { agentToken: token, recoveryToken: recovery, name: 'Compute creator' }, false);
+      // Existing identities created before recovery support can safely add a separate credential.
+      if (!registered.recoveryConfigured) await api('/api/session/renew', { newRecoveryToken: recovery });
+      else await api('/api/session/renew', { recoveryToken: recovery });
+    } catch (err) {
+      if (err.status !== 401) throw err;
+      await api('/api/session/renew', { recoveryToken: recovery });
+    }
   }
   async function balance() {
     if (!token) return;
@@ -88,7 +101,13 @@
       try {
         await api('/api/blender/jobs', job);
       } catch (err) {
-        if ([400, 413, 422].includes(err.status)) {
+        let rejected = [400, 413, 422].includes(err.status);
+        if (err.status === 409) {
+          // An explicit transaction rejection plus a missing job proves no budget was reserved.
+          try { await api(`/api/blender/jobs/${encodeURIComponent(job.jobId)}`); }
+          catch (lookup) { if (lookup.status === 404) rejected = true; }
+        }
+        if (rejected) {
           localStorage.removeItem(jobKey); job = null;
           el('brief').disabled = false; el('budget').disabled = false;
           el('submit').disabled = capabilities?.enabled !== true;
