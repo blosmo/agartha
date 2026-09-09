@@ -46,3 +46,5 @@ The actual exporter, full MP4 encoder and camera/restoration regressions run in 
 - [Cameras](https://docs.blender.org/manual/en/4.5/render/cameras.html): perspective focal length, orthographic scale and framing.
 - [Color management](https://docs.blender.org/manual/en/4.5/render/color_management.html): AgX handles high dynamic range and highlights; the MP4 encoder uses Standard because its PNG inputs already contain the display transform.
 - [Reducing noise](https://docs.blender.org/manual/en/4.5/render/cycles/optimizations/reducing_noise.html): bounce and clamp shortcuts can change appearance.
+
+Later policy update: the timings above describe the original 48-frame configuration. Current local code prioritizes object refinement, reserves 90 seconds for delivery, and attempts a 24-frame optional video only with at least 180 seconds spare. This shorter configuration has workflow tests but has not yet been benchmarked on the hosted service.

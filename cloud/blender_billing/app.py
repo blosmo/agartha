@@ -62,7 +62,7 @@ def serve():
                            lambda token, job_id: managed_job.spawn(token, job_id), files)
 
 
-@app.function(image=image, secrets=secrets, volumes={"/private": storage}, cpu=(0.125, 1), memory=(512, 2048), timeout=1500, max_containers=4)
+@app.function(image=image, secrets=secrets, volumes={"/private": storage}, cpu=(0.125, 1), memory=(512, 2048), timeout=3000, max_containers=4)
 def managed_job(token: str, job_id: str):
     from .managed import ManagedFiles, run_managed
     broker = controller()

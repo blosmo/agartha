@@ -81,14 +81,31 @@ brief.addEventListener('keydown', event => {
     form.requestSubmit();
   }
 });
-document.querySelector('a[href="#direct"]').addEventListener('click', event => {
-  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-  event.preventDefault();
-  document.querySelector('#direct').scrollIntoView({ block: 'start' });
-  document.querySelector('#direct > details').open = true;
-  brief.focus({ preventScroll: true });
-  if (location.hash !== '#direct') history.pushState(null, '', '#direct');
-});
+const creationTabs = [...document.querySelectorAll('.creation-tabs [role=tab]')];
+function selectCreationTab(selected, focus = false) {
+  for (const tab of creationTabs) {
+    const active = tab === selected;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    document.getElementById(tab.getAttribute('aria-controls')).hidden = !active;
+  }
+  if (focus) selected.focus();
+}
+for (const tab of creationTabs) {
+  tab.addEventListener('click', () => selectCreationTab(tab));
+  tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const index = event.key === 'Home' ? 0 : event.key === 'End' ? creationTabs.length - 1 : (creationTabs.indexOf(tab) + (event.key === 'ArrowRight' ? 1 : creationTabs.length - 1)) % creationTabs.length;
+    selectCreationTab(creationTabs[index], true);
+  });
+}
+function selectHashTab() {
+  if (location.hash === '#direct') selectCreationTab(document.getElementById('direct-tab'));
+  else if (location.hash === '#start') selectCreationTab(document.getElementById('managed-tab'));
+}
+window.addEventListener('hashchange', selectHashTab);
+selectHashTab();
 intendedUse.addEventListener('change', updatePlan);
 for (const preset of presets) {
   preset.addEventListener('click', () => {

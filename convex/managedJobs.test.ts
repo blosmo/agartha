@@ -159,3 +159,33 @@ describe("managed modeling ledger", () => {
   });
 
 });
+
+describe('reference-guided job accounting', () => {
+  it('holds a longer session inside the same total budget and binds the chosen mode', async () => {
+    const { t } = await setup();
+    const request = { ...create, budgetCents: 500, referenceMode: 'generate' };
+    const row = await t.mutation(api.createManagedJob, request);
+    expect(row).toMatchObject({ referenceMode: 'generate', reservedAiCents: 335, computeReservedCents: 165 });
+    expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: false })).toMatchObject({ availableCents: 0, heldCents: 500 });
+    const session = await t.run(ctx => ctx.db.query('blenderSessionReservations').first());
+    expect(session?.reservedMinutes).toBe(30);
+    await expect(t.mutation(api.createManagedJob, { ...request, referenceMode: 'none' })).rejects.toThrow('different payload');
+  });
+  it('requires enough budget, one reference operation, and the claimed executor', async () => {
+    const { t } = await setup();
+    await expect(t.mutation(api.createManagedJob, { ...create, referenceMode: 'generate' })).rejects.toThrow('500');
+    await t.mutation(api.createManagedJob, { ...create, budgetCents: 500, referenceMode: 'generate' });
+    await t.mutation(api.claimManagedJob, { jobId: 'job', executorId: 'worker' });
+    await expect(t.mutation(api.claimManagedInference, { ...inference, kind: 'reference' })).rejects.toThrow('Reference');
+    const operation = { ...inference, operationId: 'worker-reference', kind: 'reference' };
+    expect(await t.mutation(api.claimManagedInference, operation)).toMatchObject({ claimed: true });
+    await t.mutation(api.completeManagedInference, { jobId: 'job', executorId: 'worker', operationId: operation.operationId, chargeCents: 8 });
+    const row = await t.query(api.getManagedJob, { token, jobId: 'job' });
+    expect(row).toMatchObject({ chargedAiCents: 8, chargedReferenceCents: 8, pendingAiCents: 0 });
+    expect(await t.mutation(api.claimManagedInference, operation)).toMatchObject({ claimed: false });
+    await expect(t.mutation(api.recordManagedReference, { jobId: 'job', executorId: 'other' })).rejects.toThrow('ownership');
+    await t.mutation(api.recordManagedReference, { jobId: 'job', executorId: 'worker' });
+    expect(await t.query(api.getManagedJob, { token, jobId: 'job' })).toMatchObject({ referenceReady: true });
+    await expect(t.mutation(api.recordManagedAcceptance, { jobId: 'job', executorId: 'worker' })).rejects.toThrow('checkpoint');
+  });
+});

@@ -9,7 +9,7 @@
   --muted-on-dark: #ccd7cf;
   --focus: #357259;
   --field-border: #71867a;
-  --error: #ffd0bd;
+  --error: #a13c30;
   --text-small: .875rem;
   --text-body: 1rem;
   --text-intro: 1.1875rem;
@@ -37,14 +37,14 @@ p { max-width: 65ch; margin: 16px 0; }
 .actions { display: flex; gap: 12px 20px; align-items: center; flex-wrap: wrap; margin-top: 28px; }
 .primary { display: inline-flex; align-items: center; gap: .35em; min-height: 44px; border: 1px solid var(--ink); padding: 10px 16px; text-decoration: none; border-radius: 6px; font-weight: 600; }
 .actions > a { min-height: 44px; display: inline-flex; align-items: center; }
-.terminal { --focus: var(--accent); background: var(--ink); color: var(--on-dark); padding: 28px; border-radius: 12px; min-width: 0; }
+.terminal { --on-dark: var(--ink); --muted-on-dark: var(--muted); background: #fff; color: var(--ink); padding: 32px; border: 1px solid #e8e9e2; border-radius: 18px; box-shadow: 0 6px 20px #27382b04, 0 22px 65px #27382b07; min-width: 0; }
 .terminal h2 { font-size: 1.5rem; letter-spacing: -.02em; margin-bottom: 8px; }
 .terminal p { font-size: var(--text-small); color: var(--muted-on-dark); margin: 8px 0 0; }
-.terminal a { color: var(--accent); }
+.terminal a { color: var(--ink); }
 .terminal .form-intro { margin-bottom: 24px; }
 label { display: block; font-size: var(--text-small); font-weight: 550; margin: 20px 0 8px; }
 input, textarea, select { width: 100%; accent-color: var(--ink); }
-textarea, select, input[type=text] { background: var(--paper); color: var(--ink); border: 1px solid var(--field-border); border-radius: 6px; padding: 10px 12px; font: var(--text-body)/1.5 system-ui, sans-serif; min-height: 44px; }
+textarea, select, input[type=text] { background: #fafbf8; color: var(--ink); border: 1px solid #d8ddd5; border-radius: 6px; padding: 10px 12px; font: var(--text-body)/1.5 system-ui, sans-serif; min-height: 44px; }
 textarea { resize: vertical; }
 textarea::placeholder, input::placeholder { color: var(--muted); opacity: 1; }
 [aria-invalid=true] { border-color: var(--error); border-width: 2px; }
@@ -64,7 +64,7 @@ legend { font-size: var(--text-small); font-weight: 550; padding: 0; margin-bott
 .budget-presets button[aria-pressed=true] .selection-mark { visibility: visible; }
 .terminal .field-error { color: var(--error); }
 .plan-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; }
-#copy-status { font-size: var(--text-small); color: var(--accent); }
+#copy-status { font-size: var(--text-small); color: var(--focus); }
 .terminal details { margin-top: 20px; }
 summary { cursor: pointer; font-size: var(--text-small); min-height: 44px; padding-block: 10px; }
 pre { font: .875rem/1.7 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0; }
@@ -123,4 +123,17 @@ footer p { max-width: none; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 #managed-job { margin-top: 24px; border-top: 1px solid var(--field-border); padding-top: 16px; }
 #managed-artifacts { margin-top: 16px; }
-#direct .terminal { max-width: 680px; }
+
+
+.creation-tabs { display: flex; gap: 24px; border-bottom: 1px solid #e8ebe4; margin: -8px 0 28px; }
+.creation-tabs button { border: 0; border-radius: 0; padding: 14px 0; color: var(--muted); font-weight: 500; position: relative; }
+.creation-tabs button[aria-selected=true] { color: var(--ink); }
+.creation-tabs button[aria-selected=true]::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--ink); }
+.creation-tabs button:hover:not(:disabled) { box-shadow: none; }
+.creation-card #managed-submit, .creation-card #copy { background: var(--ink); color: white; border-color: var(--ink); }
+.creation-card #managed-check { font-size: .75rem; padding: 3px 0; border: 0; min-height: 30px; text-decoration: underline; text-underline-offset: 3px; }
+.creation-card #managed-check:hover:not(:disabled) { box-shadow: none; }
+.creation-card #managed-availability { font-size: .75rem; }
+
+.reference-option { display: flex; align-items: center; gap: 9px; font-weight: 400; color: var(--muted); }
+.reference-option input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; }

@@ -6,9 +6,10 @@ import time
 import uuid
 from typing import Any, Callable
 
-FRAMES = 48
+FRAMES = 24
 FPS = 12
-VIDEO_RESERVE_SECONDS = 360
+DELIVERY_RESERVE_SECONDS = 90
+VIDEO_WINDOW_SECONDS = 180
 
 START_CODE = """
 import bpy, json, os, math
@@ -174,10 +175,14 @@ def remaining_seconds(row: dict[str, Any]) -> float:
 
 
 def render_turnaround(broker: Any, token: str, reservation_id: str, progress: Callable[[str], None] = lambda text: None) -> bytes:
+    row = broker.owned(token, reservation_id)
+    if row['status'] != 'running' or row.get('stopRequested') or remaining_seconds(row) < VIDEO_WINDOW_SECONDS:
+        raise RuntimeError('Insufficient spare time for optional video.')
+    deadline = time.monotonic() + VIDEO_WINDOW_SECONDS
     prefix = 'video-' + uuid.uuid4().hex
     def execute(code: str, suffix: str, expected: str) -> None:
         row = broker.owned(token, reservation_id)
-        if row['status'] != 'running' or row.get('stopRequested') or remaining_seconds(row) < 100:
+        if row['status'] != 'running' or row.get('stopRequested') or min(remaining_seconds(row), deadline - time.monotonic()) < 100:
             raise RuntimeError('Insufficient running time for another video chunk.')
         result = broker.call(token, reservation_id, {'jsonrpc': '2.0', 'id': suffix, 'method': 'tools/call', 'params': {'name': 'execute_blender_code', 'arguments': {'code': code}}}, prefix + '-' + suffix, 65_536)
         if 'error' in result or result.get('result', {}).get('isError') or expected not in json.dumps(result):

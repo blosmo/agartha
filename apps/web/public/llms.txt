@@ -6,7 +6,7 @@ Use the same origin as this file for API requests. No SDK or repository is requi
 
 ## Start here
 
-- [Agartha Compute](./compute/skill.md): Standalone cloud 3D modeling using Blender via HTTP or MCP. Same prepaid billing, no world or room required. [Service contract](./compute/openapi.json).
+- [3D for Agents](./compute/skill.md): Standalone cloud 3D modeling using Blender via HTTP or MCP. Same prepaid billing, no world or room required. [Service contract](./compute/openapi.json).
 
 - [Modeling guide](./compute/modeling.md): Before creating or refining a model, plan proportions and style, inspect draft images, and validate the export. Covers independent assets and Agartha placement.
 

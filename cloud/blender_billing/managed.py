@@ -14,10 +14,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 import httpx
-from .turnaround import render_turnaround, remaining_seconds, VIDEO_RESERVE_SECONDS
+from .turnaround import render_turnaround, remaining_seconds, DELIVERY_RESERVE_SECONDS
 
 BASE_NAMES = {'model.glb', 'model.blend', 'preview.png'}
-NAMES = BASE_NAMES | {'turnaround.mp4'}
+NAMES = BASE_NAMES | {'turnaround.mp4', 'reference.jpg', 'review.json'}
 FILE_LIMIT = 16 * 1024 * 1024
 EXPORT_CODE = """
 import bpy, os
@@ -66,7 +66,7 @@ class ManagedFiles:
         return self.root / hashlib.sha256(job_id.encode()).hexdigest()
 
     def save(self, job_id: str, files: dict[str, bytes]) -> None:
-        if not BASE_NAMES.issubset(files) or set(files) - NAMES or any(len(value) > FILE_LIMIT for value in files.values()):
+        if not BASE_NAMES.issubset(files) or set(files) - (BASE_NAMES | {'turnaround.mp4'}) or any(len(value) > FILE_LIMIT for value in files.values()):
             raise ValueError('Invalid managed artifact set.')
         with self.storage.transaction():
             directory = self.directory(job_id)
@@ -80,10 +80,12 @@ class ManagedFiles:
             temporary.write_text(json.dumps({'revision': revision, 'created': time.time()}))
             os.replace(temporary, directory / 'current.json')
             self.commit()
-            # Only the committed best checkpoint is served. Old checkpoints are removed.
+            # Retain the last accepted revision while a new candidate is reviewed.
             import shutil
+            accepted_file = directory / 'accepted.json'
+            accepted = json.loads(accepted_file.read_text())['revision'] if accepted_file.exists() else None
             for child in directory.iterdir():
-                if child.is_dir() and child.name != revision:
+                if child.is_dir() and child.name not in {revision, accepted}:
                     shutil.rmtree(child)
             self.commit()
 
@@ -92,6 +94,13 @@ class ManagedFiles:
             raise ValueError('Unknown artifact.')
         with self.storage.transaction():
             directory = self.directory(job_id)
+            if name in {'reference.jpg', 'review.json'}:
+                metadata = json.loads((directory / 'reference-meta.json').read_text())
+                if time.time() - metadata['created'] > 7 * 86400:
+                    raise ValueError('Artifact retention has expired.')
+                payload = (directory / name).read_bytes()
+                if len(payload) > FILE_LIMIT: raise ValueError('Artifact exceeds its limit.')
+                return payload
             metadata = json.loads((directory / 'current.json').read_text())
             if time.time() - metadata['created'] > 7 * 86400 or not re.fullmatch('[a-f0-9]{32}', metadata['revision']):
                 raise ValueError('Artifact retention has expired.')
@@ -100,12 +109,72 @@ class ManagedFiles:
                 raise ValueError('Artifact exceeds its limit.')
             return payload
 
+    def save_reference(self, job_id: str, payload: bytes, model: str) -> None:
+        from PIL import Image
+        if len(payload) > 3_000_000: raise ValueError('Reference exceeds its limit.')
+        with Image.open(io.BytesIO(payload)) as image:
+            if image.format != 'JPEG' or image.size != (1536, 1536): raise ValueError('Invalid reference image.')
+            image.verify()
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            directory.mkdir(parents=True, exist_ok=True)
+            if (directory / 'reference-meta.json').exists(): raise ValueError('A reference already exists.')
+            for name, content in (
+                ('reference.jpg', payload),
+                ('review.json', json.dumps({'referenceModel': model, 'actions': []}).encode()),
+                ('reference-meta.json', json.dumps({'created': time.time(), 'model': model, 'sha256': hashlib.sha256(payload).hexdigest()}).encode()),
+            ):
+                temporary = directory / ('.' + name)
+                temporary.write_bytes(content)
+                os.replace(temporary, directory / name)
+            self.commit()
+
+    def save_review(self, job_id: str, review: dict[str, Any]) -> None:
+        payload = json.dumps(review, ensure_ascii=False).encode()
+        if len(payload) > 1_000_000: raise ValueError('Review trace exceeds its limit.')
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            temporary = directory / '.review.json'
+            temporary.write_bytes(payload)
+            os.replace(temporary, directory / 'review.json')
+            self.commit()
+
+    def accept(self, job_id: str) -> None:
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            current = (directory / 'current.json').read_bytes()
+            temporary = directory / '.accepted.json'
+            temporary.write_bytes(current)
+            os.replace(temporary, directory / 'accepted.json')
+            self.commit()
+
+    def read_accepted(self, job_id: str, name: str) -> bytes:
+        if name not in BASE_NAMES: raise ValueError('Unknown accepted artifact.')
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            metadata = json.loads((directory / 'accepted.json').read_text())
+            if time.time() - metadata['created'] > 7 * 86400 or not re.fullmatch('[a-f0-9]{32}', metadata['revision']):
+                raise ValueError('Accepted artifact expired.')
+            payload = (directory / metadata['revision'] / name).read_bytes()
+            if len(payload) > FILE_LIMIT: raise ValueError('Accepted artifact exceeds its limit.')
+            return payload
+
+    def restore_accepted(self, job_id: str) -> None:
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            accepted = (directory / 'accepted.json').read_bytes()
+            temporary = directory / '.current'
+            temporary.write_bytes(accepted)
+            os.replace(temporary, directory / 'current.json')
+            self.commit()
+
     def add_video(self, job_id: str, payload: bytes) -> None:
         if len(payload) > FILE_LIMIT or len(payload) < 1000 or payload[4:8] != b'ftyp':
             raise ValueError('Invalid MP4 artifact.')
         with self.storage.transaction():
             files = {name: self.read(job_id, name) for name in BASE_NAMES}
             self.save(job_id, {**files, 'turnaround.mp4': payload})
+            if (self.directory(job_id) / 'accepted.json').exists(): self.accept(job_id)
 
     def cleanup(self) -> None:
         import shutil
@@ -120,7 +189,6 @@ class ManagedFiles:
 
 def preview_image(payload: bytes) -> str:
     from PIL import Image
-    Image.MAX_IMAGE_PIXELS = 1_048_576
     with Image.open(io.BytesIO(payload)) as source:
         if source.width > 1024 or source.height > 1024:
             raise ValueError('Preview is too large.')
@@ -137,6 +205,10 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
     if not claim.get('claimed'):
         return
     row = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
+    if row.get('referenceMode') == 'generate':
+        from .studio import run_studio
+        run_studio(broker, files, token, job_id, executor, row, monitor, inference_url, broker_key)
+        return
     reservation = row['reservationId']
     status, progress, inspected, saved, running = 'failed', 'The job could not complete.', False, False, False
     image = None
@@ -149,7 +221,7 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
             if row.get('cancelled') or row.get('cancelRequested') or row['status'] == 'cancelled':
                 status, progress = 'cancelled', 'Stopped at your request.'
                 break
-            if saved and running and remaining_seconds(broker.owned(token, reservation)) <= VIDEO_RESERVE_SECONDS:
+            if saved and running and remaining_seconds(broker.owned(token, reservation)) <= DELIVERY_RESERVE_SECONDS:
                 status, progress = 'partial', 'Stopped refining to reserve time for the turnaround video.'
                 break
             done = threading.Event()
@@ -240,8 +312,24 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
 def recover_managed_files(broker: Any, files: ManagedFiles, job: dict[str, Any]) -> None:
     if not job.get('executorId'):
         return
-    files.read(job['jobId'], 'preview.png')
+    accepted = False
+    if job.get('referenceMode') == 'generate':
+        try:
+            files.read(job['jobId'], 'reference.jpg')
+            files.read(job['jobId'], 'review.json')
+            broker.ledger.call('recordManagedReference', jobId=job['jobId'], executorId=job['executorId'])
+        except (FileNotFoundError, ValueError): pass
+        try:
+            files.read_accepted(job['jobId'], 'model.blend')
+            files.restore_accepted(job['jobId'])
+            accepted = True
+        except (FileNotFoundError, ValueError): pass
+        try: files.read(job['jobId'], 'preview.png')
+        except (FileNotFoundError, ValueError): return
+    else:
+        files.read(job['jobId'], 'preview.png')
     broker.ledger.call('recordManagedCheckpoint', jobId=job['jobId'], executorId=job['executorId'])
+    if accepted: broker.ledger.call('recordManagedAcceptance', jobId=job['jobId'], executorId=job['executorId'])
     try:
         video = files.read(job['jobId'], 'turnaround.mp4')
         if len(video) >= 1000 and video[4:8] == b'ftyp':

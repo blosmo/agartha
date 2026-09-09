@@ -15,3 +15,7 @@ An authenticated jobs API exposes state, actual charges, cancellation and privat
 ## Verification
 
 Test atomic holds, duplicate creates/dispatch, cross-owner access, concurrent cancellation, oversized model input, ambiguous provider outcomes, output costs, and partial exports. Run a capped synthetic live job before advertising availability. Deploy ledger, broker and gateway in dependency order; inspect public API and browser flow.
+
+## Reference-guided jobs
+
+See [the reference-guided workflow](design/reference-guided-modeling.md). An optional mode pins GPT Image 2.5 Flare for one design sheet, uses protocol 2 for explicit Blender MCP actions, and retains accepted checkpoints. Legacy jobs remain protocol-compatible. The reference feature is disabled unless `AGARTHA_REFERENCE_MODELING_ENABLED=true` or an explicitly configured `AGARTHA_REFERENCE_MODELING_OPERATOR_AGENT_ID` owns the new request. Deploy the additive schema and worker before the gateway/UI; verify an operator run before public activation.

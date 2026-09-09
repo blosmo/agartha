@@ -1,3 +1,4 @@
+import './gallery';
 import type { ModelPose, ModelRenderer } from './modelRenderer';
 
 const hero = document.querySelector<HTMLElement>('.orbit-hero');
