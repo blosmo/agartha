@@ -45,22 +45,24 @@ async function finish(ctx: MutationCtx, row: Job, status: "completed" | "partial
 async function sanitized(ctx: QueryCtx | MutationCtx, row: Job) {
   const { _id, _creationTime, executorId, agentId, ...safe } = row;
   const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", row.reservationId)).unique();
-  return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? 65, computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
+  return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? (row.referenceMode === "generate" ? 165 : 65), computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
 }
 export const createManagedJob = internalMutation({
-  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), budgetCents: v.number(), livemode: v.boolean() },
+  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean() },
   handler: async (ctx, args) => {
     identifier(args.jobId, "jobId", 80); identifier(args.requestId, "requestId");
     if (!args.brief.trim() || new TextEncoder().encode(args.brief).length > 4000) throw new Error("Brief must contain 1 to 4000 UTF-8 bytes.");
     assertCents(args.budgetCents, "budgetCents");
     if (args.budgetCents < 100 || args.budgetCents > 2000) throw new Error("Budget must be 100 to 2000 cents.");
+    const referenceMode = args.referenceMode ?? "none";
+    if (referenceMode === "generate" && args.budgetCents < 500) throw new Error("Reference-guided jobs require a budget of at least 500 cents.");
     const actor = await requireBillingOwner(ctx, args.token);
     const prior = await ctx.db.query("managedJobs").withIndex("by_owner_request", q => q.eq("agentId", actor.agentId).eq("livemode", args.livemode).eq("requestId", args.requestId)).unique();
-    if (prior) { if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents) throw new Error("Job request reused with different payload."); return sanitized(ctx, prior); }
+    if (prior) { if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || (prior.referenceMode ?? "none") !== referenceMode) throw new Error("Job request reused with different payload."); return sanitized(ctx, prior); }
     if (await ctx.db.query("managedJobs").withIndex("by_job", q => q.eq("jobId", args.jobId)).unique()) throw new Error("Job ID already exists.");
     const reservationId = `managed-${args.jobId}`;
-    const quote = await createQuoteInTransaction(ctx, { token: args.token, quoteId: reservationId, requestId: reservationId, minutes: 10, livemode: args.livemode });
-    if (quote.reserveCents !== 65) throw new Error("Managed compute pricing requires review.");
+    const quote = await createQuoteInTransaction(ctx, { token: args.token, quoteId: reservationId, requestId: reservationId, minutes: referenceMode === "generate" ? 30 : 10, livemode: args.livemode });
+    if (quote.reserveCents !== (referenceMode === "generate" ? 165 : 65)) throw new Error("Managed compute pricing requires review.");
     const reservation = await reserveSessionInTransaction(ctx, { token: args.token, quoteId: reservationId, reservationId, requestId: reservationId });
     await ctx.db.patch(reservation._id, { deferredStart: true });
     const ai = args.budgetCents - quote.reserveCents;
@@ -68,7 +70,7 @@ export const createManagedJob = internalMutation({
     if (wallet.frozen || wallet.availableCents < ai) throw new Error("Insufficient available Blender credits.");
     await ctx.db.patch(wallet._id, { availableCents: wallet.availableCents - ai, heldCents: wallet.heldCents + ai });
     const now = Date.now();
-    const id = await ctx.db.insert("managedJobs", { jobId: args.jobId, requestId: args.requestId, agentId: actor.agentId, livemode: args.livemode, brief: args.brief, budgetCents: args.budgetCents, reservationId, status: "queued", cancelled: false, progress: "Queued", reservedAiCents: ai, chargedAiCents: 0, pendingAiCents: 0, releasedAiCents: 0, visuallyInspected: false, createdAt: now, updatedAt: now, deadlineAt: now + 20 * 60_000 });
+    const id = await ctx.db.insert("managedJobs", { jobId: args.jobId, requestId: args.requestId, agentId: actor.agentId, livemode: args.livemode, brief: args.brief, referenceMode, chargedReferenceCents: 0, budgetCents: args.budgetCents, reservationId, status: "queued", cancelled: false, progress: "Queued", reservedAiCents: ai, chargedAiCents: 0, pendingAiCents: 0, releasedAiCents: 0, visuallyInspected: false, createdAt: now, updatedAt: now, deadlineAt: now + (referenceMode === "generate" ? 45 : 20) * 60_000 });
     const row = (await ctx.db.get(id))!;
     await entry(ctx, row, "reserve", "reserve", -ai);
     return sanitized(ctx, row);
@@ -93,17 +95,18 @@ export const requestManagedCancel = internalMutation({ args: { token: v.string()
   if (!terminal(row)) { await ctx.db.patch(row._id, { cancelled: true }); await finish(ctx, { ...row, cancelled: true }, "cancelled", "Cancelled", row.visuallyInspected); }
   return sanitized(ctx, await job(ctx, args.jobId));
 } });
-export const claimManagedInference = internalMutation({ args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), maxCostCents: v.number(), payloadFingerprint: v.string() }, handler: async (ctx, args) => {
+export const claimManagedInference = internalMutation({ args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), maxCostCents: v.number(), payloadFingerprint: v.string(), kind: v.optional(v.union(v.literal("modeling"), v.literal("reference"))) }, handler: async (ctx, args) => {
   identifier(args.operationId, "operationId"); identifier(args.payloadFingerprint, "payloadFingerprint"); assertCents(args.maxCostCents, "maxCostCents");
   if (!args.maxCostCents) throw new Error("Inference requires a positive reservation.");
   const row = await job(ctx, args.jobId);
   if (row.executorId !== args.executorId) throw new Error("Stale executor.");
   const prior = await ctx.db.query("managedInferenceOperations").withIndex("by_operation", q => q.eq("operationId", args.operationId)).unique();
-  if (prior) { if (prior.jobId !== row.jobId || prior.executorId !== args.executorId || prior.payloadFingerprint !== args.payloadFingerprint || prior.maxCostCents !== args.maxCostCents) throw new Error("Inference operation reused with different payload."); return { claimed: false, state: prior.state }; }
+  if (prior) { if (prior.jobId !== row.jobId || prior.executorId !== args.executorId || prior.payloadFingerprint !== args.payloadFingerprint || prior.maxCostCents !== args.maxCostCents || (prior.kind ?? "modeling") !== (args.kind ?? "modeling")) throw new Error("Inference operation reused with different payload."); return { claimed: false, state: prior.state }; }
   const wallet = await getOrCreateWallet(ctx, row.agentId, row.livemode);
   if (row.status !== "running" || row.cancelled || row.deadlineAt <= Date.now() || wallet.frozen) throw new Error("Inference is not authorized.");
   const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", row.reservationId)).unique();
   if (!reservation || reservation.stopRequested || ["settled", "failed", "unknown"].includes(reservation.status)) throw new Error("Compute is no longer available for this job.");
+  if (args.kind === "reference" && (row.referenceMode !== "generate" || row.referenceReady || args.operationId !== `${args.executorId}-reference`)) throw new Error("Reference generation is not available for this job.");
   if (row.pendingAiCents) throw new Error("Another inference is in flight.");
   if (args.maxCostCents > row.reservedAiCents - row.chargedAiCents - row.releasedAiCents) throw new Error("AI budget exhausted.");
   await ctx.db.insert("managedInferenceOperations", { ...args, state: "claimed", createdAt: Date.now() });
@@ -131,7 +134,7 @@ export const completeManagedInference = internalMutation({ args: { jobId: v.stri
   await ctx.db.patch(wallet._id, { heldCents: wallet.heldCents - args.chargeCents - refund, availableCents: wallet.availableCents + refund, frozen: wallet.availableCents + refund < 0 || wallet.openDisputes > 0 });
   await entry(ctx, row, `operation:${op.operationId}:release`, "release", refund);
   // The original reserve debit minus releases equals actual spend; a second charge debit would double-count it.
-  await ctx.db.patch(row._id, { chargedAiCents: row.chargedAiCents + args.chargeCents, pendingAiCents: 0, releasedAiCents: row.releasedAiCents + refund, updatedAt: Date.now() });
+  await ctx.db.patch(row._id, { chargedAiCents: row.chargedAiCents + args.chargeCents, chargedReferenceCents: (row.chargedReferenceCents ?? 0) + (op.kind === "reference" ? args.chargeCents : 0), pendingAiCents: 0, releasedAiCents: row.releasedAiCents + refund, updatedAt: Date.now() });
   await ctx.db.patch(op._id, { state: "completed", chargeCents: args.chargeCents, completedAt: Date.now() });
   return { state: "completed", reused: false, chargeCents: args.chargeCents };
 } });
@@ -187,5 +190,25 @@ export const recordManagedVideo = internalMutation({
     if (!row.artifactsReady) throw new Error("A model checkpoint is required before recording video.");
     await ctx.db.patch(row._id, { videoReady: true, updatedAt: Date.now() });
     return { videoReady: true };
+  },
+});
+
+export const recordManagedReference = internalMutation({
+  args: { jobId: v.string(), executorId: v.string() },
+  handler: async (ctx, args) => {
+    const row = await job(ctx, args.jobId);
+    if (row.executorId !== args.executorId || row.referenceMode !== "generate") throw new Error("Reference job ownership mismatch.");
+    await ctx.db.patch(row._id, { referenceReady: true, updatedAt: Date.now() });
+    return { referenceReady: true };
+  },
+});
+
+export const recordManagedAcceptance = internalMutation({
+  args: { jobId: v.string(), executorId: v.string() },
+  handler: async (ctx, args) => {
+    const row = await job(ctx, args.jobId);
+    if (row.executorId !== args.executorId || row.referenceMode !== "generate" || !row.artifactsReady) throw new Error("A reference-guided checkpoint is required.");
+    await ctx.db.patch(row._id, { visuallyInspected: true, updatedAt: Date.now() });
+    return { visuallyInspected: true };
   },
 });

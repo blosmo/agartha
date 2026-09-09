@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Agartha Compute",
+    "title": "3D for Agents",
     "version": "1.1.0",
-    "description": "Managed Astra modeling with one total budget, plus advanced direct Blender sessions. Same stable identity and prepaid wallet. Check managed.enabled before creating a job; credit purchases are separate."
+    "description": "Budgeted 3D modeling with an iterative Blender MCP agent, optional GPT Image 2.5 Flare design references, and direct Blender sessions. Check capabilities before creating a job. Stable identity and prepaid wallet; credit purchases are separate."
   },
   "servers": [
     {
@@ -1341,9 +1341,6 @@
         "operationId": "createManagedModel",
         "summary": "Reserve one managed Astra model job within a total USD cap",
         "responses": {
-          "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
-          },
           "400": {
             "description": "Invalid request"
           },
@@ -1355,6 +1352,9 @@
           },
           "503": {
             "description": "Managed creation unavailable"
+          },
+          "201": {
+            "description": "Reserved job state. chargedAiCents includes image generation and modeling; chargedReferenceCents is the image portion, not an additional charge. Reference-guided jobs reserve a 30-minute compute session within the total cap; legacy jobs reserve ten minutes. referenceReady exposes reference.jpg and review.json. Model artifacts appear after a validated export; visuallyInspected identifies accepted visual review. Turnaround video is included when available."
           }
         },
         "requestBody": {
@@ -1385,6 +1385,15 @@
                     "type": "integer",
                     "minimum": 100,
                     "maximum": 2000
+                  },
+                  "referenceMode": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "generate"
+                    ],
+                    "default": "none",
+                    "description": "generate requests one GPT Image 2.5 Flare four-view reference sheet and the iterative Blender MCP workflow. Requires managed.references.enabled and a budget of at least 500 cents. Reference generation is charged within the same total cap."
                   }
                 }
               }
@@ -1409,7 +1418,7 @@
         "summary": "Observe a private managed job and cost settlement",
         "responses": {
           "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: two seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
           },
           "400": {
             "description": "Invalid request"
@@ -1442,7 +1451,7 @@
         "summary": "Idempotently start the same reserved managed job",
         "responses": {
           "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: two seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
           },
           "400": {
             "description": "Invalid request"
@@ -1475,7 +1484,7 @@
         "summary": "Cancel further managed work and observe settlement",
         "responses": {
           "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: four seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
+            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: two seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
           },
           "400": {
             "description": "Invalid request"

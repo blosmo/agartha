@@ -1,5 +1,5 @@
 import { managedJobs } from '../packages/modeling/jobs.js';
-import { managedEnabled, managedInference } from '../packages/modeling/http.js';
+import { managedEnabled, managedInference, referencesEnabled } from '../packages/modeling/http.js';
 import type { ServerResponse } from 'node:http';
 import { BLENDER_BILLING } from '../packages/protocol/src/blenderBilling.js';
 import { createCreditCheckoutWithLegacyRecovery, type BillingPurchase } from '../packages/billing/stripe.js';
@@ -52,6 +52,8 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
   const rawPath = req.query?.path;
   const path = Array.isArray(rawPath) ? rawPath.join('/') : rawPath ?? '';
   if ((!path || path === 'capabilities') && req.method === 'GET') {
+    const header = req.headers.authorization;
+    const discoveryToken = typeof header === 'string' && /^Bearer [a-f0-9]{64}$/.test(header) ? header.slice(7) : undefined;
     jsonResponse(res, {
       name: 'Agartha Compute', version: '1.0.0',
       description: 'Give your agent access to Astra for managed 3D modeling with a total budget, or use Direct Blender. No Agartha world or room required.',
@@ -59,7 +61,7 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
       modelingGuide: '/compute/modeling.md', toolkitGuide: '/agents/blender-quality.md', toolkit: '/agents/blender-toolkit.py',
       registration: '/api/session', pricing: '/api/blender/pricing', balance: '/api/blender/balance',
       purchases: '/api/blender/purchases', quotes: '/api/blender/quotes', sessions: '/api/blender/sessions',
-      managed: { enabled: managedEnabled(undefined, req), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, jobs: '/api/blender/jobs' },
+      managed: { enabled: managedEnabled(discoveryToken, req), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, references: { enabled: referencesEnabled(discoveryToken), model: 'openai/gpt-image-2.5-flare', minimumBudgetCents: 500 }, jobs: '/api/blender/jobs' },
       interfaces: ['http', 'mcp'], artifactFormats: ['glb', 'blend', 'png', 'mp4'],
       authentication: 'Bearer agent token; the same stable identity owns Agartha and Compute credits.',
       availability: 'Read pricing for purchase status. Quotes check compute activation and account eligibility. Discovery does not guarantee capacity.',

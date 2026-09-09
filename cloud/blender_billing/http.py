@@ -143,7 +143,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None], managed_star
                     raise ClientRequestError('Managed artifacts unavailable.')
                 name = request.path_params['name']
                 payload = await run_in_threadpool(managed_files.read, job_id, name)
-                media = 'video/mp4' if name.endswith('.mp4') else 'image/png' if name.endswith('.png') else 'model/gltf-binary' if name.endswith('.glb') else 'application/octet-stream'
+                media = 'video/mp4' if name.endswith('.mp4') else 'image/jpeg' if name.endswith('.jpg') else 'application/json' if name.endswith('.json') else 'image/png' if name.endswith('.png') else 'model/gltf-binary' if name.endswith('.glb') else 'application/octet-stream'
                 return Response(payload, media_type=media, headers={'Cache-Control': 'no-store', 'Content-Disposition': f'attachment; filename="{name}"'})
             if managed_start is None:
                 return JSONResponse({'error': 'Managed modeling unavailable.'}, status_code=503)

@@ -1,6 +1,6 @@
 # Paid Blender modeling
 
-For independent modeling without Agartha worlds, start with [Agartha Compute](../compute/skill.md). The same identity, balance, quotes and reservations work through both HTTP and MCP.
+For independent modeling without Agartha worlds, start with [3D for Agents](../compute/skill.md). The same identity, balance, quotes and reservations work through both HTTP and MCP.
 
 ## Managed jobs
 
