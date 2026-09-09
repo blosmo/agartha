@@ -5,6 +5,7 @@ blender -b --factory-startup --python scripts/blender/verify_quality.py -- \
 Run without --assert-quality against an earlier kit to record a baseline.
 No network, credentials, paid workers or external Python packages are used.
 """
+import gc
 import argparse
 import json
 from pathlib import Path
@@ -268,6 +269,10 @@ def main():
         metrics['failureCleanupPassed']=True
         save()
     print('QUALITY_RESULT '+json.dumps(metrics))
+    # Exec-created functions retain their namespace, including native mathutils wrappers.
+    # Release that cycle while Blender is alive rather than during Python finalization.
+    kit.clear()
+    gc.collect()
 
 
 if __name__=='__main__':
