@@ -42,7 +42,10 @@ export async function managedJobs(req: BillingRequest, res: ServerResponse, path
         const { done, value } = await reader.read(); if (done) break;
         count += value.length;
         if (count > 16 * 1024 * 1024) { await reader.cancel(); res.destroy(); return; }
-        if (!res.write(value)) await new Promise<void>(resolve => { res.once('drain', resolve); res.once('close', resolve); });
+        if (!res.write(value)) await new Promise<void>(resolve => {
+          const resume = () => { res.off('drain', resume); res.off('close', resume); resolve(); };
+          res.once('drain', resume); res.once('close', resume);
+        });
         if (res.destroyed) { await reader.cancel(); return; }
       }
       res.end();
