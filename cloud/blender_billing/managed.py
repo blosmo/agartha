@@ -20,19 +20,30 @@ FILE_LIMIT = 16 * 1024 * 1024
 EXPORT_CODE = """
 import bpy, os
 os.makedirs('/workspace/artifacts', exist_ok=True)
-meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+model = bpy.data.collections.get('AGARTHA_MODEL')
+assert model, 'Put the deliverable meshes in collection AGARTHA_MODEL.'
+meshes = [o for o in model.all_objects if o.type == 'MESH']
 assert meshes, 'The scene has no model meshes.'
 assert sum(len(o.data.polygons) for o in meshes) <= 100000, 'Simplify the model before export.'
-bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', export_cameras=False, export_lights=False)
-bpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend')
+bpy.ops.object.select_all(action='DESELECT')
+for obj in meshes:
+    obj.select_set(True)
+bpy.context.view_layer.objects.active = meshes[0]
+bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_cameras=False, export_lights=False)
 scene = bpy.context.scene
-scene.render.engine = 'BLENDER_EEVEE_NEXT'
+scene.render.engine = 'CYCLES'
+scene.cycles.device = 'CPU'
+scene.cycles.samples = 32
+scene.cycles.use_denoising = True
+scene.render.threads_mode = 'FIXED'
+scene.render.threads = 2
 scene.render.resolution_x = 512
 scene.render.resolution_y = 512
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = 'PNG'
 scene.render.filepath = '/workspace/artifacts/preview.png'
 assert scene.camera, 'Create a camera framing the model.'
+bpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend')
 bpy.ops.render.render(write_still=True)
 """
 
@@ -148,7 +159,7 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
             if row.get('cancelled') or row.get('cancelRequested') or row['status'] == 'cancelled':
                 status, progress = 'cancelled', 'Stopped at your request.'
                 break
-            progress = str(step['summary'])[:1000]
+            progress = 'Preparing the Blender edit.' if step['code'].strip() else str(step['summary'])[:1000]
             broker.ledger.call('heartbeatManagedJob', jobId=job_id, executorId=executor, progress=progress)
             if step['done'] and not step['code'].strip():
                 status = 'completed' if saved and inspected else 'partial' if saved else 'failed'
@@ -174,6 +185,7 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
                 # Reset before any network call: these files have not been inspected yet.
                 inspected = False
                 broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
+                broker.ledger.call('heartbeatManagedJob', jobId=job_id, executorId=executor, progress='Model and preview saved. Astra is reviewing the result.')
             except Exception:
                 history += '\nExports or preview could not be validated. Fix the scene and camera.'
         else:
