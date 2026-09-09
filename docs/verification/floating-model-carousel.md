@@ -1,6 +1,6 @@
 # Floating model carousel
 
-The Compute landing page surrounds its headline with five Platonic solids, a mint bunny, and a lavender whale. The collection moves along a slow rainbow arc with softly masked edges. Pointer hover adds an eased lift and tilt without tooltips; scrolling adds subtle parallax and rotation. Both effects respect reduced motion. Model buttons support selection, horizontal drag rotation, arrow-key navigation, pause/play, GLB downloads, and prefilling the creation brief without submitting a job.
+The Compute landing page surrounds its headline with five Platonic solids, a mint bunny, and a lavender whale. The collection moves along a slow rainbow arc with softly masked edges. Pointer hover adds an eased lift and tilt without tooltips; scrolling adds subtle parallax and rotation. Both effects respect reduced motion. Model buttons support selection, horizontal drag rotation, and arrow-key navigation. The eyebrow, supporting note, carousel toolbar, and idea/download row were removed after visual review.
 
 The controller loads Three.js separately from the page. WebGPURenderer uses WebGPU with WebGL2 fallback. Transparent Blender posters remain visible if graphics initialization fails. Reduced-motion preferences start the collection paused; document visibility and intersection pause animation work. HTML controls remain separate from the canvas.
 
@@ -26,3 +26,5 @@ The generator verifies each solid's polygon count before beveling. It exports un
 - Layout checks cover 1280, 768, 390, and 320 pixels without horizontal overflow. Desktop and mobile renders were visually inspected.
 
 This report describes local verification. It does not establish deployment to the public site.
+
+The later minimal-hero revision was checked for all four removed elements, successful GPU rendering, and mobile overflow. Earlier toolbar and prefill checks above describe the prior revision.

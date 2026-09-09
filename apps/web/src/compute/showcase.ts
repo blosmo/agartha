@@ -6,8 +6,8 @@ if (hero && stage) setup(hero, stage);
 
 function setup(hero: HTMLElement, stage: HTMLElement) {
   const buttons = Array.from(stage.querySelectorAll<HTMLButtonElement>('.arc-model'));
-  const models = buttons.map(button => ({ id: button.dataset.model!, name: button.dataset.name!, idea: button.dataset.idea! }));
-  const pauseButton = document.querySelector<HTMLButtonElement>('#arc-pause')!;
+  const models = buttons.map(button => ({ id: button.dataset.model!, name: button.dataset.name! }));
+
   const announcement = document.querySelector<HTMLElement>('#arc-announcement')!;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const lifetime = new AbortController();
@@ -22,19 +22,9 @@ function setup(hero: HTMLElement, stage: HTMLElement) {
   const smoothstep = (x: number) => { const t = Math.max(0, Math.min(1, x)); return t * t * (3 - 2 * t); };
   const wrap = (value: number) => ((value % 1) + 1) % 1;
 
-  function updatePause() {
-    stage.dataset.paused = String(paused);
-    pauseButton.setAttribute('aria-label', paused ? 'Play model motion' : 'Pause model motion');
-    pauseButton.setAttribute('aria-pressed', String(paused));
-    pauseButton.innerHTML = paused
-      ? '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M4 2l8 5-8 5z"/></svg>'
-      : '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true"><path d="M3 2h3v10H3zM8 2h3v10H8z"/></svg>';
-  }
+  function updatePause() { stage.dataset.paused = String(paused); }
   function caption(manual = false) {
     stage.dataset.selected = models[selected].id;
-    document.querySelector('#arc-name')!.textContent = models[selected].name;
-    document.querySelector('.arc-counter')!.textContent = `${String(selected + 1).padStart(2, '0')} / 07`;
-    document.querySelector<HTMLAnchorElement>('#arc-download')!.href = `/compute/models/${models[selected].id}.glb`;
     buttons.forEach((button, i) => button.setAttribute('aria-pressed', String(i === selected)));
     if (manual) announcement.textContent = `${models[selected].name}, model ${selected + 1} of ${models.length}.`;
   }
@@ -112,12 +102,9 @@ function setup(hero: HTMLElement, stage: HTMLElement) {
     buttons.forEach(button => { delete button.dataset.loaded; });
   }
   function listen(target: EventTarget, event: string, handler: EventListener) { target.addEventListener(event, handler, { signal: lifetime.signal }); }
-  listen(pauseButton, 'click', () => { paused = !paused; if (!paused) focused = false; goal = undefined; updatePause(); lastTime = 0; schedule(); });
-  listen(document.querySelector('#arc-previous')!, 'click', () => choose(selected - 1));
-  listen(document.querySelector('#arc-next')!, 'click', () => choose(selected + 1));
   listen(hero, 'keydown', raw => {
     const event = raw as KeyboardEvent;
-    if (!(event.target instanceof Element) || !event.target.closest('.arc-controls, .arc-model')) return;
+    if (!(event.target instanceof Element) || !event.target.closest('.arc-model')) return;
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); choose(selected + (event.key === 'ArrowRight' ? 1 : -1)); }
   });
   buttons.forEach((button, index) => {
@@ -157,14 +144,6 @@ function setup(hero: HTMLElement, stage: HTMLElement) {
       drag = undefined;
     };
     listen(button, 'pointerup', finish); listen(button, 'pointercancel', finish);
-  });
-  listen(document.querySelector('#arc-use')!, 'click', () => {
-    const brief = document.querySelector<HTMLTextAreaElement>('#managed-brief')!;
-    if (brief.disabled) { announcement.textContent = 'Finish your current job before starting another model.'; return; }
-    brief.value = models[selected].idea;
-    brief.dispatchEvent(new Event('input', { bubbles: true }));
-    brief.focus({ preventScroll: true });
-    document.querySelector('#start')!.scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth', block: 'start' });
   });
   listen(hero, 'focusin', () => { focused = true; });
   listen(hero, 'focusout', raw => {
