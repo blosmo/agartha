@@ -135,7 +135,23 @@ export const completeManagedInference = internalMutation({ args: { jobId: v.stri
   await ctx.db.patch(op._id, { state: "completed", chargeCents: args.chargeCents, completedAt: Date.now() });
   return { state: "completed", reused: false, chargeCents: args.chargeCents };
 } });
-export const finishManagedJob = internalMutation({ args: { jobId: v.string(), executorId: v.string(), status: terminalStatus, progress: v.string(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()) }, handler: async (ctx, args) => { const row = await job(ctx, args.jobId); if (row.executorId !== args.executorId) throw new Error("Stale executor."); if (args.progress.length > 1000) throw new Error("Progress exceeds 1000 characters."); await ctx.db.patch(row._id, { ...(args.artifactsReady === undefined ? {} : { artifactsReady: args.artifactsReady }), visuallyInspected: args.visuallyInspected }); return finish(ctx, await job(ctx, args.jobId), args.status, args.progress, args.visuallyInspected); } });
+export const finishManagedJob = internalMutation({
+  args: { jobId: v.string(), executorId: v.string(), status: terminalStatus, progress: v.string(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()), videoReady: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const row = await job(ctx, args.jobId);
+    if (row.executorId !== args.executorId) throw new Error("Stale executor.");
+    if (args.progress.length > 1000) throw new Error("Progress exceeds 1000 characters.");
+    const artifactsReady = args.artifactsReady ?? row.artifactsReady;
+    if ((args.videoReady ?? row.videoReady) && !artifactsReady) throw new Error("A model checkpoint is required before recording video.");
+    await ctx.db.patch(row._id, {
+      ...(args.artifactsReady === undefined ? {} : { artifactsReady: args.artifactsReady }),
+      ...(args.videoReady === undefined ? {} : { videoReady: args.videoReady }),
+      visuallyInspected: args.visuallyInspected,
+    });
+    return finish(ctx, await job(ctx, args.jobId), args.status, args.progress, args.visuallyInspected);
+  },
+});
+
 export const recoverManagedJob = internalMutation({ args: { jobId: v.string() }, handler: async (ctx, args) => { const row = await job(ctx, args.jobId); if (row.deadlineAt > Date.now()) throw new Error("Managed job deadline has not expired."); return finish(ctx, row, "failed", "Job deadline expired", row.visuallyInspected); } });
 export const heartbeatManagedJob = internalMutation({ args: { jobId: v.string(), executorId: v.string(), progress: v.optional(v.string()) }, handler: async (ctx, args) => {
   if (args.progress !== undefined && args.progress.length > 1000) throw new Error("Progress exceeds 1000 characters.");

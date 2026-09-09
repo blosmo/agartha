@@ -145,4 +145,17 @@ describe("managed modeling ledger", () => {
     expect(await t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ artifactsReady: true, videoReady: false });
   });
 
+  it("recovers video publication on finish only with a model checkpoint", async () => {
+    const { t } = await running();
+    const completion = { jobId: "job", executorId: "worker", status: "completed", progress: "Done", visuallyInspected: true, videoReady: true };
+    await expect(t.mutation(api.finishManagedJob, completion)).rejects.toThrow("checkpoint");
+    expect(await t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ status: "running" });
+    await t.mutation(api.finishManagedJob, { ...completion, artifactsReady: true });
+    expect(await t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ status: "completed", artifactsReady: true, videoReady: true });
+    const { videoReady, ...withoutVideo } = completion;
+    await t.mutation(api.finishManagedJob, withoutVideo);
+    expect(await t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ videoReady: true });
+    await expect(t.mutation(api.finishManagedJob, { ...withoutVideo, artifactsReady: false })).rejects.toThrow("checkpoint");
+  });
+
 });

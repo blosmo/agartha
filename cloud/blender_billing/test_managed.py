@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from .managed import ManagedFiles, run_managed
+from .managed import ManagedFiles, run_managed, recover_managed_files
 from .durable_storage import StorageCoordinator
 from .http import create_http_app
 from .ledger import LedgerError
@@ -14,7 +14,7 @@ from starlette.testclient import TestClient
 class ManagedTests(unittest.TestCase):
     def setUp(self):
         self.video = patch('cloud.blender_billing.managed.render_turnaround', return_value=b'0000ftyp' + bytes(1000))
-        self.video.start()
+        self.video_mock = self.video.start()
         self.addCleanup(self.video.stop)
 
     def test_files_are_private_bounded_and_expire(self):
@@ -93,3 +93,24 @@ class ManagedTests(unittest.TestCase):
         finish = [call.kwargs for call in broker.ledger.call.call_args_list if call.args[0] == 'finishManagedJob'][0]
         self.assertEqual(files.save.call_count, 2)
         self.assertTrue(finish['artifactsReady']); self.assertFalse(finish['visuallyInspected'])
+
+    def test_recovery_discovers_video_saved_before_metadata_publication(self):
+        broker, files = Mock(), Mock()
+        files.read.side_effect = lambda job, name: b'png' if name == 'preview.png' else b'0000ftyp' + bytes(1000)
+        recover_managed_files(broker, files, {'jobId': 'job', 'executorId': 'worker'})
+        self.assertEqual([call.args[0] for call in broker.ledger.call.call_args_list], ['recordManagedCheckpoint', 'recordManagedVideo'])
+
+    def test_video_never_depicts_an_edit_that_failed_after_the_saved_model(self):
+        broker, files = Mock(), Mock()
+        broker.owned.return_value = {'status': 'running', 'launchClaimedAt': time.time() * 1000, 'reservedMinutes': 10}
+        broker.ledger.call.side_effect = lambda op, **kw: {'claimed': True} if op == 'claimManagedJob' else {'reservationId': 'r', 'status': 'running'}
+        broker.call.side_effect = [{'result': {'content': [{'text': 'MANAGED_EXPORT_OK:executor:0'}]}}, {'result': {'isError': True, 'content': [{'text': 'Edit failed after changing geometry'}]}}]
+        broker.download.side_effect = lambda token, reservation, name, limit: {'model.glb': b'glTF', 'model.blend': b'BLENDER', 'preview.png': b'png'}[name]
+        response = Mock(); response.content = b'{}'; response.json.return_value = {'summary': 'Revise', 'code': 'import bpy', 'done': False}
+        with patch('cloud.blender_billing.managed.uuid.uuid4', return_value=Mock(hex='executor')), patch('cloud.blender_billing.managed.preview_image', return_value='data:image/jpeg;base64,AA=='), patch('cloud.blender_billing.managed.httpx.Client') as client:
+            client.return_value.__enter__.return_value.post.side_effect = [response, response, RuntimeError('budget exhausted')]
+            run_managed(broker, files, 'a'*64, 'job', Mock(), 'https://example.test', 'key')
+        self.assertEqual(files.save.call_count, 1)
+        self.video_mock.assert_not_called()
+        finish = [call.kwargs for call in broker.ledger.call.call_args_list if call.args[0] == 'finishManagedJob'][0]
+        self.assertEqual(finish['status'], 'partial'); self.assertFalse(finish['videoReady'])

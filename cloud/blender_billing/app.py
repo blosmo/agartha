@@ -77,12 +77,10 @@ def reconcile_sessions():
     broker = controller()
     for job in broker.ledger.call('listActiveManagedJobs'):
         if job['deadlineAt'] <= time.time() * 1000:
-            from .managed import ManagedFiles
+            from .managed import ManagedFiles, recover_managed_files
             files = ManagedFiles(Path('/private/managed'), broker.results.storage, storage.commit)
             try:
-                if job.get('executorId'):
-                    files.read(job['jobId'], 'preview.png')
-                    broker.ledger.call('recordManagedCheckpoint', jobId=job['jobId'], executorId=job['executorId'])
+                recover_managed_files(broker, files, job)
             except (FileNotFoundError, ValueError):
                 pass
             broker.ledger.call('recoverManagedJob', jobId=job['jobId'])

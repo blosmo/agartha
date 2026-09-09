@@ -6,8 +6,8 @@ import time
 import uuid
 from typing import Any, Callable
 
-FRAMES = 96
-FPS = 24
+FRAMES = 48
+FPS = 12
 VIDEO_RESERVE_SECONDS = 240
 
 START_CODE = """
@@ -20,7 +20,7 @@ points = [obj.matrix_world @ Vector(corner) for obj in model.all_objects if obj.
 assert points, 'Model geometry is required.'
 center = Vector(tuple((min(p[i] for p in points) + max(p[i] for p in points)) / 2 for i in range(3)))
 source = scene.camera
-state = {'camera': source.name, 'samples': scene.cycles.samples, 'time_limit': scene.cycles.time_limit, 'filepath': scene.render.filepath, 'frame': scene.frame_current, 'resolution_x': scene.render.resolution_x, 'resolution_y': scene.render.resolution_y, 'resolution_percentage': scene.render.resolution_percentage}
+state = {'camera': source.name, 'persistent_data': scene.render.use_persistent_data, 'samples': scene.cycles.samples, 'time_limit': scene.cycles.time_limit, 'filepath': scene.render.filepath, 'frame': scene.frame_current, 'resolution_x': scene.render.resolution_x, 'resolution_y': scene.render.resolution_y, 'resolution_percentage': scene.render.resolution_percentage}
 scene['_agartha_turnaround_state'] = json.dumps(state)
 assert bpy.data.objects.get('AGARTHA_TURNAROUND_CAMERA') is None, 'A video render is already in progress.'
 camera = source.copy()
@@ -42,6 +42,7 @@ scene.cycles.device = 'CPU'
 scene.cycles.samples = 8
 scene.cycles.time_limit = 1.0
 scene.cycles.use_denoising = True
+scene.render.use_persistent_data = True
 scene.render.threads_mode = 'FIXED'
 scene.render.threads = 2
 scene.render.resolution_x = 512
@@ -110,6 +111,7 @@ for scene in list(bpy.data.scenes):
     if not saved: continue
     state = json.loads(saved)
     scene.camera = bpy.data.objects.get(state['camera'])
+    scene.render.use_persistent_data = state['persistent_data']
     scene.cycles.samples = state['samples']
     scene.cycles.time_limit = state['time_limit']
     scene.render.filepath = state['filepath']

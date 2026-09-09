@@ -132,6 +132,8 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
     reservation = row['reservationId']
     status, progress, inspected, saved, running = 'failed', 'The job could not complete.', False, False, False
     image = None
+    scene_matches_checkpoint = False
+    video_saved = False
     history = 'Plan and create the first coherent version. Include camera and lighting.'
     try:
         for turn in range(6):
@@ -182,6 +184,7 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
                 broker.start(token, reservation)
                 running = True
                 monitor(reservation)
+            scene_matches_checkpoint = False
             frame = broker.call(token, reservation, {'jsonrpc': '2.0', 'id': turn, 'method': 'tools/call', 'params': {'name': 'execute_blender_code', 'arguments': {'code': step['code'] + '\n' + EXPORT_CODE + f'\nprint("MANAGED_EXPORT_OK:{executor}:{turn}")'}}}, f'{executor}-edit-{turn}', 65_536)
             result = frame.get('result', {})
             history = f"Previous edit: {step['code'][-5000:]}\nResult: {json.dumps(result)[:1500]}\nProgress: {progress}"
@@ -192,10 +195,10 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
                 image = preview_image(exported['preview.png'])
                 if not exported['model.glb'].startswith(b'glTF') or not exported['model.blend'].startswith(b'BLENDER'):
                     raise ValueError('Invalid exported model.')
+                inspected = False
                 files.save(job_id, exported)
                 saved = True
-                # Reset before any network call: these files have not been inspected yet.
-                inspected = False
+                scene_matches_checkpoint = True
                 broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
                 broker.ledger.call('heartbeatManagedJob', jobId=job_id, executorId=executor, progress='Model and preview saved. Astra is reviewing the result.')
             except Exception:
@@ -206,16 +209,34 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
         status = 'partial' if saved else 'failed'
         progress = 'Stopped because the remaining budget, service availability, or execution limit did not permit another safe step.'
     finally:
-        if saved and status != 'cancelled':
+        if saved and not scene_matches_checkpoint and status != 'cancelled':
+            status = 'partial'
+            progress += ' Retained the last valid model; video omitted because the latest edit did not save successfully.'
+        if saved and scene_matches_checkpoint and status != 'cancelled':
             try:
                 video = render_turnaround(broker, token, reservation, lambda text: broker.ledger.call('heartbeatManagedJob', jobId=job_id, executorId=executor, progress=text))
                 files.add_video(job_id, video)
+                video_saved = True
                 broker.ledger.call('recordManagedVideo', jobId=job_id, executorId=executor)
                 progress = (progress + ' A 360-degree turnaround MP4 is included.')[:1000]
             except Exception:
-                status = 'partial'
-                progress = (progress + ' The video could not finish within the available rendering time; model files are preserved.')[:1000]
+                if not video_saved:
+                    status = 'partial'
+                    progress = (progress + ' The video could not finish within the available rendering time; model files are preserved.')[:1000]
         try:
             broker.stop(token, reservation)
         finally:
-            broker.ledger.call('finishManagedJob', jobId=job_id, executorId=executor, status=status, progress=progress, visuallyInspected=inspected, artifactsReady=saved)
+            broker.ledger.call('finishManagedJob', jobId=job_id, executorId=executor, status=status, progress=progress[:1000], visuallyInspected=inspected, artifactsReady=saved, videoReady=video_saved)
+
+
+def recover_managed_files(broker: Any, files: ManagedFiles, job: dict[str, Any]) -> None:
+    if not job.get('executorId'):
+        return
+    files.read(job['jobId'], 'preview.png')
+    broker.ledger.call('recordManagedCheckpoint', jobId=job['jobId'], executorId=job['executorId'])
+    try:
+        video = files.read(job['jobId'], 'turnaround.mp4')
+        if len(video) >= 1000 and video[4:8] == b'ftyp':
+            broker.ledger.call('recordManagedVideo', jobId=job['jobId'], executorId=job['executorId'])
+    except (FileNotFoundError, ValueError):
+        pass

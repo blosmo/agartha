@@ -1,14 +1,14 @@
 import time
 import unittest
 from unittest.mock import Mock
-from .turnaround import frames_code, remaining_seconds, render_turnaround
+from .turnaround import FRAMES, frames_code, remaining_seconds, render_turnaround
 
 class TurnaroundTests(unittest.TestCase):
     def test_frames_are_bounded_to_one_orbit_and_small_chunks(self):
-        for start, stop in [(-1, 1), (0, 9), (95, 97), (4, 4)]:
+        for start, stop in [(-1, 1), (0, 9), (FRAMES - 1, FRAMES + 1), (4, 4)]:
             with self.assertRaises(ValueError): frames_code(start, stop)
-        self.assertIn('range(88, 96)', frames_code(88, 96))
-        self.assertIn('frame / 96', frames_code(88, 96))
+        self.assertIn(f'range({FRAMES - 8}, {FRAMES})', frames_code(FRAMES - 8, FRAMES))
+        self.assertIn(f'frame / {FRAMES}', frames_code(FRAMES - 8, FRAMES))
 
     def test_exhausted_reservation_never_starts_rendering_or_downloads(self):
         broker = Mock()
