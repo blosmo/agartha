@@ -32,7 +32,7 @@ class StudioTests(unittest.TestCase):
             store.save_reference('job', raster(), REFERENCE_MODEL)
             self.assertEqual(len(reference_views(raster())), 4)
 
-    def fixture(self, actions, *, restore_failure=False):
+    def fixture(self, actions, *, restore_failure=False, verbose_export=False):
         directory=tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         store=ManagedFiles(Path(directory.name),StorageCoordinator(),lambda:None)
         files=Mock(wraps=store)
@@ -53,7 +53,13 @@ class StudioTests(unittest.TestCase):
             if 'REVISION_B' in code:state['model']=b'BLENDER-B'
             if 'shutil.copyfile' in code:state['accepted']=state['model']
             if 'open_mainfile' in code:state['model']=state['accepted']
-            return {'result':{'content':[{'text':'STUDIO_OK:'+operation}], 'structuredContent':{'objects':[{'name':'Body'}]}}}
+            output = 'STUDIO_OK:' + operation
+            if verbose_export and 'bpy.ops.export_scene.gltf' in code:
+                output += '\nExporting named mesh and material. ' * 2500
+            result = {'result':{'content':[{'text':output}], 'structuredContent':{'objects':[{'name':'Body'}]}}}
+            if len(json.dumps(result).encode()) > limit:
+                raise ValueError('Worker response exceeds the configured limit')
+            return result
         broker.call.side_effect=call
         def download(token,reservation,name,limit):
             if name=='model.blend':return state['model']
@@ -93,6 +99,16 @@ class StudioTests(unittest.TestCase):
         trace=json.loads(store.read('job','review.json'))
         self.assertIn('Accept the current',trace['actions'][1]['error'])
         self.assertEqual(finish['status'],'completed')
+
+    def test_verbose_export_can_checkpoint_without_expanding_model_context(self):
+        store, broker, requests, _, finish, _ = self.fixture([
+            action('edit', 'REVISION_A'), action('accept'), action('finish'),
+        ], verbose_export=True)
+        self.assertEqual(finish['status'], 'completed')
+        self.assertTrue(finish['visuallyInspected'])
+        self.assertTrue(store.read('job', 'model.glb').startswith(b'glTF'))
+        self.assertLess(len(requests[2]['history'].encode()), 5000)
+        self.assertTrue(all(call.args[-1] <= 1_000_000 for call in broker.call.call_args_list))
 
     def test_failed_later_edit_preserves_accepted_model_and_omits_wrong_video(self):
         store,broker,requests,_,finish,video=self.fixture([action('edit','REVISION_A'),action('accept'),action('edit','BROKEN')])
