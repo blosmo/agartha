@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { chatCursor, ChatValidationError, type ChatPage } from '../../packages/protocol/src/chat';
+import { chatCursor, ChatValidationError, type ChatPage } from '../../packages/protocol/src/chat.js';
 
 export type ChatSubscription = (after: number | undefined, update: (page: ChatPage) => void, error: (failure: unknown) => void) => () => void;
 

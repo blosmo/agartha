@@ -1,8 +1,8 @@
 import { ConvexClient } from 'convex/browser';
 import { anyApi } from 'convex/server';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { chatCursor, ChatValidationError } from '../../packages/protocol/src/chat';
-import { streamChat } from './chatStream';
+import { chatCursor, ChatValidationError } from '../../packages/protocol/src/chat.js';
+import { streamChat } from './chatStream.js';
 
 export function chatDeploymentUrl(siteUrl: string) {
   if (process.env.AGARTHA_CONVEX_URL) return process.env.AGARTHA_CONVEX_URL;
