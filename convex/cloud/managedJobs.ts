@@ -6,7 +6,7 @@ import { createQuoteInTransaction, reserveSessionInTransaction } from "./blender
 
 const terminalStatus = v.union(v.literal("completed"), v.literal("partial"), v.literal("failed"), v.literal("cancelled"));
 type Job = Doc<"managedJobs">;
-function identifier(value: string, name: string, max = 128) { if (!value || value.length > max) throw new Error(`${name} is invalid.`); }
+function identifier(value: string, name: string, max = 128) { if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length > max) throw new Error(`${name} is invalid.`); }
 function terminal(row: Job) { return row.status !== "queued" && row.status !== "running"; }
 async function job(ctx: QueryCtx | MutationCtx, jobId: string) {
   const row = await ctx.db.query("managedJobs").withIndex("by_job", q => q.eq("jobId", jobId)).unique();

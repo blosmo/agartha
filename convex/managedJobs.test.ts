@@ -44,6 +44,7 @@ describe("managed modeling ledger", () => {
     expect(await t.run(ctx => ctx.db.query("blenderSessionQuotes").collect())).toEqual([]);
     await expect(t.mutation(api.createManagedJob, { ...create, brief: "😀".repeat(1001) })).rejects.toThrow("UTF-8");
     await expect(t.mutation(api.createManagedJob, { ...create, budgetCents: 100.5 })).rejects.toThrow();
+    await expect(t.mutation(api.createManagedJob, { ...create, jobId: "unreachable/job" })).rejects.toThrow("invalid");
   });
   it("fences workers, dispatches once and settles only actual usage", async () => {
     const { t } = await running();
