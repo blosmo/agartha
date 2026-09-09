@@ -83,7 +83,9 @@ class HttpTests(unittest.TestCase):
 
     def test_http_rejects_missing_auth_operation_ids_and_invalid_payloads(self):
         self.assertEqual(self.client.get('/sessions/r1/tools').status_code, 401)
-        self.assertEqual(self.client.get('/sessions/r1/tools', headers=self.headers).status_code, 400)
+        missing = self.client.get('/sessions/r1/tools', headers=self.headers)
+        self.assertEqual(missing.status_code, 400)
+        self.assertIn('X-Agartha-Operation-Id', missing.json()['error'])
         headers = {**self.headers, 'X-Agartha-Operation-Id': 'op-1'}
         for payload in [[], {}, {'name': 'execute_blender_code', 'arguments': []}, {'name': 'x', 'extra': True}]:
             self.assertEqual(self.client.post('/sessions/r1/tools', headers=headers, json=payload).status_code, 400)
@@ -100,6 +102,12 @@ class HttpTests(unittest.TestCase):
         response = self.client.post('/sessions/r1/tools', headers=headers, json={'name': 'get_scene_info'})
         self.assertTrue(response.json()['isError'])
         self.assertNotIn('private worker details', response.text)
+
+    def test_provider_value_errors_remain_private(self):
+        self.broker.owned.side_effect = ValueError('private provider details')
+        response = self.client.get('/sessions/r1', headers=self.headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn('private provider details', response.text)
 
 
 if __name__ == '__main__':
