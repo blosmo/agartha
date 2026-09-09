@@ -11,37 +11,51 @@ FPS = 12
 VIDEO_RESERVE_SECONDS = 360
 
 START_CODE = """
-import bpy, json, os
+import bpy, json, os, math
 from mathutils import Vector
 scene = bpy.context.scene
 model = bpy.data.collections.get('AGARTHA_MODEL')
 assert model and scene.camera, 'A model and preview camera are required.'
-points = [obj.matrix_world @ Vector(corner) for obj in model.all_objects if obj.type == 'MESH' for corner in obj.bound_box]
+bpy.context.view_layer.update()
+depsgraph = bpy.context.evaluated_depsgraph_get()
+evaluated = [obj.evaluated_get(depsgraph) for obj in model.all_objects if obj.type == 'MESH' and not obj.hide_render]
+points = [obj.matrix_world @ Vector(corner) for obj in evaluated for corner in obj.bound_box]
 assert points, 'Model geometry is required.'
 center = Vector(tuple((min(p[i] for p in points) + max(p[i] for p in points)) / 2 for i in range(3)))
 source = scene.camera
-state = {'camera': source.name, 'persistent_data': scene.render.use_persistent_data, 'samples': scene.cycles.samples, 'time_limit': scene.cycles.time_limit, 'filepath': scene.render.filepath, 'frame': scene.frame_current, 'resolution_x': scene.render.resolution_x, 'resolution_y': scene.render.resolution_y, 'resolution_percentage': scene.render.resolution_percentage}
+assert bpy.data.objects.get('AGARTHA_TURNAROUND_CAMERA') is None and not scene.get('_agartha_turnaround_state'), 'A video render is already in progress.'
+state = {
+    'camera': source.name, 'frame': scene.frame_current,
+    'render': {key: getattr(scene.render, key) for key in ('engine', 'use_persistent_data', 'threads_mode', 'threads', 'filepath', 'resolution_x', 'resolution_y', 'resolution_percentage', 'pixel_aspect_x', 'pixel_aspect_y', 'use_border', 'use_crop_to_border')},
+    'cycles': {key: getattr(scene.cycles, key) for key in ('device', 'samples', 'time_limit', 'use_denoising', 'use_adaptive_sampling', 'adaptive_threshold', 'adaptive_min_samples', 'denoiser', 'denoising_input_passes', 'denoising_prefilter')},
+    'format': scene.render.image_settings.file_format,
+}
 scene['_agartha_turnaround_state'] = json.dumps(state)
-assert bpy.data.objects.get('AGARTHA_TURNAROUND_CAMERA') is None, 'A video render is already in progress.'
 camera = source.copy()
 camera.data = source.data.copy()
 camera.name = 'AGARTHA_TURNAROUND_CAMERA'
 camera.parent = None
 camera.matrix_world = source.matrix_world.copy()
 camera.animation_data_clear()
+camera.rotation_mode = 'XYZ'
 for constraint in list(camera.constraints): camera.constraints.remove(constraint)
 camera['agartha_turnaround'] = True
 camera['target'] = list(center)
 offset = source.matrix_world.translation - center
 if offset.xy.length < 0.1: offset = Vector((4, -6, 3))
-camera['offset'] = list(offset)
 scene.collection.objects.link(camera)
 scene.camera = camera
 scene.render.engine = 'CYCLES'
 scene.cycles.device = 'CPU'
-scene.cycles.samples = 8
+scene.cycles.samples = 16
 scene.cycles.time_limit = 1.0
 scene.cycles.use_denoising = True
+scene.cycles.use_adaptive_sampling = True
+scene.cycles.adaptive_threshold = 0.1
+scene.cycles.adaptive_min_samples = 8
+scene.cycles.denoiser = 'OPENIMAGEDENOISE'
+scene.cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
+scene.cycles.denoising_prefilter = 'ACCURATE'
 scene.render.use_persistent_data = True
 scene.render.threads_mode = 'FIXED'
 scene.render.threads = 2
@@ -49,9 +63,38 @@ scene.render.resolution_x = 512
 scene.render.resolution_y = 512
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = 'PNG'
+scene.render.pixel_aspect_x = scene.render.pixel_aspect_y = 1
+scene.render.use_border = scene.render.use_crop_to_border = False
+camera.data.shift_x = camera.data.shift_y = 0
+camera.data.dof.use_dof = False
+if camera.data.type not in ('PERSP', 'ORTHO'):
+    camera.data.type = 'PERSP'
+    camera.data.lens = 50
+# Fit the evaluated model at every delivered angle, keeping one constant orbit
+# distance/orthographic scale so the turnaround does not visibly zoom.
+view = camera.data.view_frame(scene=scene)
+tan_x = max(abs(p.x / p.z) for p in view)
+tan_y = max(abs(p.y / p.z) for p in view)
+direction = offset.normalized()
+distance, half_span = offset.length, 0.0
+for frame in range(__TURNAROUND_FRAMES__):
+    angle = math.tau * frame / __TURNAROUND_FRAMES__
+    orbit = Vector((direction.x * math.cos(angle) - direction.y * math.sin(angle), direction.x * math.sin(angle) + direction.y * math.cos(angle), direction.z))
+    inverse = (-orbit).to_track_quat('-Z', 'Y').inverted()
+    for point in points:
+        p = inverse @ (point - center)
+        half_span = max(half_span, abs(p.x), abs(p.y))
+        if camera.data.type == 'PERSP':
+            distance = max(distance, p.z + abs(p.x) / (tan_x * 0.88), p.z + abs(p.y) / (tan_y * 0.88))
+radius = max((point - center).length for point in points)
+distance = max(distance, radius * 1.1)
+if camera.data.type == 'ORTHO': camera.data.ortho_scale = max(camera.data.ortho_scale, 2 * half_span / 0.88)
+camera.data.clip_start = max(radius * 0.0001, 0.000001)
+camera.data.clip_end = max(camera.data.clip_end, distance + radius * 2)
+camera['offset'] = list(direction * distance)
 os.makedirs('/workspace/turnaround', exist_ok=True)
 print('TURNAROUND_READY')
-"""
+""".replace('__TURNAROUND_FRAMES__', str(FRAMES))
 
 
 def frames_code(start: int, stop: int) -> str:
@@ -111,11 +154,9 @@ for scene in list(bpy.data.scenes):
     if not saved: continue
     state = json.loads(saved)
     scene.camera = bpy.data.objects.get(state['camera'])
-    scene.render.use_persistent_data = state['persistent_data']
-    scene.cycles.samples = state['samples']
-    scene.cycles.time_limit = state['time_limit']
-    scene.render.filepath = state['filepath']
-    for key in ('resolution_x', 'resolution_y', 'resolution_percentage'): setattr(scene.render, key, state[key])
+    for key, value in state['render'].items(): setattr(scene.render, key, value)
+    for key, value in state['cycles'].items(): setattr(scene.cycles, key, value)
+    scene.render.image_settings.file_format = state['format']
     scene.frame_set(state['frame'])
     if bpy.context.window: bpy.context.window.scene = scene
     del scene['_agartha_turnaround_state']

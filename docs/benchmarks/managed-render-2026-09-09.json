@@ -1,0 +1,565 @@
+{
+  "measurements": {
+    "baseline": [
+      {
+        "fixture": "rocket",
+        "mode": "preview",
+        "view": 0,
+        "preset": "baseline",
+        "seconds": 7.024202250002418,
+        "bytes": 307029,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "preview",
+        "view": 1,
+        "preset": "baseline",
+        "seconds": 6.858393875008915,
+        "bytes": 300939,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "preview",
+        "view": 2,
+        "preset": "baseline",
+        "seconds": 6.669477499992354,
+        "bytes": 307458,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "video",
+        "view": 0,
+        "preset": "baseline",
+        "seconds": 1.7052346669952385,
+        "bytes": 309888,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "video",
+        "view": 1,
+        "preset": "baseline",
+        "seconds": 1.5156140410108492,
+        "bytes": 304292,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "video",
+        "view": 2,
+        "preset": "baseline",
+        "seconds": 1.5195185420161579,
+        "bytes": 310276,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "preview",
+        "view": 0,
+        "preset": "baseline",
+        "seconds": 7.374953999998979,
+        "bytes": 314419,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "preview",
+        "view": 1,
+        "preset": "baseline",
+        "seconds": 7.527650625008391,
+        "bytes": 309987,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "preview",
+        "view": 2,
+        "preset": "baseline",
+        "seconds": 7.369343749975087,
+        "bytes": 313312,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "video",
+        "view": 0,
+        "preset": "baseline",
+        "seconds": 1.5541019999946002,
+        "bytes": 317320,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "video",
+        "view": 1,
+        "preset": "baseline",
+        "seconds": 1.5647583749960177,
+        "bytes": 314068,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "video",
+        "view": 2,
+        "preset": "baseline",
+        "seconds": 1.5926362499885727,
+        "bytes": 314731,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      }
+    ],
+    "adaptive": [
+      {
+        "fixture": "rocket",
+        "mode": "preview",
+        "view": 0,
+        "preset": "adaptive",
+        "seconds": 4.6822520830028225,
+        "bytes": 308082,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "preview",
+        "view": 1,
+        "preset": "adaptive",
+        "seconds": 4.592164582980331,
+        "bytes": 302164,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "preview",
+        "view": 2,
+        "preset": "adaptive",
+        "seconds": 4.726048666983843,
+        "bytes": 308295,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "video",
+        "view": 0,
+        "preset": "adaptive",
+        "seconds": 1.708442874980392,
+        "bytes": 310440,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "video",
+        "view": 1,
+        "preset": "adaptive",
+        "seconds": 1.6523527920071501,
+        "bytes": 303915,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "rocket",
+        "mode": "video",
+        "view": 2,
+        "preset": "adaptive",
+        "seconds": 1.6246285410015844,
+        "bytes": 311004,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "preview",
+        "view": 0,
+        "preset": "adaptive",
+        "seconds": 5.207207291998202,
+        "bytes": 315127,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "preview",
+        "view": 1,
+        "preset": "adaptive",
+        "seconds": 5.222029166005086,
+        "bytes": 311274,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "preview",
+        "view": 2,
+        "preset": "adaptive",
+        "seconds": 5.333989374979865,
+        "bytes": 313789,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "video",
+        "view": 0,
+        "preset": "adaptive",
+        "seconds": 1.538172417000169,
+        "bytes": 318071,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "video",
+        "view": 1,
+        "preset": "adaptive",
+        "seconds": 1.562205833994085,
+        "bytes": 315394,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      },
+      {
+        "fixture": "glass-detail",
+        "mode": "video",
+        "view": 2,
+        "preset": "adaptive",
+        "seconds": 1.5368939579930156,
+        "bytes": 315590,
+        "blender": "4.5.0",
+        "sourceSettings": {
+          "use_adaptive_sampling": true,
+          "adaptive_threshold": 0.009999999776482582,
+          "adaptive_min_samples": 0,
+          "denoiser": "OPENIMAGEDENOISE",
+          "denoising_input_passes": "RGB_ALBEDO_NORMAL",
+          "denoising_prefilter": "ACCURATE",
+          "max_bounces": 12,
+          "diffuse_bounces": 4,
+          "glossy_bounces": 4,
+          "transmission_bounces": 12
+        }
+      }
+    ]
+  },
+  "summary": {
+    "spec": "managed-render",
+    "run_id": "2026-09-09-local",
+    "started_at": "2026-09-09",
+    "baseline": {
+      "rocket/preview": 6.858393875008915,
+      "rocket/video": 1.5195185420161579,
+      "glass-detail/preview": 7.374953999998979,
+      "glass-detail/video": 1.5647583749960177
+    },
+    "experiments": [
+      {
+        "iteration": 1,
+        "name": "adaptive",
+        "metrics": {
+          "rocket/preview": 4.6822520830028225,
+          "rocket/video": 1.6523527920071501,
+          "glass-detail/preview": 5.222029166005086,
+          "glass-detail/video": 1.538172417000169
+        },
+        "visualReview": "passed: silhouette, material boundaries, highlights and shadows checked at all three angles on both fixtures; glass remains a low-sample preview, not reference truth"
+      },
+      {
+        "iteration": 2,
+        "name": "all-angle camera fit",
+        "baselineClippedFrames": 34,
+        "candidateClippedFrames": 0,
+        "nativeRegression": {
+          "projectionModes": 2,
+          "framesEach": 48,
+          "quaternionCamera": true,
+          "modifiers": true,
+          "settingsRestored": true
+        }
+      }
+    ],
+    "best": {
+      "iteration": 2,
+      "metrics": {
+        "rocket/preview": 4.6822520830028225,
+        "rocket/video": 1.6523527920071501,
+        "glass-detail/preview": 5.222029166005086,
+        "glass-detail/video": 1.538172417000169
+      },
+      "cameraClippedFrames": 0
+    },
+    "hypothesis_backlog": [
+      "Explicit adaptive thresholds, minimum samples and OIDN",
+      "All-angle projected camera fit and complete setting restoration",
+      "Scale-aware soft key/fill/rim guidance with correct Cycles prompt"
+    ],
+    "status": "complete"
+  }
+}
