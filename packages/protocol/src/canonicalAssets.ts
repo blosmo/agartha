@@ -1,14 +1,23 @@
+import {ASSET_TEMPLATE_ID,type TemplateValue} from './assetTemplates.js';
 import {validatePngPreview} from './pngValidation.js';
 import {MODEL_ID} from './modelAssets.js';
 export const BUNDLE_ID=/^bundle-[a-f0-9]{64}$/;
 export const ASSET_LIMITS={source:16_000_000,preview:2_000_000,agentBytes:128_000_000,agentCount:64,tickets:2,ticketMs:300_000,graceMs:300_000} as const;
 export type ArtifactRole='source'|'preview';
 export type ArtifactDescriptor={sha256:string;bytes:number};
-export type CanonicalMetadata={name:string;description?:string;license?:string;attribution?:string;parentId?:string};
+export type CanonicalMetadata={name:string;description?:string;license?:string;attribution?:string;parentId?:string;templateId?:string;templateParameters?:Record<string,TemplateValue>};
 export function normalizeAssetMetadata(input:CanonicalMetadata):CanonicalMetadata {
  const result:CanonicalMetadata={name:input.name.trim().normalize('NFC')};
  for(const key of ['description','license','attribution','parentId'] as const){const value=input[key]?.trim().normalize('NFC');if(value)result[key]=value;}
  if(!result.name||result.name.length>80||(result.description?.length??0)>500||(result.license?.length??0)>80||(result.attribution?.length??0)>500||(result.parentId&&!BUNDLE_ID.test(result.parentId)))throw new Error('Invalid canonical asset metadata.');
+ if(input.templateId!==undefined){
+  if(typeof input.templateId!=='string'||!ASSET_TEMPLATE_ID.test(input.templateId)||!input.templateParameters||typeof input.templateParameters!=='object'||Array.isArray(input.templateParameters)||Object.keys(input.templateParameters).length>24)throw new Error('Invalid template instance metadata.');
+  result.templateId=input.templateId;
+  result.templateParameters=Object.fromEntries(Object.entries(input.templateParameters).sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>{
+   if(!/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(key)||!['number','string','boolean'].includes(typeof value)||typeof value==='number'&&!Number.isFinite(value)||typeof value==='string'&&value.length>80)throw new Error('Invalid template parameter value.');
+   return [key,value];
+  }));
+ }else if(input.templateParameters!==undefined)throw new Error('Template parameters require a template ID.');
  return result;
 }
 export function validateArtifactDescriptor(role:ArtifactRole,value:ArtifactDescriptor){if(!/^[a-f0-9]{64}$/.test(value.sha256)||!Number.isSafeInteger(value.bytes)||value.bytes<1||value.bytes>ASSET_LIMITS[role])throw new Error('Invalid artifact hash or size.');}

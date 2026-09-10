@@ -1,4 +1,4 @@
-import * as THREE from 'three/webgpu';
+import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -6,25 +6,26 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 export type GalleryViewer = { dispose(): void; reset(): void; backend: string };
 
 export async function createGalleryViewer(host: HTMLElement, slug: string, signal: AbortSignal, onFailure: () => void): Promise<GalleryViewer> {
-  const renderer = new THREE.WebGPURenderer({ alpha: true, antialias: true });
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(38, 1, .01, 30);
-  const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
+  const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
   let environment: THREE.RenderTarget | undefined, controls: OrbitControls | undefined, resize: ResizeObserver | undefined;
   let disposed = false, frame = 0;
   const events = new AbortController();
   const dispose = () => {
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose());
-    geometries.clear(); materials.clear();
+    textures.forEach(value => value.dispose());
+    geometries.clear(); materials.clear(); textures.clear();
     if (disposed) return;
     disposed = true; cancelAnimationFrame(frame); events.abort(); resize?.disconnect(); controls?.dispose(); environment?.dispose();
-    if (renderer.initialized) renderer.dispose();
+    renderer.dispose();
     renderer.domElement.remove();
   };
   const fail = () => { if (!disposed) { dispose(); onFailure(); } };
   try {
-    await renderer.init(); signal.throwIfAborted();
-    renderer.onDeviceLost = fail;
+    signal.throwIfAborted();
+    renderer.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); fail(); }, { signal: events.signal });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
     renderer.setClearColor(0x000000, 0); renderer.toneMapping = THREE.AgXToneMapping; renderer.toneMappingExposure = 1.1;
     renderer.domElement.setAttribute('aria-hidden', 'true'); host.append(renderer.domElement);
@@ -42,7 +43,10 @@ export async function createGalleryViewer(host: HTMLElement, slug: string, signa
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) return;
       geometries.add(mesh.geometry);
-      for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) materials.add(material);
+      for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        materials.add(material);
+        for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
+      }
     });
     signal.throwIfAborted();
     if (disposed) throw new Error('Graphics became unavailable.');
@@ -51,8 +55,10 @@ export async function createGalleryViewer(host: HTMLElement, slug: string, signa
     if (!Number.isFinite(sphere.radius) || sphere.radius <= 0) throw new Error('Invalid model geometry.');
     gltf.scene.position.sub(sphere.center);
     const normalized = new THREE.Group(); normalized.scale.setScalar(1 / (sphere.radius * 2)); normalized.add(gltf.scene); scene.add(normalized);
-    const direction = slug === 'meridian-house' ? new THREE.Vector3(7, 3.5, -9) : slug === 'cloud-garden' ? new THREE.Vector3(7, 6.1, 9) : new THREE.Vector3(6, 2.65, 7.55);
-    const initial = direction.normalize().multiplyScalar(1.85);
+    const direction = new THREE.Vector3(12, 11, 15);
+    const aspect = host.clientWidth / Math.max(1, host.clientHeight);
+    const distance = .525 / Math.sin(Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(1, aspect)));
+    const initial = direction.normalize().multiplyScalar(distance);
     camera.position.copy(initial);
     controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.enablePan = false; controls.minDistance = .7; controls.maxDistance = 4;
     function schedule() {
@@ -88,6 +94,6 @@ export async function createGalleryViewer(host: HTMLElement, slug: string, signa
     }, { signal: events.signal });
     document.addEventListener('visibilitychange', () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else schedule(); }, { signal: events.signal });
     schedule();
-    return { dispose, backend: (renderer.backend as unknown as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'webgpu' : 'webgl', reset() { camera.position.copy(initial); controls?.target.set(0, 0, 0); controls?.update(); schedule(); } };
+    return { dispose, backend: 'webgl', reset() { camera.position.copy(initial); controls?.target.set(0, 0, 0); controls?.update(); schedule(); } };
   } catch (error) { dispose(); throw error; }
 }

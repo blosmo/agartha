@@ -66,6 +66,7 @@ class StudioTests(unittest.TestCase):
             return result
         broker.call.side_effect=call
         def download(token,reservation,name,limit):
+            if name=='component_template.json':return b'{}'
             if name=='component_parent.json':return json.dumps([state['parent']] if state['parent'] else []).encode()
             if name=='shared_component.glb':return b'glTF-component'
             if name=='component_source.blend':return b'BLENDER-component-only'

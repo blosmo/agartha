@@ -108,6 +108,7 @@ class MaterialExchange:
                 **{key:metadata[key] for key in ['name','description','license','attribution']},
                 'modelId':state['model']['id'],
                 **({'parentId':parent_id} if parent_id else {}),
+                **({key:metadata[key] for key in ['templateId','templateParameters']} if metadata.get('templateId') else {}),
                 **{key:{'bytes':len(files[key]),'sha256':hashlib.sha256(files[key]).hexdigest()} for key in ['source','preview']},
             })
         ticket = state['assetTicket']

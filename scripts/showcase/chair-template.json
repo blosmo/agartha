@@ -1,0 +1,1827 @@
+{
+  "version": 1,
+  "name": "Studio Chair",
+  "description": "A canonical chair generator in metres: four joined legs, shaped rails, optional arms, four back constructions, upholstery and procedural fabric/wood finishes.",
+  "parameters": {
+    "seat_width": {
+      "type": "number",
+      "min": 0.42,
+      "max": 0.85,
+      "default": 0.58
+    },
+    "seat_depth": {
+      "type": "number",
+      "min": 0.4,
+      "max": 0.8,
+      "default": 0.55
+    },
+    "seat_height": {
+      "type": "number",
+      "min": 0.36,
+      "max": 0.62,
+      "default": 0.46
+    },
+    "back_height": {
+      "type": "number",
+      "min": 0.32,
+      "max": 0.8,
+      "default": 0.49
+    },
+    "back_style": {
+      "type": "enum",
+      "values": [
+        "slatted",
+        "spindle",
+        "solid",
+        "crossed"
+      ],
+      "default": "spindle"
+    },
+    "slat_count": {
+      "type": "integer",
+      "min": 3,
+      "max": 9,
+      "default": 5
+    },
+    "leg_style": {
+      "type": "enum",
+      "values": [
+        "straight",
+        "splayed"
+      ],
+      "default": "splayed"
+    },
+    "leg_splay": {
+      "type": "number",
+      "min": 0,
+      "max": 0.1,
+      "default": 0.045
+    },
+    "arms": {
+      "type": "boolean",
+      "default": false
+    },
+    "arm_height": {
+      "type": "number",
+      "min": 0.17,
+      "max": 0.28,
+      "default": 0.22
+    },
+    "upholstery": {
+      "type": "enum",
+      "values": [
+        "none",
+        "seat",
+        "seat-and-back"
+      ],
+      "default": "seat"
+    },
+    "fabric": {
+      "type": "enum",
+      "values": [
+        "linen",
+        "velvet",
+        "leather"
+      ],
+      "default": "linen"
+    },
+    "finish": {
+      "type": "enum",
+      "values": [
+        "oak",
+        "walnut",
+        "black",
+        "ivory"
+      ],
+      "default": "oak"
+    },
+    "seat_color": {
+      "type": "color",
+      "default": "#b6ae94"
+    },
+    "back_color": {
+      "type": "color",
+      "default": "#b6ae94"
+    }
+  },
+  "materials": {
+    "wood": {
+      "color": {
+        "choose": {
+          "param": "finish"
+        },
+        "cases": {
+          "oak": "#a17649",
+          "walnut": "#4b2d20",
+          "black": "#20282a",
+          "ivory": "#d9d2bd"
+        },
+        "default": "#a17649"
+      },
+      "roughness": 0.44,
+      "metallic": 0,
+      "texture": {
+        "kind": "wood",
+        "scale": 1
+      }
+    },
+    "seat": {
+      "color": {
+        "param": "seat_color"
+      },
+      "roughness": {
+        "choose": {
+          "param": "fabric"
+        },
+        "cases": {
+          "linen": 0.72,
+          "velvet": 0.86,
+          "leather": 0.38
+        },
+        "default": 0.7
+      },
+      "metallic": 0,
+      "texture": {
+        "kind": {
+          "param": "fabric"
+        },
+        "scale": 1
+      }
+    },
+    "back": {
+      "color": {
+        "param": "back_color"
+      },
+      "roughness": {
+        "choose": {
+          "param": "fabric"
+        },
+        "cases": {
+          "linen": 0.72,
+          "velvet": 0.86,
+          "leather": 0.38
+        },
+        "default": 0.7
+      },
+      "metallic": 0,
+      "texture": {
+        "kind": {
+          "param": "fabric"
+        },
+        "scale": 1
+      }
+    }
+  },
+  "parts": [
+    {
+      "kind": "repeat",
+      "count": 4,
+      "var": "i",
+      "parts": [
+        {
+          "kind": "beam",
+          "name": "Leg",
+          "start": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "choose": {
+                        "var": "i"
+                      },
+                      "cases": {
+                        "0": -1,
+                        "1": 1,
+                        "2": -1,
+                        "3": 1
+                      },
+                      "default": 1
+                    },
+                    {
+                      "op": "sub",
+                      "args": [
+                        {
+                          "op": "mul",
+                          "args": [
+                            {
+                              "param": "seat_width"
+                            },
+                            0.5
+                          ]
+                        },
+                        0.038
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "choose": {
+                        "var": "i"
+                      },
+                      "cases": {
+                        "0": -1,
+                        "1": 1,
+                        "2": -1,
+                        "3": 1
+                      },
+                      "default": 1
+                    },
+                    {
+                      "choose": {
+                        "param": "leg_style"
+                      },
+                      "cases": {
+                        "straight": 0,
+                        "splayed": {
+                          "param": "leg_splay"
+                        }
+                      },
+                      "default": 0
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "op": "add",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "choose": {
+                        "var": "i"
+                      },
+                      "cases": {
+                        "0": -1,
+                        "1": -1,
+                        "2": 1,
+                        "3": 1
+                      },
+                      "default": 1
+                    },
+                    {
+                      "op": "sub",
+                      "args": [
+                        {
+                          "op": "mul",
+                          "args": [
+                            {
+                              "param": "seat_depth"
+                            },
+                            0.5
+                          ]
+                        },
+                        0.04
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "choose": {
+                        "var": "i"
+                      },
+                      "cases": {
+                        "0": -1,
+                        "1": -1,
+                        "2": 1,
+                        "3": 1
+                      },
+                      "default": 1
+                    },
+                    {
+                      "choose": {
+                        "param": "leg_style"
+                      },
+                      "cases": {
+                        "straight": 0,
+                        "splayed": {
+                          "param": "leg_splay"
+                        }
+                      },
+                      "default": 0
+                    }
+                  ]
+                }
+              ]
+            },
+            0.025
+          ],
+          "end": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "choose": {
+                    "var": "i"
+                  },
+                  "cases": {
+                    "0": -1,
+                    "1": 1,
+                    "2": -1,
+                    "3": 1
+                  },
+                  "default": 1
+                },
+                {
+                  "op": "sub",
+                  "args": [
+                    {
+                      "op": "mul",
+                      "args": [
+                        {
+                          "param": "seat_width"
+                        },
+                        0.5
+                      ]
+                    },
+                    0.038
+                  ]
+                }
+              ]
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "choose": {
+                    "var": "i"
+                  },
+                  "cases": {
+                    "0": -1,
+                    "1": -1,
+                    "2": 1,
+                    "3": 1
+                  },
+                  "default": 1
+                },
+                {
+                  "op": "sub",
+                  "args": [
+                    {
+                      "op": "mul",
+                      "args": [
+                        {
+                          "param": "seat_depth"
+                        },
+                        0.5
+                      ]
+                    },
+                    0.04
+                  ]
+                }
+              ]
+            },
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "param": "seat_height"
+                },
+                0.02
+              ]
+            }
+          ],
+          "width": 0.045,
+          "material": "wood",
+          "bevel": 0.006
+        }
+      ]
+    },
+    {
+      "kind": "box",
+      "name": "Seat frame",
+      "position": [
+        0,
+        0,
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            0.025
+          ]
+        }
+      ],
+      "size": [
+        {
+          "param": "seat_width"
+        },
+        {
+          "param": "seat_depth"
+        },
+        0.05
+      ],
+      "material": "wood",
+      "bevel": 0.017
+    },
+    {
+      "kind": "box",
+      "name": "Seat cushion",
+      "position": [
+        0,
+        -0.009,
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            0.044
+          ]
+        }
+      ],
+      "size": [
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "seat_width"
+            },
+            0.04
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "seat_depth"
+            },
+            0.04
+          ]
+        },
+        0.09
+      ],
+      "material": "seat",
+      "bevel": 0.033,
+      "when": {
+        "op": "not",
+        "args": [
+          {
+            "op": "eq",
+            "args": [
+              {
+                "param": "upholstery"
+              },
+              "none"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "kind": "beam",
+      "name": "Back post",
+      "start": [
+        {
+          "op": "mul",
+          "args": [
+            -1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "seat_depth"
+                },
+                0.5
+              ]
+            },
+            0.035
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            0.03
+          ]
+        }
+      ],
+      "end": [
+        {
+          "op": "mul",
+          "args": [
+            -1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_depth"
+                    },
+                    0.5
+                  ]
+                },
+                0.035
+              ]
+            },
+            0.035
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            {
+              "param": "back_height"
+            }
+          ]
+        }
+      ],
+      "width": 0.042,
+      "material": "wood",
+      "bevel": 0.006
+    },
+    {
+      "kind": "beam",
+      "name": "Arm front support",
+      "start": [
+        {
+          "op": "mul",
+          "args": [
+            -1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "mul",
+          "args": [
+            {
+              "param": "seat_depth"
+            },
+            -0.32
+          ]
+        },
+        {
+          "param": "seat_height"
+        }
+      ],
+      "end": [
+        {
+          "op": "mul",
+          "args": [
+            -1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "mul",
+          "args": [
+            {
+              "param": "seat_depth"
+            },
+            -0.32
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            {
+              "param": "arm_height"
+            }
+          ]
+        }
+      ],
+      "width": 0.026,
+      "material": "wood",
+      "bevel": 0.006,
+      "when": {
+        "param": "arms"
+      }
+    },
+    {
+      "kind": "beam",
+      "name": "Arm rail",
+      "start": [
+        {
+          "op": "mul",
+          "args": [
+            -1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "mul",
+          "args": [
+            {
+              "param": "seat_depth"
+            },
+            -0.43
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            {
+              "param": "arm_height"
+            }
+          ]
+        }
+      ],
+      "end": [
+        {
+          "op": "mul",
+          "args": [
+            -1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "seat_depth"
+                },
+                0.5
+              ]
+            },
+            0.035
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "param": "seat_height"
+                },
+                {
+                  "param": "arm_height"
+                }
+              ]
+            },
+            0.016
+          ]
+        }
+      ],
+      "width": 0.051,
+      "material": "wood",
+      "bevel": 0.006,
+      "when": {
+        "param": "arms"
+      }
+    },
+    {
+      "kind": "beam",
+      "name": "Back post",
+      "start": [
+        {
+          "op": "mul",
+          "args": [
+            1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "seat_depth"
+                },
+                0.5
+              ]
+            },
+            0.035
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            0.03
+          ]
+        }
+      ],
+      "end": [
+        {
+          "op": "mul",
+          "args": [
+            1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_depth"
+                    },
+                    0.5
+                  ]
+                },
+                0.035
+              ]
+            },
+            0.035
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            {
+              "param": "back_height"
+            }
+          ]
+        }
+      ],
+      "width": 0.042,
+      "material": "wood",
+      "bevel": 0.006
+    },
+    {
+      "kind": "beam",
+      "name": "Arm front support",
+      "start": [
+        {
+          "op": "mul",
+          "args": [
+            1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "mul",
+          "args": [
+            {
+              "param": "seat_depth"
+            },
+            -0.32
+          ]
+        },
+        {
+          "param": "seat_height"
+        }
+      ],
+      "end": [
+        {
+          "op": "mul",
+          "args": [
+            1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "mul",
+          "args": [
+            {
+              "param": "seat_depth"
+            },
+            -0.32
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            {
+              "param": "arm_height"
+            }
+          ]
+        }
+      ],
+      "width": 0.026,
+      "material": "wood",
+      "bevel": 0.006,
+      "when": {
+        "param": "arms"
+      }
+    },
+    {
+      "kind": "beam",
+      "name": "Arm rail",
+      "start": [
+        {
+          "op": "mul",
+          "args": [
+            1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "mul",
+          "args": [
+            {
+              "param": "seat_depth"
+            },
+            -0.43
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            {
+              "param": "arm_height"
+            }
+          ]
+        }
+      ],
+      "end": [
+        {
+          "op": "mul",
+          "args": [
+            1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.025
+              ]
+            }
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "seat_depth"
+                },
+                0.5
+              ]
+            },
+            0.035
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "param": "seat_height"
+                },
+                {
+                  "param": "arm_height"
+                }
+              ]
+            },
+            0.016
+          ]
+        }
+      ],
+      "width": 0.051,
+      "material": "wood",
+      "bevel": 0.006,
+      "when": {
+        "param": "arms"
+      }
+    },
+    {
+      "kind": "box",
+      "name": "Crest rail",
+      "position": [
+        0,
+        {
+          "op": "add",
+          "args": [
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_depth"
+                    },
+                    0.5
+                  ]
+                },
+                0.022
+              ]
+            },
+            0.026
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "param": "seat_height"
+                },
+                {
+                  "param": "back_height"
+                }
+              ]
+            },
+            0.016
+          ]
+        }
+      ],
+      "size": [
+        {
+          "param": "seat_width"
+        },
+        0.055,
+        0.064
+      ],
+      "material": "wood",
+      "bevel": 0.02
+    },
+    {
+      "kind": "box",
+      "name": "Lower back rail",
+      "position": [
+        0,
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "seat_depth"
+                },
+                0.5
+              ]
+            },
+            0.022
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            0.07
+          ]
+        }
+      ],
+      "size": [
+        {
+          "param": "seat_width"
+        },
+        0.047,
+        0.045
+      ],
+      "material": "wood",
+      "bevel": 0.008
+    },
+    {
+      "kind": "repeat",
+      "count": {
+        "param": "slat_count"
+      },
+      "var": "i",
+      "parts": [
+        {
+          "kind": "box",
+          "name": "Back slat",
+          "position": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    -0.5,
+                    {
+                      "op": "sub",
+                      "args": [
+                        {
+                          "param": "seat_width"
+                        },
+                        0.14
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "var": "i"
+                    },
+                    {
+                      "op": "div",
+                      "args": [
+                        {
+                          "op": "sub",
+                          "args": [
+                            {
+                              "param": "seat_width"
+                            },
+                            0.14
+                          ]
+                        },
+                        {
+                          "op": "sub",
+                          "args": [
+                            {
+                              "param": "slat_count"
+                            },
+                            1
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "op": "add",
+              "args": [
+                {
+                  "op": "sub",
+                  "args": [
+                    {
+                      "op": "mul",
+                      "args": [
+                        {
+                          "param": "seat_depth"
+                        },
+                        0.5
+                      ]
+                    },
+                    0.022
+                  ]
+                },
+                0.01
+              ]
+            },
+            {
+              "op": "add",
+              "args": [
+                {
+                  "param": "seat_height"
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "back_height"
+                    },
+                    0.5
+                  ]
+                }
+              ]
+            }
+          ],
+          "size": [
+            0.034,
+            0.026,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "param": "back_height"
+                },
+                0.095
+              ]
+            }
+          ],
+          "material": "wood",
+          "bevel": 0.006,
+          "when": {
+            "op": "eq",
+            "args": [
+              {
+                "param": "back_style"
+              },
+              "slatted"
+            ]
+          }
+        },
+        {
+          "kind": "cylinder",
+          "name": "Back spindle",
+          "position": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    -0.5,
+                    {
+                      "op": "sub",
+                      "args": [
+                        {
+                          "param": "seat_width"
+                        },
+                        0.14
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "var": "i"
+                    },
+                    {
+                      "op": "div",
+                      "args": [
+                        {
+                          "op": "sub",
+                          "args": [
+                            {
+                              "param": "seat_width"
+                            },
+                            0.14
+                          ]
+                        },
+                        {
+                          "op": "sub",
+                          "args": [
+                            {
+                              "param": "slat_count"
+                            },
+                            1
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "op": "add",
+              "args": [
+                {
+                  "op": "sub",
+                  "args": [
+                    {
+                      "op": "mul",
+                      "args": [
+                        {
+                          "param": "seat_depth"
+                        },
+                        0.5
+                      ]
+                    },
+                    0.022
+                  ]
+                },
+                0.01
+              ]
+            },
+            {
+              "op": "add",
+              "args": [
+                {
+                  "param": "seat_height"
+                },
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "back_height"
+                    },
+                    0.5
+                  ]
+                }
+              ]
+            }
+          ],
+          "radius": 0.013,
+          "depth": {
+            "op": "sub",
+            "args": [
+              {
+                "param": "back_height"
+              },
+              0.095
+            ]
+          },
+          "material": "wood",
+          "bevel": 0.003,
+          "when": {
+            "op": "eq",
+            "args": [
+              {
+                "param": "back_style"
+              },
+              "spindle"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "box",
+      "name": "Solid back",
+      "position": [
+        0,
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "seat_depth"
+                },
+                0.5
+              ]
+            },
+            0.022
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "back_height"
+                },
+                0.5
+              ]
+            }
+          ]
+        }
+      ],
+      "size": [
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "seat_width"
+            },
+            0.055
+          ]
+        },
+        0.038,
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "back_height"
+            },
+            0.1
+          ]
+        }
+      ],
+      "material": "wood",
+      "bevel": 0.018,
+      "when": {
+        "op": "eq",
+        "args": [
+          {
+            "param": "back_style"
+          },
+          "solid"
+        ]
+      }
+    },
+    {
+      "kind": "beam",
+      "name": "Crossed back",
+      "start": [
+        {
+          "op": "mul",
+          "args": [
+            -1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.055
+              ]
+            }
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "seat_depth"
+                },
+                0.5
+              ]
+            },
+            0.022
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            0.09
+          ]
+        }
+      ],
+      "end": [
+        {
+          "op": "mul",
+          "args": [
+            1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.055
+              ]
+            }
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_depth"
+                    },
+                    0.5
+                  ]
+                },
+                0.022
+              ]
+            },
+            0.015
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "param": "seat_height"
+                },
+                {
+                  "param": "back_height"
+                }
+              ]
+            },
+            0.07
+          ]
+        }
+      ],
+      "width": 0.024,
+      "material": "wood",
+      "bevel": 0.006,
+      "when": {
+        "op": "eq",
+        "args": [
+          {
+            "param": "back_style"
+          },
+          "crossed"
+        ]
+      }
+    },
+    {
+      "kind": "beam",
+      "name": "Crossed back",
+      "start": [
+        {
+          "op": "mul",
+          "args": [
+            1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.055
+              ]
+            }
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "seat_depth"
+                },
+                0.5
+              ]
+            },
+            0.022
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            0.09
+          ]
+        }
+      ],
+      "end": [
+        {
+          "op": "mul",
+          "args": [
+            -1,
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_width"
+                    },
+                    0.5
+                  ]
+                },
+                0.055
+              ]
+            }
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_depth"
+                    },
+                    0.5
+                  ]
+                },
+                0.022
+              ]
+            },
+            0.015
+          ]
+        },
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "param": "seat_height"
+                },
+                {
+                  "param": "back_height"
+                }
+              ]
+            },
+            0.07
+          ]
+        }
+      ],
+      "width": 0.024,
+      "material": "wood",
+      "bevel": 0.006,
+      "when": {
+        "op": "eq",
+        "args": [
+          {
+            "param": "back_style"
+          },
+          "crossed"
+        ]
+      }
+    },
+    {
+      "kind": "box",
+      "name": "Upholstered back",
+      "position": [
+        0,
+        {
+          "op": "sub",
+          "args": [
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    {
+                      "param": "seat_depth"
+                    },
+                    0.5
+                  ]
+                },
+                0.022
+              ]
+            },
+            0.049
+          ]
+        },
+        {
+          "op": "add",
+          "args": [
+            {
+              "param": "seat_height"
+            },
+            {
+              "op": "mul",
+              "args": [
+                {
+                  "param": "back_height"
+                },
+                0.53
+              ]
+            }
+          ]
+        }
+      ],
+      "size": [
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "seat_width"
+            },
+            0.11
+          ]
+        },
+        0.074,
+        {
+          "op": "sub",
+          "args": [
+            {
+              "param": "back_height"
+            },
+            0.16
+          ]
+        }
+      ],
+      "material": "back",
+      "bevel": 0.032,
+      "when": {
+        "op": "eq",
+        "args": [
+          {
+            "param": "upholstery"
+          },
+          "seat-and-back"
+        ]
+      }
+    }
+  ]
+}

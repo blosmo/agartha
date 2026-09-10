@@ -200,6 +200,7 @@ def assembly_manifest():
     import bpy
     return {'coordinateSystem':'Blender Z-up; rotation radians','components':[
         {'name':o.name,'parentId':o.get('agarthaParentBundleId'),'variantOf':o.get('agarthaVariantOf'),
+         'templateId':o.get('agarthaTemplateId'),'templateParameters':json.loads(o.get('agarthaTemplateParameters','{}')),
          'location':list(o.location),'rotation':list(o.rotation_euler),'scale':list(o.scale),
          'parts':[child.name for child in o.children_recursive if child.type == 'MESH']}
         for o in bpy.context.scene.objects if o.get('agarthaComponent') and o.parent is None]}

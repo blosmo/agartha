@@ -11,7 +11,7 @@ it('loads the modeling entry in ordinary Node ESM after TypeScript transpilation
   try{
     writeFileSync(join(root,'package.json'),' {"type":"module"}');
     symlinkSync(resolve('node_modules'),join(root,'node_modules'),'dir');
-    const files=['packages/modeling/studio.ts','packages/billing/ledgerClient.ts',...['materialContributions','canonicalAssets','modelAssets','pngValidation','geometry/glb','geometry/glbImages','geometry/inspectGlb'].map(name=>`packages/protocol/src/${name}.ts`)];
+    const files=['packages/modeling/studio.ts','packages/billing/ledgerClient.ts',...['assetTemplates','materialContributions','canonicalAssets','modelAssets','pngValidation','geometry/glb','geometry/glbImages','geometry/inspectGlb'].map(name=>`packages/protocol/src/${name}.ts`)];
     for(const file of files){
       const destination=join(root,file.replace(/\.ts$/,'.js'));mkdirSync(dirname(destination),{recursive:true});
       writeFileSync(destination,ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText);

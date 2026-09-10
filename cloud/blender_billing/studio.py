@@ -175,7 +175,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             if scene_matches:
                 reviewed_views.update(image['label'].removeprefix('render-') for image in visible_model_views)
             action = step.get('action')
-            if action not in {'inspect_scene', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_assets', 'load_asset', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
+            if action not in {'inspect_scene', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
             event = {'turn': turn, 'action': action, 'candidateRevision': revision, 'summary': str(step.get('summary', ''))[:1000], 'critique': str(step.get('critique', ''))[:2000], 'inspectedViews': sorted(reviewed_views), 'time': int(time.time())}
             events.append(event)
             operation = f'{executor}-tool-{turn}'
@@ -185,6 +185,27 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     status, progress = 'completed', event['summary'] or 'Accepted model delivered.'
                     event['result'] = 'Finished with an accepted, inspected model.'
                     trace(); break
+                if action in {'search_templates','inspect_template'}:
+                    parameters=json.loads(step.get('code','{}'))
+                    if action=='search_templates':
+                        result=shared_assets().search_templates(parameters.get('q',''),parameters.get('cursor'))
+                        result={'entries':[{'id':entry['id'],'name':entry['name'].encode()[:100].decode(errors='ignore'),'controls':entry['parameterNames']} for entry in result['entries']],'cursor':result.get('cursor')}
+                    else:
+                        entry=shared_assets().template(parameters['id'])
+                        if parameters.get('parameter'):
+                            key=parameters['parameter']
+                            if key not in entry['parameters']: raise ValueError('Unknown template control.')
+                            result={'id':entry['id'],'parameter':key,'definition':entry['parameters'][key]}
+                        else:
+                            controls={}
+                            for key,spec in entry['parameters'].items():
+                                controls[key]={field:spec[field] for field in ['type','min','max'] if field in spec}
+                                if len(json.dumps(spec['default'],ensure_ascii=False).encode())<=80: controls[key]['default']=spec['default']
+                                if 'values' in spec: controls[key]['choiceCount']=len(spec['values'])
+                            result={'id':entry['id'],'name':entry['name'],'controls':controls,'license':entry['license'],'attribution':entry['attribution'],'inspectControl':'Call inspect_template with parameter to see every option.'}
+                    event['result']=json.dumps(result,ensure_ascii=False)
+                    trace();history=f'Candidate revision {revision}. Current candidate accepted: {accepted_current}.\n'+json.dumps([event],ensure_ascii=False)
+                    continue
                 if action == 'search_assets':
                     parameters = json.loads(step.get('code', '{}'))
                     result = shared_assets().search(parameters.get('q',''),parameters.get('cursor'),parameters.get('parentId'))
@@ -211,8 +232,16 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     if action == 'inspect_object': arguments['object_name'] = step['objectName']
                     result = mcp(name, arguments, operation)
                     event['result'] = json.dumps(result)[:5000]
-                elif action in {'edit','load_material','load_asset'}:
-                    if action == 'load_asset':
+                elif action in {'edit','load_material','load_asset','build_template'}:
+                    if action == 'build_template':
+                        parameters=json.loads(step['code'])
+                        entry=shared_assets().template(parameters['id'])
+                        payload=json.dumps({'definition':entry['definition'],'parameters':parameters.get('parameters',{}),'name':parameters['name'],'template_id':entry['id']},ensure_ascii=False,separators=(',',':'))
+                        if len(payload.encode())>38000: raise ValueError('Template instantiation exceeds its payload limit.')
+                        code="import bpy,sys,json\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.asset_templates import build_template\nfrom cloud.blender_mcp.components import assembly_manifest\n"
+                        code+="root=build_template(**json.loads("+repr(payload)+"))\nroot.location="+repr(parameters['location'])+"\nroot.rotation_euler="+repr(parameters['rotation'])+"\nroot.scale="+repr(parameters['scale'])+"\nbpy.context.view_layer.update()\nprint(json.dumps(assembly_manifest()))"
+                        event['templateId']=entry['id'];event['templateParameters']=parameters.get('parameters',{})
+                    elif action == 'load_asset':
                         parameters = json.loads(step['code'])
                         entry, payload = shared_assets().load(parameters['id'])
                         # Reuse the immutable bounded GLB transfer; it carries no executable source.
@@ -220,7 +249,10 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         transform = {key:parameters[key] for key in ['location','rotation','scale']}
                         code = "import sys,json,hashlib\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.components import import_component,assembly_manifest\n"
                         code += "path='/workspace/artifacts/"+name+"'\nassert hashlib.sha256(open(path,'rb').read()).hexdigest()=="+repr(entry['modelId'].removeprefix('model-'))+"\n"
-                        code += "import_component(path,"+repr(parameters['name'])+",bundle_id="+repr(entry['id'])+",**json.loads("+repr(json.dumps(transform))+"))\nprint(json.dumps(assembly_manifest()))"
+                        code += "root=import_component(path,"+repr(parameters['name'])+",bundle_id="+repr(entry['id'])+",**json.loads("+repr(json.dumps(transform))+"))\n"
+                        if entry['metadata'].get('templateId'):
+                            code+="root['agarthaTemplateId']="+repr(entry['metadata']['templateId'])+"\nroot['agarthaTemplateParameters']="+repr(json.dumps(entry['metadata']['templateParameters']))+"\n"
+                        code+="print(json.dumps(assembly_manifest()))"
                         event['sourceBundleId'] = entry['id']
                         event['sourceMetadata'] = entry['metadata']
                     elif action == 'load_material':
@@ -235,7 +267,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         code += "surface=import_material(path,target,**json.loads("+repr(json.dumps(mapping))+"))\nsurface['agarthaSharedMaterialId']="+repr(entry['id'])
                     else:
                         code = step.get('code')
-                    if not isinstance(code, str) or not code.strip() or len(code.encode()) > 32000: raise ValueError('Invalid edit code.')
+                    if not isinstance(code, str) or not code.strip() or len(code.encode()) > (48000 if action=='build_template' else 32000): raise ValueError('Invalid edit code.')
                     scene_matches = accepted_current = False
                     prepared_asset = asset_preview = None
                     prepared_material = material_preview = None
@@ -268,13 +300,19 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     code += "root=bpy.data.objects.get("+repr(step['objectName'])+")\nassert root and root.name in bpy.data.collections['AGARTHA_MODEL'].all_objects, 'Choose a deliverable component.'\n"
                     code += "parents=component_sources(root)\nassert len(parents)<=1, 'Review multi-source assembly licenses through deliberate asset publication.'\n"
                     code += "paths=export_component(root,'/workspace/artifacts/component-stage')\nfor key,name in [('glb','shared_component.glb'),('source','component_source.blend'),('preview','component_preview.png')]: shutil.copyfile(paths[key],'/workspace/artifacts/'+name)\n"
-                    code += "open('/workspace/artifacts/component_parent.json','w').write(json.dumps(parents))"
+                    code += "open('/workspace/artifacts/component_parent.json','w').write(json.dumps(parents))\nopen('/workspace/artifacts/component_template.json','w').write(json.dumps({'templateId':root.get('agarthaTemplateId'),'templateParameters':json.loads(root.get('agarthaTemplateParameters','{}'))}))"
                     execute(code,operation)
                     component_files = {key:broker.download(token,reservation,name,2_000_000 if key=='preview' else 16_000_000) for key,name in [('glb','shared_component.glb'),('source','component_source.blend'),('preview','component_preview.png')]}
                     parents=json.loads(broker.download(token,reservation,'component_parent.json',1000))
                     from .asset_exchange import BUNDLE_ID
                     if not isinstance(parents,list) or len(parents)>1 or any(not isinstance(id,str) or not BUNDLE_ID.fullmatch(id) for id in parents): raise ValueError('Invalid component provenance.')
                     if parents: metadata['parentId']=parents[0]
+                    instance=json.loads(broker.download(token,reservation,'component_template.json',5000))
+                    if instance.get('templateId'):
+                        import re
+                        if not re.fullmatch(r'template-[a-f0-9]{64}',str(instance['templateId'])): raise ValueError('Publish the local procedural template before contributing this component.')
+                        metadata.update(instance)
+
                     prepared_asset={'rootName':step['objectName'],'files':component_files,'metadata':metadata,'reviewed':False,'publication':{}}
                     asset_preview={'label':'render-detail','image':image_data(component_files['preview'])}
                     event['result']='Prepared an isolated component. render-detail shows this component at its local pivot. Inspect its silhouette, material scale, joins and completeness before publish_asset.'
@@ -335,7 +373,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['result'] = 'Restored the accepted scene and rendered it for comparison.'
             except ValueError as error:
                 event['error'] = str(error)[:2500]
-                if action in {'edit','load_material','load_asset'}: rendered = []; reviewed_views.clear()
+                if action in {'edit','load_material','load_asset','build_template'}: rendered = []; reviewed_views.clear()
             trace()
             recent = [{key: value for key, value in item.items() if key != 'time'} for item in events[-6:]]
             history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}. Component publication: {json.dumps(component_sharing or 'disabled')}.\n' + json.dumps(recent,ensure_ascii=False)

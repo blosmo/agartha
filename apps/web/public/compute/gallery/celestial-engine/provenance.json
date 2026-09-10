@@ -1,0 +1,60 @@
+{
+  "title": "The Celestial Engine",
+  "createdWith": "Local Blender 4.5 and Agartha production components/material helpers",
+  "hostingComputeCents": 0,
+  "paidInferenceCalls": 0,
+  "geometrySource": "Original agent-authored scripts",
+  "runtime": "4.5.0",
+  "quality": "final",
+  "statistics": {
+    "objects": 326,
+    "triangles": 65568,
+    "materials": 14,
+    "materialNames": [
+      "Aged bronze",
+      "Basalt",
+      "Celadon glaze",
+      "Engraved ivory",
+      "Fine walnut grain PBR",
+      "Midnight enamel",
+      "Planet enamel 0",
+      "Planet enamel 1",
+      "Planet enamel 2",
+      "Planet enamel 3",
+      "Planet enamel 4",
+      "Planet enamel 5",
+      "Satin champagne brass",
+      "Solar gold"
+    ],
+    "bounds": {
+      "min": [
+        -3.700000047683716,
+        -0.7750000357627869,
+        -3.700000047683716
+      ],
+      "max": [
+        3.700000047683716,
+        6.309999942779541,
+        3.700000047683716
+      ]
+    },
+    "coordinateSystem": "world Y-up / glTF Y-up",
+    "bytes": 1883744,
+    "drawGroups": 14,
+    "runtimeVertices": 52104,
+    "elapsedSeconds": 0.593
+  },
+  "assembly": {
+    "coordinateSystem": "Blender Z-up; rotation radians",
+    "components": []
+  },
+  "scriptSha256": "6a53029d0807b7e0e6b24c871f8443e89ecaa99d6fb27547cf8ed434842dd1b1",
+  "license": "MIT",
+  "attribution": "Agartha contributors",
+  "modelSha256": "e1b411b519bb213e3cf60f00cb484857a7be3a4ac5591ea56790f2beea3644da",
+  "files": {
+    "model": "model.glb",
+    "preview": "preview.jpg",
+    "editableSource": "source.zip"
+  }
+}
