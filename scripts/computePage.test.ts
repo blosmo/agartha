@@ -108,8 +108,8 @@ it('recovers failed pricing and revalidates the task budget against new rates',a
   expect(el('retry-pricing').hidden).toBe(false);
   el('retry-pricing').click();
   await vi.waitFor(()=>expect(el('estimate').textContent).toBe('$8.00 compute session cap'));
-  expect(el('price-description').textContent).toContain('first 8 running minutes');
-  expect(el('price-description').textContent).toContain('$10.00 USD');
+  expect(el('price-description').textContent).toContain('first 8 minutes');
+  expect(el('price-description').textContent).toContain('Buy $10.00 in credits');
   expect(el('budget-error').textContent).toContain('at least $8.00');
   expect(el('retry-pricing').hidden).toBe(true);
   input('budget','15');

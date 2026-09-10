@@ -161,7 +161,7 @@ function validPricing(data) {
 }
 async function checkPricing() {
   retry.hidden = true;
-  document.querySelector('#availability').textContent = 'Checking live pricing and purchase availability…';
+  document.querySelector('#availability').textContent = 'Checking prices…';
   try {
     const response = await fetch('/api/blender/pricing', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error('Pricing unavailable');
@@ -170,20 +170,20 @@ async function checkPricing() {
     pricing = data;
     verified = true;
     document.querySelector('#availability').textContent = data.purchasesEnabled === true && data.paymentMode === 'live'
-      ? 'Credit purchases are available. Your agent checks session availability before reserving.'
+      ? 'Credit purchases are available.'
       : data.purchasesEnabled === true && data.paymentMode === 'test'
         ? 'Test payments only. Live credit purchases are not available.'
-        : 'Credit purchases are currently unavailable. You can read the integration guide now.';
+        : 'Credit purchases are unavailable. Try again later.';
   } catch {
     pricing = publishedPricing;
     verified = false;
     retry.hidden = false;
-    document.querySelector('#availability').textContent = 'Unable to check live prices. Published estimates are shown. Retry before approving a purchase.';
+    document.querySelector('#availability').textContent = 'Showing estimated prices. Retry before buying credits.';
   }
   minutes.min = String(pricing.minimumMinutes);
   minutes.max = String(pricing.maximumMinutes);
   minutes.value = String(Math.max(pricing.minimumMinutes, Math.min(Number(minutes.value), pricing.maximumMinutes)));
-  document.querySelector('#price-description').textContent = `${money(pricing.minimumCents)} covers the first ${pricing.minimumMinutes} running minutes. Each additional begun minute costs ${money(pricing.priceCentsPerMinute)}. Prepaid credit options: ${pricing.topUpCents.map(money).join(' or ')} USD.`;
+  document.querySelector('#price-description').textContent = `Compute: ${money(pricing.minimumCents)} for the first ${pricing.minimumMinutes} ${pricing.minimumMinutes === 1 ? 'minute' : 'minutes'}, then ${money(pricing.priceCentsPerMinute)} per started minute. Buy ${pricing.topUpCents.map(money).join(' or ')} in credits.`;
   updateEstimate();
   if (budgetCents(budget.value) !== null && budgetCents(budget.value) < pricing.minimumCents) touched.add(budget);
   updatePlan();
