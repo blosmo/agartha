@@ -6,6 +6,7 @@ import hashlib
 import inspect
 import json
 import posixpath
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, BinaryIO
@@ -264,6 +265,11 @@ class ModalProvider:
         if max_bytes < 1 or max_bytes > RESPONSE_MAX_BYTES:
             raise ValueError("Invalid artifact limit")
         return self._bounded_transfer(worker_id, f"/workspace/artifacts/{name}", sink, max_bytes, False)
+
+    def write_material(self, worker_id: str, name: str, source: BinaryIO, max_bytes: int = 16_000_000) -> int:
+        if not isinstance(name,str) or not re.fullmatch(r'shared-material-[a-f0-9]{64}\.glb', name) or not 1 <= max_bytes <= 16_000_000:
+            raise ValueError('Invalid shared material upload.')
+        return self._bounded_transfer(worker_id, f'/workspace/artifacts/{name}', source, max_bytes, True)
 
     def write_checkpoint(self, worker_id: str, source: BinaryIO, max_bytes: int = PROJECT_MAX_BYTES) -> int:
         if max_bytes < 1 or max_bytes > PROJECT_MAX_BYTES:

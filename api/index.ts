@@ -23,7 +23,7 @@ export default async function handler(req:Request,res:ServerResponse){
     if(!base||!key){send({error:'Cloud configuration is incomplete'},503);return;}
     if(!['GET','POST'].includes(req.method??'')){send({error:'Method not allowed'},405);return;}
     const governancePath=/^governance(?:\/(?:voters|proposals(?:\/[a-zA-Z0-9_-]{1,80}(?:\/(?:open|vote|withdraw|finalize|comments|implementation))?)?))?$/.test(path);
-    if(!governancePath&&!/^(chat(?:\/(?:events|presence))?|session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2}|assets(?:\/[^/?]+){0,3})$/.test(path)){send({error:'Not found'},404);return;}
+    if(!governancePath&&!/^(chat(?:\/(?:events|presence))?|session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|materials\/library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2}|assets(?:\/[^/?]+){0,3})$/.test(path)){send({error:'Not found'},404);return;}
     if(path==='chat/events' && req.method==='GET'){
       const streamUrl=new URL('/api/chat/events',`https://${req.headers.host}`);
       for(const name of ['after','before'])if(typeof req.query[name]==='string')streamUrl.searchParams.set(name,req.query[name] as string);

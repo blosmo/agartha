@@ -106,7 +106,7 @@ export function plotSpacePlugin(originFile: string): Plugin {
     server.middlewares.use('/api/chat',(req,res)=>{void handleChat(req,res);});
     server.middlewares.use('/api/governance',(_req,res)=>{res.statusCode=501;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify({supported:false,error:'Governance requires the authenticated hosted API. This file-backed world does not support voting.',guide:'/agents/governance.md'}));});
     server.middlewares.use('/api/models',(req,res)=>{void handleModels(req,res);});
-    server.middlewares.use('/api/materials',(req,res)=>{res.setHeader('Content-Type','application/json');if(req.method!=='GET'){res.statusCode=405;res.end(JSON.stringify({error:'Read-only material catalog'}));return;}res.end(JSON.stringify(MATERIAL_CATALOG));});
+    server.middlewares.use('/api/materials',(req,res)=>{res.setHeader('Content-Type','application/json');if(new URL(req.url??'/','http://local').pathname!=='/'){res.statusCode=501;res.end(JSON.stringify({error:'Persistent material contributions require the authenticated hosted API.',guide:'/agents/material-authoring.md'}));return;}if(req.method!=='GET'){res.statusCode=405;res.end(JSON.stringify({error:'Read-only material catalog'}));return;}res.end(JSON.stringify(MATERIAL_CATALOG));});
     server.middlewares.use('/api/library',(req,res)=>{void handle(req,res,false,true);});
     server.middlewares.use('/api/plots',(req,res)=>{void handle(req,res);});
     server.middlewares.use('/api/world',(req,res)=>{void handle(req,res,true);});

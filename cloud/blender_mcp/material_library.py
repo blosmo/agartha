@@ -163,36 +163,8 @@ def material(material_id: str, *, finish_id: str | None = None):
 
 
 def apply_material(obj, material_id: str, *, finish_id: str | None = None,
-                   tile_size: float = 2.0, projection: str = 'box', center=None):
-    """Apply a catalog material with world-scale UVs; never modifies geometry."""
-    from mathutils import Vector
-    if obj.type!='MESH': raise ValueError('Apply materials to a mesh object.')
-    if not math.isfinite(tile_size) or tile_size<=0: raise ValueError('Use a positive tile size in Blender units.')
-    if projection not in {'box','cylindrical','existing'}: raise ValueError('Unknown UV projection.')
-    if projection=='existing' and not obj.data.uv_layers: raise ValueError('The mesh needs an existing UV map.')
-    surface=material(material_id,finish_id=finish_id)
-    # Do not change linked instances or another object's material slots/UVs.
-    if obj.data.users>1: obj.data=obj.data.copy()
-    if projection!='existing':
-        uv=obj.data.uv_layers.active or obj.data.uv_layers.new(name='AgarthaUV')
-        points=[obj.matrix_world @ v.co for v in obj.data.vertices]
-        normal_matrix=obj.matrix_world.to_3x3().inverted_safe().transposed()
-        origin=Vector(center or (0,0,0))
-        radial_scale=max((math.hypot(p.x-origin.x,p.y-origin.y) for p in points),default=1)*math.tau/tile_size
-        for polygon in obj.data.polygons:
-            normal=normal_matrix@polygon.normal;axis=max(range(3),key=lambda i:abs(normal[i]))
-            values=[]
-            for loop_index in polygon.loop_indices:
-                point=points[obj.data.loops[loop_index].vertex_index]
-                if projection=='cylindrical' and axis!=2:
-                    p=point-origin;values.append((loop_index,(math.atan2(p.y,p.x)/math.tau,point.z/tile_size)))
-                else:
-                    axes=(1,2) if axis==0 else (0,2) if axis==1 else (0,1)
-                    values.append((loop_index,(point[axes[0]]/tile_size,point[axes[1]]/tile_size)))
-            seam=projection=='cylindrical' and axis!=2 and values and max(v[0] for _,v in values)-min(v[0] for _,v in values)>.5
-            for index,value in values:
-                u=value[0]+(1 if seam and value[0]<0 else 0)
-                uv.data[index].uv=(u*radial_scale if projection=='cylindrical' and axis!=2 else u,value[1])
-    obj.data.materials.clear();obj.data.materials.append(surface)
-    for polygon in obj.data.polygons:polygon.material_index=0
-    return surface
+                   tile_size=2.0, projection: str = 'surface', center=None, direction=None):
+    """Assign a reusable material with physical-scale UVs and optional grain direction."""
+    from .material_mapping import assign_material
+    return assign_material(obj, material(material_id, finish_id=finish_id),
+                           tile_size=tile_size, projection=projection, center=center, direction=direction)

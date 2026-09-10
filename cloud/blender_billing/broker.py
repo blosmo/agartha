@@ -284,3 +284,23 @@ class Broker:
         payload = sink.getvalue()
         self.ledger.call("completeOperation", operationId=operation_id, actualResponseBytes=len(payload), state="completed")
         return payload
+
+    def upload_material(self, token: str, reservation_id: str, payload: bytes, operation_id: str) -> str:
+        if not isinstance(payload, bytes) or not payload.startswith(b'glTF') or not 1 <= len(payload) <= 16_000_000:
+            raise ValueError('Invalid material swatch upload.')
+        row = self.owned(token, reservation_id)
+        if row['status'] != 'running' or row.get('stopRequested'):
+            raise BrokerConflict('Load materials while the session is running.')
+        sha = hashlib.sha256(payload).hexdigest()
+        name = f'shared-material-{sha}.glb'
+        claim = self.ledger.call('authorizeOperation', reservationId=reservation_id, launchGeneration=row['launchGeneration'], operationId=operation_id, payloadFingerprint=digest('material:'+sha), responseBytes=0)
+        if claim.get('reused'):
+            if claim.get('state') == 'completed': return name
+            raise BrokerConflict('Material upload outcome is not complete.')
+        try:
+            self.provider.write_material(row['providerWorkerId'], name, io.BytesIO(payload), max_bytes=len(payload))
+        except Exception:
+            self.ledger.call('completeOperation', operationId=operation_id, actualResponseBytes=0, state='failed', error='Material transfer did not complete.')
+            raise
+        self.ledger.call('completeOperation', operationId=operation_id, actualResponseBytes=0, state='completed')
+        return name

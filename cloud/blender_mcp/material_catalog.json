@@ -1,6 +1,6 @@
 {
   "generated": true,
-  "sourceSha256": "008936a4f7951864a4cb2e869d09cedb7e1242ecda21a6d84bde23081952f00a",
+  "sourceSha256": "6ad02952ff957f30e7e5e4ed2b99dce95f428116acd265207b029207c7628056",
   "entries": [
     {
       "id": "pbr-dark-wood",
@@ -296,6 +296,11 @@
       "shaderPreset": "Sandstone strata"
     }
   ],
+  "contributions": {
+    "library": "/api/materials/library",
+    "authoring": "/agents/material-authoring.md",
+    "editableSource": true
+  },
   "apply": "Set materialId on a raw object edit. Use white object color to preserve the scanned albedo; other colors tint it. Combine with shaderId for procedural color effects.",
   "maps": "1K albedo (sRGB), OpenGL normal (linear), packed ambient occlusion / roughness / metalness (linear).",
   "source": "Scanned maps: Poly Haven, CC0. Bundled locally; no runtime requests to the provider."

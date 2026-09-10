@@ -62,6 +62,8 @@ class StudioTests(unittest.TestCase):
             return result
         broker.call.side_effect=call
         def download(token,reservation,name,limit):
+            if name=='shared_material.glb':return b'glTF-swatch'
+            if name=='shared_source.blend':return b'BLENDER-material-only'
             if name=='model.blend':return state['model']
             if name=='accepted.blend':return state['accepted']
             if name=='model.glb':return b'glTF'+state['model']
@@ -82,6 +84,44 @@ class StudioTests(unittest.TestCase):
             run_studio(broker,files,'a'*64,'job','worker',row,Mock(),'https://example.test/inference','key')
         finish=[call.kwargs for call in broker.ledger.call.call_args_list if call.args[0]=='finishManagedJob'][-1]
         return store,broker,requests,timeline,finish,video_mock
+
+    def test_material_publication_requires_accepted_model_and_a_later_swatch_review(self):
+        metadata={'name':'Original stone','description':'Fine joints','tags':['stone'],'license':'CC0-1.0','attribution':'','recipe':'Brick and Noise nodes','tileSize':2,'resolution':256}
+        exchange=Mock()
+        exchange.publish.return_value={'id':'material-'+'a'*64,'name':'Original stone','files':{},'author':'Agent'}
+        with patch('cloud.blender_billing.material_exchange.MaterialExchange',return_value=exchange):
+            store,_,requests,_,finish,_=self.fixture([
+                action('edit','REVISION_A'), action('prepare_material',json.dumps(metadata)),
+                action('publish_material'), action('accept'), action('prepare_material',json.dumps(metadata)),
+                action('publish_material'), action('finish'),
+            ])
+        trace=json.loads(store.read('job','review.json'))
+        self.assertIn('Accept and inspect',trace['actions'][1]['error'])
+        self.assertIn('Prepare a material',trace['actions'][2]['error'])
+        self.assertEqual(len(requests[6]['images']),8)
+        self.assertEqual(requests[6]['images'][-1]['label'],'render-detail')
+        exchange.publish.assert_called_once()
+        self.assertEqual(exchange.publish.call_args.args[0]['source'],b'BLENDER-material-only')
+        self.assertEqual(finish['status'],'completed')
+        self.assertNotIn('uploadToken',json.dumps(trace))
+
+    def test_edit_invalidates_a_prepared_material(self):
+        metadata={'name':'Stone','description':'Fine joints','tags':['stone'],'license':'CC0-1.0','attribution':'','recipe':'Brick nodes','tileSize':2,'resolution':256}
+        exchange=Mock()
+        with patch('cloud.blender_billing.material_exchange.MaterialExchange',return_value=exchange):
+            store,_,_,_,_,_=self.fixture([action('edit','REVISION_A'),action('accept'),action('prepare_material',json.dumps(metadata)),action('edit','REVISION_B'),action('publish_material'),action('accept'),action('finish')])
+        exchange.publish.assert_not_called()
+        self.assertIn('Prepare a material',json.loads(store.read('job','review.json'))['actions'][4]['error'])
+
+    def test_material_search_does_not_start_compute(self):
+        exchange=Mock()
+        exchange.search.return_value={'entries':[],'cursor':'material-'+'a'*64}
+        with patch('cloud.blender_billing.material_exchange.MaterialExchange',return_value=exchange):
+            _,broker,requests,timeline,finish,_=self.fixture([action('search_materials','{"q":"wood"}'),action('edit','REVISION_A'),action('accept'),action('finish')])
+        self.assertEqual(timeline[:timeline.index('start')].count('inference-modeling'),2)
+        self.assertIn('material-'+'a'*64,requests[2]['history'])
+        exchange.search.assert_called_once_with('wood',None)
+        self.assertEqual(finish['status'],'completed')
 
     def test_references_precede_compute_and_remain_on_every_action(self):
         store,broker,requests,timeline,finish,_=self.fixture([action('inspect_scene'),action('edit','REVISION_A'),action('accept'),action('finish')])
