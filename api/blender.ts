@@ -56,7 +56,8 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
     const header = req.headers.authorization;
     const discoveryToken = typeof header === 'string' && /^Bearer [a-f0-9]{64}$/.test(header) ? header.slice(7) : undefined;
     const discoveryAgentId = discoveryToken ? `agent-${createHash('sha256').update(discoveryToken).digest('hex').slice(0, 24)}` : undefined;
-    const workflowVersion = process.env.AGARTHA_MANAGED_WORKFLOW_VERSION === '3' || discoveryAgentId === process.env.AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID ? 3 : undefined;
+    const workflowOperator = process.env.AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID;
+    const workflowVersion = process.env.AGARTHA_MANAGED_WORKFLOW_VERSION === '3' || Boolean(discoveryAgentId && workflowOperator && discoveryAgentId === workflowOperator) ? 3 : undefined;
     const referenceModelingEnabled = referencesEnabled(discoveryToken);
     jsonResponse(res, {
       name: 'Agartha Compute', version: '1.0.0',

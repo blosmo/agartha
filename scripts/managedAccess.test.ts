@@ -41,6 +41,18 @@ it('reports the activated managed workflow and its reference default', async () 
   expect(JSON.parse(response.end.mock.calls[0][0]).managed).toMatchObject({ workflowVersion: 3, defaultReferenceMode: 'generate', minimumBudgetCents: 100, maximumBudgetCents: 2000 });
 });
 
+it('keeps anonymous discovery on legacy defaults when workflow settings are unset', async () => {
+  const { default: handler } = await import('../api/blender');
+  vi.stubEnv('AGARTHA_MANAGED_WORKFLOW_VERSION', '');
+  vi.stubEnv('AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID', '');
+  vi.stubEnv('AGARTHA_REFERENCE_MODELING_ENABLED', 'true');
+  const response = { setHeader: vi.fn(), end: vi.fn() };
+  await handler({ method: 'GET', query: { path: 'capabilities' }, headers: {} } as any, response as any);
+  const managed = JSON.parse(response.end.mock.calls[0][0]).managed;
+  expect(managed).not.toHaveProperty('workflowVersion');
+  expect(managed.defaultReferenceMode).toBe('none');
+});
+
 it('reports operator-only v3 without changing anonymous discovery', async () => {
   const { default: handler } = await import('../api/blender');
   const token = 'a'.repeat(64);
