@@ -57,7 +57,7 @@ export async function createGalleryViewer(host: HTMLElement, slug: string, signa
     const normalized = new THREE.Group(); normalized.scale.setScalar(1 / (sphere.radius * 2)); normalized.add(gltf.scene); scene.add(normalized);
     const direction = new THREE.Vector3(12, 11, 15);
     const aspect = host.clientWidth / Math.max(1, host.clientHeight);
-    const distance = aspect < 1 ? .525 / Math.sin(Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * aspect)) : slug === 'celestial-engine' ? 1.65 : 1.25;
+    const distance = .525 / Math.sin(Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * Math.min(1, aspect)));
     const initial = direction.normalize().multiplyScalar(distance);
     camera.position.copy(initial);
     controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.enablePan = false; controls.minDistance = .7; controls.maxDistance = 4;
