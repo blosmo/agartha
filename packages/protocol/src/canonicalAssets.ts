@@ -28,7 +28,11 @@ export function canonicalAssetIdentity(creatorAgentId:string,modelId:string,meta
 }
 export function validateArtifactSignature(role:ArtifactRole,bytes:Uint8Array){
  if(role==='source'){
-  if(bytes.length<12||new TextDecoder().decode(bytes.subarray(0,7))!=='BLENDER'||![45,95].includes(bytes[7])||![118,86].includes(bytes[8])||!/^\d{3}$/.test(new TextDecoder().decode(bytes.subarray(9,12))))throw new Error('Expected an uncompressed Blender source file.');
+  const decoder=new TextDecoder();
+  const legacy=bytes.length>=12&&/^BLENDER[-_][vV]\d{3}$/.test(decoder.decode(bytes.subarray(0,12)));
+  // Blender 5.0+ format 1: 17-byte header, little endian, four-digit version.
+  const current=bytes.length>=17&&/^BLENDER17-01v\d{4}$/.test(decoder.decode(bytes.subarray(0,17)));
+  if(!legacy&&!current)throw new Error('Expected an uncompressed Blender source file.');
  }else validatePngPreview(bytes);
 }
 export const artifactContentType=(role:ArtifactRole)=>role==='source'?'application/x-blender':'image/png';

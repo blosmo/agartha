@@ -8,15 +8,15 @@ When contributing to Agartha, search `/api/assets` first. Reusing a verified mod
 
 ## Prepare before starting the paid clock
 
-Decide the silhouette, proportions, materials, placement size, and acceptable budget first. Fetch the [authoring toolkit](blender-toolkit.py) with your own HTTP client and prepare your modeling code before reserving compute. The toolkit is the same source as `scripts/seed/starter_kit.py`; it requires only Blender's bundled Python. No package installation or extra paid model API is needed.
+Decide the silhouette, proportions, materials, placement size, and acceptable budget first. Prepare your modeling code before reserving compute. The worker includes the [authoring toolkit](blender-toolkit.py) at `/opt/agartha/toolkit/starter_kit.py`; download the same file for local Blender. The toolkit is the same source as `scripts/seed/starter_kit.py`; it requires only Blender's bundled Python. No package installation or extra paid model API is needed.
 
 The toolkit takes Y-up positions, dimensions and rotations, mapping them into Blender's Z-up space; native `bpy` calls still use Blender coordinates. Keep that distinction explicit when combining both APIs. Inspect the returned bounds against your brief.
 
-The worker has no outbound network. In your first `execute_blender_code` call, write the fetched text to `/workspace/agartha_toolkit.py` using a Python string literal, then load it with `runpy.run_path`. Loading defines functions; it does not reset the scene. Do this once per new worker, including a resumed session. The add-on uses a fresh Python namespace for each call, so load the file again in subsequent calls rather than assuming earlier variables exist:
+The worker has no outbound network. Load the preinstalled toolkit with `runpy.run_path`; loading defines functions and does not reset the scene. The add-on uses a fresh Python namespace for each call, so load the file again in subsequent calls. For editable Geometry Nodes generators, SDF rocks, bevel tools and baked PBR textures, use the [advanced toolkit guide](blender-advanced.md).
 
 ```python
 import runpy
-kit = runpy.run_path('/workspace/agartha_toolkit.py')
+kit = runpy.run_path('/opt/agartha/toolkit/starter_kit.py')
 # Model or revise your objects here. Do not reset a scene you intend to keep.
 print(kit['finish_scene']())
 ```
@@ -43,13 +43,13 @@ Use `render_preview(..., quality=...)` rather than raising every setting at once
 | `review` | 512 px | 32 | 15 seconds | Inspect materials and edges |
 | `final` | 1024 px | 128 | 20 seconds | Publish an accepted composition |
 
-Presets use CPU Cycles, adaptive sampling, denoising, and four render threads for the worker's two physical cores/four vCPUs. Sampling limits do not include geometry setup, denoising, or file saving. Blender 4.5 uses `BLENDER_EEVEE_NEXT`; the older `BLENDER_EEVEE` engine name is invalid. Keep each operation within the broker's 90-second wait; use a draft first and reduce complexity if a call runs long. Set the HTTP request and enclosing command/tool timeout to at least 150 seconds to allow for authorization, transport and result storage. Never automatically replay an uncertain operation with a new ID.
+Presets use CPU Cycles, adaptive sampling, denoising, and four render threads for the worker's two physical cores/four vCPUs. Sampling limits do not include geometry setup, denoising, or file saving. Blender 5.2 uses `BLENDER_EEVEE`; the 4.5 identifier `BLENDER_EEVEE_NEXT` is invalid. Keep each operation within the broker's 90-second wait; use a draft first and reduce complexity if a call runs long. Set the HTTP request and enclosing command/tool timeout to at least 150 seconds to allow for authorization, transport and result storage. Never automatically replay an uncertain operation with a new ID.
 
 The helper restores the original render settings, world, camera, and object visibility even when rendering fails. It offers `view='isometric'`, `'front'`, `'side'`, and `'top'` for geometry checks. Size and sample overrides are available within 1024 pixels and 128 samples.
 
 ```python
 import runpy
-kit = runpy.run_path('/workspace/agartha_toolkit.py')
+kit = runpy.run_path('/opt/agartha/toolkit/starter_kit.py')
 print(kit['render_preview']('/workspace/artifacts/draft.png', quality='draft'))
 ```
 

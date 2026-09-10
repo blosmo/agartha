@@ -45,6 +45,7 @@ def _agartha_render_review(args):
         'render': {key: getattr(scene.render, key) for key in ('engine', 'threads_mode', 'threads', 'filepath', 'resolution_x', 'resolution_y', 'resolution_percentage', 'pixel_aspect_x', 'pixel_aspect_y', 'use_border', 'use_crop_to_border')},
         'cycles': {key: getattr(scene.cycles, key) for key in ('device', 'samples', 'time_limit', 'use_denoising', 'use_adaptive_sampling', 'adaptive_threshold', 'adaptive_min_samples', 'denoiser', 'denoising_input_passes', 'denoising_prefilter')},
         'format': scene.render.image_settings.file_format,
+        'media_type': scene.render.image_settings.media_type,
     }
     try:
         scene.camera = camera
@@ -84,6 +85,7 @@ def _agartha_render_review(args):
         scene.cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
         scene.cycles.denoising_prefilter = 'ACCURATE'
         scene.render.threads_mode, scene.render.threads = 'FIXED', 2
+        scene.render.image_settings.media_type = 'IMAGE'
         scene.render.image_settings.file_format = 'PNG'
         os.makedirs('/workspace/artifacts', exist_ok=True)
         scene.render.filepath = '/workspace/artifacts/review_' + args['view'] + '.png'
@@ -92,6 +94,7 @@ def _agartha_render_review(args):
         scene.camera = source
         for key,value in state['render'].items(): setattr(scene.render,key,value)
         for key,value in state['cycles'].items(): setattr(scene.cycles,key,value)
+        scene.render.image_settings.media_type = state['media_type']
         scene.render.image_settings.file_format = state['format']
         data = camera.data
         bpy.data.objects.remove(camera, do_unlink=True)

@@ -60,22 +60,30 @@ function computeShowcasePlugin(): Plugin {
 }
 
 function blenderToolkitPlugin(): Plugin {
-  const source = () => readFile(resolve(repoRoot, 'scripts/seed/starter_kit.py'), 'utf8');
+  const files = {
+    'blender-toolkit.py': 'scripts/seed/starter_kit.py',
+    'blender-advanced.py': 'scripts/blender/advanced_kit.py',
+    'blender-baking.py': 'scripts/blender/baking.py',
+  };
   return {
     name: 'agartha-blender-toolkit',
     async generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'agents/blender-toolkit.py', source: await source() });
+      for (const [name, path] of Object.entries(files)) {
+        this.emitFile({ type: 'asset', fileName: `agents/${name}`, source: await readFile(resolve(repoRoot, path), 'utf8') });
+      }
     },
     configureServer(server) {
-      server.middlewares.use('/agents/blender-toolkit.py', async (req, res, next) => {
-        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-        try {
-          const body = await source();
-          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-          res.setHeader('Cache-Control', 'no-store');
-          res.end(req.method === 'HEAD' ? '' : body);
-        } catch (error) { next(error); }
-      });
+      for (const [name, path] of Object.entries(files)) {
+        server.middlewares.use(`/agents/${name}`, async (req, res, next) => {
+          if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+          try {
+            const body = await readFile(resolve(repoRoot, path), 'utf8');
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store');
+            res.end(req.method === 'HEAD' ? '' : body);
+          } catch (error) { next(error); }
+        });
+      }
     },
   };
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Heart, Plus, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowUpRight, Heart, Plus, X, Sparkle } from "@phosphor-icons/react";
 import type {
   PlaygroundDetail,
   PlaygroundProject,
@@ -62,14 +62,6 @@ export default function PlaygroundPanel({
           <X size={18} />
         </Button>
       </div>
-      <p className="playground-intro">
-        Bring an idea. Bring your agent. Make something together.
-      </p>
-      <p className="playground-free-note">
-        <strong>The commons is free.</strong> Explore, vote, contribute, and
-        invite an agent. Add a build budget only when a project is ready for
-        compute.
-      </p>
       <nav className="playground-tabs" aria-label="Playground sections">
         <Tabs
           value={tab}
@@ -158,8 +150,8 @@ export default function PlaygroundPanel({
               <div className="playground-toolbar">
                 <span>
                   {tab === "join"
-                    ? "Find a crew to join"
-                    : "Proposing and voting are free"}
+                    ? "Open crews"
+                    : "Community ideas"}
                 </span>
                 <Button
                   variant="primary"
@@ -176,13 +168,13 @@ export default function PlaygroundPanel({
                 <div className="playground-empty">
                   <h3>
                     {tab === "join"
-                      ? "A crew starts with an idea."
+                      ? "Start a crew"
                       : "What should exist here?"}
                   </h3>
                   <p>
                     {tab === "join"
-                      ? "Propose a room and invite humans and agents to help it take shape."
-                      : "A sketch, an impossible place, a question for other makers. Give the next corner of Agartha a beginning."}
+                      ? "Share an idea and invite collaborators."
+                      : "Share an idea for the next room."}
                   </p>
                   <Button
                     variant="primary"
@@ -253,11 +245,8 @@ function ConceptImage({
       onError={() => setFailed(true)}
     />
   ) : (
-    <span className="playground-art playground-art-empty">
-      <span>{failed ? "An image to imagine" : "A place yet to be"}</span>
-      <small>
-        {failed ? "Concept image unavailable" : "Open to your imagination"}
-      </small>
+    <span className="playground-art playground-art-empty" role="img" aria-label={failed ? 'Concept image unavailable' : 'No concept image'}>
+      <Sparkle size={26} aria-hidden="true"/>
     </span>
   );
 }
@@ -288,7 +277,7 @@ function ProposalForm({
         });
       }}
     >
-      <h3>A place worth imagining.</h3>
+      <h3>New idea</h3>
       <p className="panel-hint">
         Bring your own sketch or image. No generation or payment happens when
         you propose.

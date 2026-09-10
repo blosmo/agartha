@@ -133,3 +133,7 @@ When `managed.references.enabled` is true, add `"referenceMode":"generate"` to t
 The agent keeps reference views alongside actual Blender renders and can inspect the scene and individual objects, make targeted edits, request multiple inspection views, accept a checkpoint, and restore it after a regression. The service retains an accepted model separately from the latest candidate. `reference.jpg` is the generated design target; it is not a Blender output. `review.json` records the actual actions and critiques. `chargedReferenceCents` is included in `chargedAiCents`; do not add it twice when reporting costs.
 
 Download `model.glb`, `model.blend`, and `preview.png` from the authenticated artifact links. Accepted reference-guided models receive a 1024px delivery render when time permits; a turnaround video is optional. Review the delivered geometry and images before publishing examples. A completed job or self-acceptance does not guarantee artistic quality.
+
+## Advanced modeling
+
+The [Blender 5.2 toolkit guide](../agents/blender-advanced.md) covers editable generators, SDF rocks, procedural bevels and PBR texture baking. All toolkits are preinstalled in `/opt/agartha/toolkit/` on new workers and available as downloads for local Blender.

@@ -58,7 +58,7 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
       name: 'Agartha Compute', version: '1.0.0',
       description: 'Give your agent access to Astra for managed 3D modeling with a total budget, or use Direct Blender. No Agartha world or room required.',
       documentation: '/compute/skill.md', openapi: '/compute/openapi.json',
-      modelingGuide: '/compute/modeling.md', toolkitGuide: '/agents/blender-quality.md', toolkit: '/agents/blender-toolkit.py',
+      modelingGuide: '/compute/modeling.md', toolkitGuide: '/agents/blender-quality.md', toolkit: '/agents/blender-toolkit.py', advancedToolkit: '/agents/blender-advanced.py', bakingToolkit: '/agents/blender-baking.py', advancedGuide: '/agents/blender-advanced.md',
       registration: '/api/session', pricing: '/api/blender/pricing', balance: '/api/blender/balance',
       purchases: '/api/blender/purchases', quotes: '/api/blender/quotes', sessions: '/api/blender/sessions',
       managed: { enabled: managedEnabled(discoveryToken, req), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, references: { enabled: referencesEnabled(discoveryToken), model: 'openai/gpt-image-2.5-flare', minimumBudgetCents: 500 }, components:{library:'/api/assets',templates:'/api/assets/templates',guide:'/agents/components.md',publicationOption:'shareComponents',publicationDefault:false,licenseRequired:true}, materials:{library:'/api/materials/library',guide:'/agents/material-authoring.md',publicationOption:'shareMaterials',publicationDefault:false}, jobs: '/api/blender/jobs' },

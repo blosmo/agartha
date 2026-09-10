@@ -80,6 +80,9 @@ def build_image():
         .add_local_file(REPOSITORY_ROOT / "scripts" / "seed" / "starter_kit.py", "/opt/agartha-blender/starter_kit.py", copy=True)
         .add_local_dir(REPOSITORY_ROOT / "apps" / "web" / "public" / "materials",
                        "/opt/agartha-assets/materials", copy=True)
+        .add_local_file(REPOSITORY_ROOT / "scripts/seed/starter_kit.py", "/opt/agartha/toolkit/starter_kit.py", copy=True)
+        .add_local_file(REPOSITORY_ROOT / "scripts/blender/advanced_kit.py", "/opt/agartha/toolkit/advanced_kit.py", copy=True)
+        .add_local_file(REPOSITORY_ROOT / "scripts/blender/baking.py", "/opt/agartha/toolkit/baking.py", copy=True)
         .env(
             {
                 "BLENDER_BIN": "/usr/local/bin/blender",

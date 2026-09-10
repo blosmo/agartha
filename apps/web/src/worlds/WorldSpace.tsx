@@ -3,7 +3,7 @@ import { useAgentPresence } from './useAgentPresence';
 import { useAgentChat } from './useAgentChat';
 import { AgentChatPanel } from './AgentChatPanel';
 import React, { lazy, Suspense, useEffect, useState } from 'react';
-import { ArrowUpRight, GridFour, Plus, X } from '@phosphor-icons/react';
+import { ArrowUpRight, GridFour, Plus, X, Sparkle, Pulse, ChatCircle, Scales, Info } from '@phosphor-icons/react';
 import { WorldViewport } from './WorldViewport';
 import { AgentConnectDialog } from './AgentConnectDialog';
 import { usePlotWorld } from './usePlotWorld';
@@ -41,13 +41,15 @@ export function WorldSpace() {
     <a className="skip-link" href="#world-stage">Skip to world</a>
     <header className="world-header">
       <a className="world-brand" href="/" aria-label="Agartha home"><span aria-hidden="true" className="brand-symbol">△</span> agartha</a>
-      <button aria-expanded={showRooms} aria-controls="room-browser" onClick={()=>{setShowRooms(v=>!v);setPanel(undefined);setShowDetails(false);}}><GridFour size={16}/> Rooms</button>
-      <button aria-expanded={panel==='playground'} aria-controls="playground-panel" onClick={()=>{setPanel(panel==='playground'?undefined:'playground');setShowRooms(false);setShowDetails(false);}}>Playground</button>
-      <button aria-controls="watch-panel" aria-expanded={panel==='watch'} onClick={()=>{setPanel(panel==='watch'?undefined:'watch');setShowRooms(false);setShowDetails(false);}}>Watch</button>
-      <button aria-expanded={panel==='chat'} aria-controls="agent-chat" onClick={()=>{setPanel(panel==='chat'?undefined:'chat');setShowRooms(false);setShowDetails(false);}}>Chat</button>
-      <button aria-expanded={panel==='rules'} aria-controls="governance-panel" onClick={()=>{setPanel(panel==='rules'?undefined:'rules');setShowRooms(false);setShowDetails(false);}}>Rules</button>
-      <button aria-expanded={showDetails} aria-controls="room-details" onClick={()=>{setShowDetails(v=>!v);setShowRooms(false);setPanel(undefined);}}>Inspect</button>
-      <button aria-label="Invite agent" className="world-connect" onClick={()=>inviteAgent()}><Plus size={16}/><span>Invite agent</span></button>
+      <nav className="world-nav" aria-label="World menus">
+      <button aria-expanded={showRooms} aria-controls="room-browser" onClick={()=>{setShowRooms(v=>!v);setPanel(undefined);setShowDetails(false);}}><GridFour aria-hidden="true" size={18}/><span>Rooms</span></button>
+      <button aria-expanded={panel==='playground'} aria-controls="playground-panel" onClick={()=>{setPanel(panel==='playground'?undefined:'playground');setShowRooms(false);setShowDetails(false);}}><Sparkle aria-hidden="true" size={18}/><span>Playground</span></button>
+      <button aria-controls="watch-panel" aria-expanded={panel==='watch'} onClick={()=>{setPanel(panel==='watch'?undefined:'watch');setShowRooms(false);setShowDetails(false);}}><Pulse aria-hidden="true" size={18}/><span>Watch</span></button>
+      <button aria-expanded={panel==='chat'} aria-controls="agent-chat" onClick={()=>{setPanel(panel==='chat'?undefined:'chat');setShowRooms(false);setShowDetails(false);}}><ChatCircle aria-hidden="true" size={18}/><span>Chat</span></button>
+      <button aria-expanded={panel==='rules'} aria-controls="governance-panel" onClick={()=>{setPanel(panel==='rules'?undefined:'rules');setShowRooms(false);setShowDetails(false);}}><Scales aria-hidden="true" size={18}/><span>Rules</span></button>
+      <button aria-expanded={showDetails} aria-controls="room-details" onClick={()=>{setShowDetails(v=>!v);setShowRooms(false);setPanel(undefined);}}><Info aria-hidden="true" size={18}/><span>Inspect</span></button>
+      </nav>
+      <button aria-label="Invite agent" className="world-connect" onClick={()=>inviteAgent()}><Plus size={16}/><span>Invite</span></button>
     </header>
     <section id="world-stage" tabIndex={-1} className="world-stage" aria-label="Connected agent rooms">
       <WorldViewport agents={presence.agents} messages={chat.messages} now={now} onEnterRoom={()=>{setPanel(undefined);setShowRooms(false);setShowDetails(false);activity.setFollowing(undefined);navigate(id);}} plots={neighborhood?.plots??[]} empty={neighborhood?.empty??[]} activePlotId={id} highlights={activity.highlights} animateSurfaces onSelect={()=>{}} onVisit={nextId=>select(nextId,true)} onExplore={explore} onPrefetch={prefetch} focusRequest={focusRequest}/>
@@ -59,7 +61,7 @@ export function WorldSpace() {
     {panel==='playground'&&<Suspense fallback={<WorldPanel id="playground-panel" className="room-browser" aria-label="Playground" onClose={()=>setPanel(undefined)}><p role="status">Opening playground…</p><button onClick={()=>setPanel(undefined)}>Close playground</button></WorldPanel>}><PlaygroundPanel roomId={id} onVisit={nextId=>select(nextId,true)} onInvite={inviteAgent} onClose={()=>setPanel(undefined)}/></Suspense>}
     {showRooms&&<WorldPanel onClose={()=>setShowRooms(false)} id="room-browser" className="room-browser" aria-label="Browse rooms">
       <div className="room-panel-heading"><h2>Nearby rooms</h2><button aria-label="Close room browser" onClick={()=>setShowRooms(false)}><X size={18}/></button></div>
-      <RoomCoordinates key={id} address={address} onVisit={nextId=>select(nextId,true)}/>
+      <details className="room-jump"><summary>Go to coordinates</summary><RoomCoordinates key={id} address={address} onVisit={nextId=>select(nextId,true)}/></details>
       <nav className="world-picker" aria-label="Nearby rooms">
         {[...(neighborhood?.plots??[])].sort((a,b)=>Number(b.id===id)-Number(a.id===id)).map(plot=><button key={plot.id} aria-current={plot.id===id?'location':undefined} onClick={()=>select(plot.id,true)}><span>{plot.name}</span><ArrowUpRight size={15}/></button>)}
       </nav>

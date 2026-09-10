@@ -17,7 +17,7 @@ REFERENCE_MODEL = 'openai/gpt-image-2.5-flare'
 MAX_ACTIONS = 24
 # Detailed glTF exports can log one line per mesh/material; history remains truncated below.
 TOOL_RESPONSE_BYTES = 1_000_000
-EXPORT = EXPORT_CODE.replace("bpy.ops.object.select_all(action='DESELECT')", "depsgraph = bpy.context.evaluated_depsgraph_get()\nassert sum(len(o.evaluated_get(depsgraph).data.polygons) for o in meshes) <= 100000, 'Simplify evaluated geometry before export.'\nbpy.ops.object.select_all(action='DESELECT')", 1)
+EXPORT = EXPORT_CODE
 FINAL_EXPORT = EXPORT.replace('scene.cycles.samples = 32', 'scene.cycles.samples = 64').replace('scene.cycles.time_limit = 10.0', 'scene.cycles.time_limit = 25.0').replace('scene.cycles.adaptive_threshold = 0.05', 'scene.cycles.adaptive_threshold = 0.025').replace('scene.render.resolution_x = 512', 'scene.render.resolution_x = 1024').replace('scene.render.resolution_y = 512', 'scene.render.resolution_y = 1024')
 
 

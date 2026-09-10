@@ -30,6 +30,20 @@ cube = bpy.context.object
 cube.name = 'Deliverable cube'
 for collection in list(cube.users_collection): collection.objects.unlink(cube)
 model.objects.link(cube)
+# 54k evaluated quads are 108k triangles: budget by delivery topology.
+budget_array = cube.modifiers.new('Triangle budget fixture', 'ARRAY')
+budget_array.count = 9000
+try:
+    exec(code, {})
+except AssertionError as error:
+    assert 'evaluated model' in str(error)
+else:
+    raise AssertionError('Export accepted more than 100k evaluated triangles')
+finally:
+    cube.modifiers.remove(budget_array)
+bevel = cube.modifiers.new('Export evaluated geometry', 'BEVEL')
+bevel.width = 0.15
+bevel.segments = 2
 bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, -1.1))
 floor = bpy.context.object
 floor.name = 'Studio floor must not export'
@@ -48,6 +62,8 @@ data = (output / 'model.glb').read_bytes()
 doc = json.loads(data[20:20 + struct.unpack_from('<I', data, 12)[0]])
 assert [node['name'] for node in doc['nodes']] == ['Deliverable cube'], 'GLB included presentation geometry'
 assert len(doc['meshes']) == 1
+assert sum(doc['accessors'][p['indices']]['count'] for p in doc['meshes'][0]['primitives']) > 36, 'GLB lost the bevel modifier'
+assert len(cube.data.polygons) == 6 and cube.modifiers.get(bevel.name), 'Export applied source modifiers'
 assert (output / 'preview.png').stat().st_size > 1000
 assert (output / 'model.blend').stat().st_size > 1000
 print('MANAGED_EXPORT_RESULT ' + json.dumps({'modelOnly': True, 'meshes': 1, 'preview': True, 'editableSource': True}))

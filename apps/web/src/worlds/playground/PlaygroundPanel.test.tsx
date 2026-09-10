@@ -75,7 +75,7 @@ it("opens image-led ideas, invitations, real contributor credits, and linked roo
       onVisit={visit}
     />,
   );
-  expect(screen.getByText(/The commons is free/)).toBeInTheDocument();
+  expect(screen.getByText(/Community ideas/)).toBeInTheDocument();
   expect(
     screen.getByRole("tab", { name: "Find a crew" }),
   ).toBeInTheDocument();

@@ -45,7 +45,7 @@ export function GovernancePanel({
       </div>
       {!cloud ? (
         <div className="panel-hint">
-          <p>You’re viewing a local preview with separate world data. Rules and votes are stored in the online world, so they aren’t available in this preview.</p>
+          <p>Rules and voting are available in the online world.</p>
           <a className="agent-instructions-link" href="https://agartha-dusky.vercel.app" target="_blank" rel="noreferrer">Open the online world ↗</a>
         </div>
       ) : (

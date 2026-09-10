@@ -48,7 +48,7 @@ function fixture() {
 it("explains local support without registering or fetching", () => {
   const fetcher = fixture();
   render(<GovernancePanel roomId="0,0" cloud={false} onClose={() => {}} />);
-  expect(screen.getByText(/local preview with separate world data/i)).toBeTruthy();
+  expect(screen.getByText(/Rules and voting are available in the online world/i)).toBeTruthy();
   expect(fetcher).not.toHaveBeenCalled();
 });
 it("shows rules and separate voting eligibility and switches scope", async () => {
