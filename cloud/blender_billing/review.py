@@ -5,10 +5,10 @@ import json
 VIEWS = {'hero', 'front', 'right', 'back', 'detail'}
 
 
-def render_view_code(view: str, object_name: str = '') -> str:
-    if view not in VIEWS or not isinstance(object_name, str) or len(object_name) > 128:
+def render_view_code(view: str, object_name: str = '', *, collection_name: str = 'AGARTHA_MODEL') -> str:
+    if view not in VIEWS or not isinstance(object_name, str) or len(object_name) > 128 or not isinstance(collection_name, str) or not 1 <= len(collection_name) <= 128:
         raise ValueError('Invalid inspection view.')
-    parameters = repr(json.dumps({'view': view, 'object': object_name}))
+    parameters = repr(json.dumps({'view': view, 'object': object_name, 'collection': collection_name}))
     return 'import json\n_agartha_review_args = json.loads(' + parameters + ')\n' + RENDER_CODE
 
 
@@ -17,7 +17,7 @@ def _agartha_render_review(args):
     import bpy, os
     from mathutils import Vector
     scene = bpy.context.scene
-    model = bpy.data.collections.get('AGARTHA_MODEL')
+    model = bpy.data.collections.get(args['collection'])
     assert model and scene.camera, 'Create model geometry and a hero camera before inspection.'
     source = scene.camera
     objects = [o for o in model.all_objects if o.type == 'MESH' and not o.hide_render]

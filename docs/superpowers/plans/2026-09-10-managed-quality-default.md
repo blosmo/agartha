@@ -14,7 +14,7 @@
 - No new payment rail, model provider, customer charge, asset publication, or automatic uncertain-operation replay.
 - Preserve existing ownership, cancellation, checkpoint recovery, download bounds, and budget accounting.
 - Keep all current jobs and retries compatible; change defaults only for newly created version-3 jobs.
-- Activation setting: `AGARTHA_MANAGED_WORKFLOW_VERSION=3`, with consistent reference availability on Convex and Vercel.
+- Activation setting: `AGARTHA_MANAGED_WORKFLOW_VERSION=3`, with consistent reference availability on Convex and Vercel. Before public activation, use `AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID` to enable only the benchmark identity.
 
 ## Task 1: Admission, discovery, and durable acceptance contract
 

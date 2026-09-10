@@ -63,6 +63,7 @@ jobs:
           version="$(python3 -c 'from cloud.blender_mcp.config import BLENDER_VERSION; print(BLENDER_VERSION)')"
           blender="$RUNNER_TEMP/blender-quality/blender-${version}-linux-x64/blender"
           "$blender" --background --factory-startup --python-exit-code 1 --python scripts/blender/verify_studio_review.py
+          "$blender" --background --factory-startup --disable-autoexec --python-exit-code 1 --python scripts/blender/verify_export_review.py
           "$blender" --background --factory-startup --python-exit-code 1 --python scripts/blender/verify_advanced.py
           "$blender" --background --factory-startup --python-exit-code 1 --python scripts/blender/verify_baking.py
   validate:
