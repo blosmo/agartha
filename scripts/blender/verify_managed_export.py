@@ -69,6 +69,22 @@ assert (output / 'model.blend').stat().st_size > 1000
 assert (output / 'model.blend').read_bytes().startswith(b'BLENDER'), 'Managed source must match the artifact validator, not Blender 5.2 default compression'
 print('MANAGED_EXPORT_RESULT ' + json.dumps({'modelOnly': True, 'meshes': 1, 'preview': True, 'editableSource': True}))
 
+# The delivery render must never re-export an unreviewed geometry change or save
+# it over the accepted editable source. Evaluate the exact production render code.
+studio_module = ast.parse(source.with_name('studio.py').read_text())
+render_scope = {'EXPORT_CODE': next(ast.literal_eval(node.value) for node in module.body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'EXPORT_CODE' for target in node.targets))}
+for node in studio_module.body:
+    if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id in {'EXPORT', 'FINAL_EXPORT', 'FINAL_RENDER'} for target in node.targets):
+        exec(compile(ast.Module(body=[node], type_ignores=[]), '<managed render code>', 'exec'), render_scope)
+accepted_source = (output / 'model.blend').read_bytes()
+accepted_geometry = (output / 'model.glb').read_bytes()
+cube.location.x += 0.25
+exec(render_scope['FINAL_RENDER'].replace('/workspace/artifacts', str(output)), {})
+assert (output / 'model.glb').read_bytes() == accepted_geometry, 'Final render replaced independently reviewed geometry'
+assert (output / 'model.blend').read_bytes() == accepted_source, 'Final render replaced the accepted editable source'
+cube.location.x -= 0.25
+print('MANAGED_FINAL_RENDER_RESULT ' + json.dumps({'acceptedGlbPreserved': True, 'acceptedSourcePreserved': True}))
+
 # Run the actual chunked movie pipeline with the same camera and classified model.
 import importlib.util
 spec = importlib.util.spec_from_file_location('managed_turnaround', source.with_name('turnaround.py'))

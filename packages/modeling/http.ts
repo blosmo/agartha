@@ -26,21 +26,30 @@ export async function managedInference(req: BillingRequest, res: ServerResponse)
   const { ledger } = paymentEnvironment();
   const brokerLedger = createLedgerClient({ siteUrl: process.env.AGARTHA_CONVEX_SITE_URL!, gatewayKey: process.env.AGARTHA_BILLING_GATEWAY_KEY!, brokerKey: key });
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  if (!body || typeof body !== 'object' || Buffer.byteLength(JSON.stringify(body)) > (body.protocol === 2 ? 3_000_000 : 450_000) || !/^[A-Za-z0-9_-]{1,80}$/.test(body.jobId) || !/^[A-Za-z0-9_-]{1,128}$/.test(body.executorId) || !/^[A-Za-z0-9_-]{1,128}$/.test(body.operationId)) throw new BillingHttpError(400, 'Invalid inference request.');
+  if (!body || typeof body !== 'object' || Buffer.byteLength(JSON.stringify(body)) > ((body.protocol === 2 || body.protocol === 3) ? 3_000_000 : 450_000) || !/^[A-Za-z0-9_-]{1,80}$/.test(body.jobId) || !/^[A-Za-z0-9_-]{1,128}$/.test(body.executorId) || !/^[A-Za-z0-9_-]{1,128}$/.test(body.operationId)) throw new BillingHttpError(400, 'Invalid inference request.');
+  if (body.protocol !== undefined && ![2, 3].includes(body.protocol)) throw new BillingHttpError(400, 'Unknown workflow protocol.');
   // Validates broker authority before the payment service may authorize any inference.
   const row = await brokerLedger<Record<string, any>>('getManagedJobForBroker', { jobId: body.jobId });
   if (process.env.AGARTHA_MANAGED_MODELING_ENABLED !== 'true' && (row.initiatingAgentId ?? row.agentId) !== process.env.AGARTHA_MANAGED_MODELING_OPERATOR_AGENT_ID) throw new BillingHttpError(503, 'Managed modeling is not available.');
   const credential = managedCredential(req);
   if (!credential) throw new BillingHttpError(503, 'Model access is not configured.');
   const remainingCents = row.reservedAiCents - row.chargedAiCents - row.pendingAiCents;
-  if (row.referenceMode === 'generate' && body.protocol !== 2) throw new BillingHttpError(400, 'Reference-guided jobs require the current Blender workflow.');
+  if (row.workflowVersion === 3 ? body.protocol !== 3 : body.protocol === 3) throw new BillingHttpError(400, 'Workflow protocol does not match the persisted job.');
+  if (row.workflowVersion !== 3 && row.referenceMode === 'generate' && body.protocol !== 2) throw new BillingHttpError(400, 'Reference-guided jobs require the current Blender workflow.');
   if (body.protocol === 2 && row.referenceMode !== 'generate') throw new BillingHttpError(400, 'This job does not use reference-guided modeling.');
   if (body.kind === 'reference') {
-    if (body.protocol !== 2 || row.referenceMode !== 'generate' || body.operationId !== `${body.executorId}-reference`) throw new BillingHttpError(400, 'Invalid reference operation.');
+    if (![2, 3].includes(body.protocol) || row.referenceMode !== 'generate' || body.operationId !== `${body.executorId}-reference`) throw new BillingHttpError(400, 'Invalid reference operation.');
     const reference = await generateReference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, remainingCents }, ledger, credential);
     jsonResponse(res, reference); return;
   }
-  if (body.kind !== undefined && body.kind !== 'modeling') throw new BillingHttpError(400, 'Unknown modeling operation.');
-  const step = await runInference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, history: body.history, ...(body.image === undefined ? {} : { image: body.image }), ...(body.protocol === 2 ? { protocol: 2 as const, images: body.images } : {}), remainingCents }, ledger, credential);
+  if (body.kind !== undefined && body.kind !== 'modeling' && !(body.protocol === 3 && ['strategy', 'review'].includes(body.kind))) throw new BillingHttpError(400, 'Unknown modeling operation.');
+  let step;
+  try { step = await runInference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, history: body.history, ...(body.image === undefined ? {} : { image: body.image }), ...([2, 3].includes(body.protocol) ? { protocol: body.protocol, images: body.images } : {}), ...(body.protocol === 3 ? { kind: body.kind ?? 'modeling', strategy: body.strategy, candidateRevision: body.candidateRevision, glbSha256: body.glbSha256 } : {}), remainingCents }, ledger, credential); }
+  catch (error) {
+    if (body.protocol === 3 && (body.kind ?? 'modeling') === 'modeling' && error instanceof BillingHttpError && error.status === 409 && error.message === 'Remaining budget is reserved for delivery.') {
+      jsonResponse(res, { error: error.message, code: 'quality_review_reserved' }, 409); return;
+    }
+    throw error;
+  }
   jsonResponse(res, { model: MANAGED_MODEL, ...step });
 }

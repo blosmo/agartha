@@ -70,6 +70,26 @@ bpy.ops.render.render(write_still=True)
 """
 
 
+def quality_approved(review: Any, digest: str, revision: int | None = None) -> bool:
+    """Validate the broker's durable verdict, never a modeler acceptance claim."""
+    if not isinstance(review, dict) or review.get('glbSha256') != digest or not re.fullmatch('[a-f0-9]{64}', digest): return False
+    if type(review.get('candidateRevision')) is not int or review['candidateRevision'] < 1: return False
+    if revision is not None and review['candidateRevision'] != revision: return False
+    keys = {'silhouette', 'proportions', 'construction', 'materials', 'presentation'}
+    criteria = review.get('criteria')
+    if not isinstance(criteria, dict) or set(criteria) != keys: return False
+    for value in criteria.values():
+        if not isinstance(value, dict) or set(value) != {'pass', 'evidence'} or value['pass'] is not True: return False
+        if not isinstance(value['evidence'], str) or len(value['evidence'].strip()) < 30 or len(value['evidence'].encode()) > 800: return False
+    defects = review.get('defects')
+    if not isinstance(defects, list) or len(defects) > 12: return False
+    for defect in defects:
+        if not isinstance(defect, dict) or set(defect) != {'severity', 'criterion', 'description'}: return False
+        if defect['severity'] != 'minor' or defect['criterion'] not in keys: return False
+        if not isinstance(defect['description'], str) or len(defect['description'].strip()) < 30 or len(defect['description'].encode()) > 800: return False
+    return review.get('accepted') is True
+
+
 class ManagedFiles:
     def __init__(self, root: Path, storage: Any, commit: Callable[[], None]):
         self.root, self.storage, self.commit = root, storage, commit
@@ -107,7 +127,9 @@ class ManagedFiles:
         with self.storage.transaction():
             directory = self.directory(job_id)
             if name in {'reference.jpg', 'review.json'}:
-                metadata = json.loads((directory / 'reference-meta.json').read_text())
+                meta = directory / ('review-meta.json' if name == 'review.json' else 'reference-meta.json')
+                if name == 'review.json' and not meta.exists(): meta = directory / 'reference-meta.json'
+                metadata = json.loads(meta.read_text())
                 path = directory / name
             else:
                 metadata = json.loads((directory / 'current.json').read_text())
@@ -120,7 +142,7 @@ class ManagedFiles:
             # and bounded read so replacement/growth cannot return unreserved bytes.
             with path.open('rb') as artifact:
                 size = os.fstat(artifact.fileno()).st_size
-                if size > FILE_LIMIT:
+                if size > (1_000_000 if name == 'review.json' else FILE_LIMIT):
                     raise ValueError('Artifact exceeds its limit.')
                 if authorize is not None:
                     authorization = authorize(size)
@@ -156,17 +178,32 @@ class ManagedFiles:
         if len(payload) > 1_000_000: raise ValueError('Review trace exceeds its limit.')
         with self.storage.transaction():
             directory = self.directory(job_id)
+            directory.mkdir(parents=True, exist_ok=True)
+            metadata = directory / 'review-meta.json'
+            if not metadata.exists():
+                legacy = directory / 'reference-meta.json'
+                created = json.loads(legacy.read_text())['created'] if legacy.exists() else time.time()
+                temporary_meta = directory / '.review-meta.json'
+                temporary_meta.write_text(json.dumps({'created': created}))
+                os.replace(temporary_meta, metadata)
             temporary = directory / '.review.json'
             temporary.write_bytes(payload)
             os.replace(temporary, directory / 'review.json')
             self.commit()
 
-    def accept(self, job_id: str) -> None:
+    def accept(self, job_id: str, quality_review: dict[str, Any] | None = None) -> None:
         with self.storage.transaction():
             directory = self.directory(job_id)
-            current = (directory / 'current.json').read_bytes()
+            current = json.loads((directory / 'current.json').read_text())
+            digest = hashlib.sha256((directory / current['revision'] / 'model.glb').read_bytes()).hexdigest()
+            if quality_review is None and (directory / 'accepted.json').exists():
+                quality_review = json.loads((directory / 'accepted.json').read_text()).get('qualityReview')
+                if quality_review and quality_review.get('glbSha256') != digest: quality_review = None
+            if quality_review is not None:
+                if not quality_approved(quality_review, digest): raise ValueError('Acceptance requires a bound passing quality review.')
+                current['qualityReview'] = quality_review
             temporary = directory / '.accepted.json'
-            temporary.write_bytes(current)
+            temporary.write_text(json.dumps(current))
             os.replace(temporary, directory / 'accepted.json')
             self.commit()
 
@@ -177,9 +214,20 @@ class ManagedFiles:
             metadata = json.loads((directory / 'accepted.json').read_text())
             if time.time() - metadata['created'] > 7 * 86400 or not re.fullmatch('[a-f0-9]{32}', metadata['revision']):
                 raise ValueError('Accepted artifact expired.')
-            payload = (directory / metadata['revision'] / name).read_bytes()
-            if len(payload) > FILE_LIMIT: raise ValueError('Accepted artifact exceeds its limit.')
-            return payload
+            with (directory / metadata['revision'] / name).open('rb') as artifact:
+                size = os.fstat(artifact.fileno()).st_size
+                if size > FILE_LIMIT: raise ValueError('Accepted artifact exceeds its limit.')
+                payload = artifact.read(size + 1)
+                if len(payload) != size: raise ValueError('Accepted artifact changed during read.')
+                return payload
+
+    def accepted_quality(self, job_id: str) -> dict[str, Any]:
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            review = json.loads((directory / 'accepted.json').read_text()).get('qualityReview')
+            digest = hashlib.sha256(self.read_accepted(job_id, 'model.glb')).hexdigest()
+            if not quality_approved(review, digest): raise ValueError('No trusted accepted quality marker.')
+            return review
 
     def restore_accepted(self, job_id: str) -> None:
         with self.storage.transaction():
@@ -227,7 +275,7 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
     if not claim.get('claimed'):
         return
     row = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
-    if row.get('referenceMode') == 'generate':
+    if row.get('workflowVersion') == 3 or row.get('referenceMode') == 'generate':
         from .studio import run_studio
         run_studio(broker, files, token, job_id, executor, row, monitor, inference_url, broker_key)
         return
@@ -337,13 +385,15 @@ def recover_managed_files(broker: Any, files: ManagedFiles, job: dict[str, Any])
     if not job.get('executorId'):
         return
     accepted = False
-    if job.get('referenceMode') == 'generate':
+    quality = job.get('workflowVersion') == 3
+    if quality or job.get('referenceMode') == 'generate':
         try:
             files.read(job['jobId'], 'reference.jpg')
             files.read(job['jobId'], 'review.json')
             broker.ledger.call('recordManagedReference', jobId=job['jobId'], executorId=job['executorId'])
         except (FileNotFoundError, ValueError): pass
         try:
+            if quality: files.accepted_quality(job['jobId'])
             files.read_accepted(job['jobId'], 'model.blend')
             files.restore_accepted(job['jobId'])
             accepted = True
@@ -353,7 +403,7 @@ def recover_managed_files(broker: Any, files: ManagedFiles, job: dict[str, Any])
     else:
         files.read(job['jobId'], 'preview.png')
     broker.ledger.call('recordManagedCheckpoint', jobId=job['jobId'], executorId=job['executorId'])
-    if accepted: broker.ledger.call('recordManagedAcceptance', jobId=job['jobId'], executorId=job['executorId'])
+    if accepted: broker.ledger.call('recordManagedAcceptance', jobId=job['jobId'], executorId=job['executorId'], **({'qualityApproved': True} if quality else {}))
     try:
         video = files.read(job['jobId'], 'turnaround.mp4')
         if len(video) >= 1000 and video[4:8] == b'ftyp':

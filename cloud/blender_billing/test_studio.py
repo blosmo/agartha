@@ -32,14 +32,14 @@ class StudioTests(unittest.TestCase):
             store.save_reference('job', raster(), REFERENCE_MODEL)
             self.assertEqual(len(reference_views(raster())), 4)
 
-    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None):
+    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None, workflow_version=None, reference_mode='generate', quality_verdicts=None, cancel_after=None, final_mutation=False, mutate_after_review=False):
         directory=tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         store=ManagedFiles(Path(directory.name),StorageCoordinator(),lambda:None)
         files=Mock(wraps=store)
         if restore_failure: files.restore_accepted.side_effect=OSError('storage unavailable')
         broker=Mock(); timeline=[]; requests=[]
         broker.upload_material.return_value="shared-material-test.glb"
-        row={'reservationId':'r','status':'running','brief':'An observatory','referenceMode':'generate','shareMaterials':share_materials, 'shareComponents':share_components}
+        row={'reservationId':'r','status':'running','brief':'An observatory','referenceMode':reference_mode,'workflowVersion':workflow_version,'shareMaterials':share_materials, 'shareComponents':share_components}
         def ledger(name, **kwargs):
             timeline.append(name)
             if name=='heartbeatManagedJob': return {'active':True}
@@ -51,11 +51,11 @@ class StudioTests(unittest.TestCase):
         def call(token,reservation,request,operation,limit):
             params=request['params'];code=params['arguments'].get('code','')
             if 'BROKEN' in code:return {'result':{'isError':True,'content':[{'text':'Geometry edit failed'}]}}
-            if 'REVISION_B' in code:state['model']=b'BLENDER-B'
+            if 'REVISION_B' in code or final_mutation and operation == 'worker-final-render':state['model']=b'BLENDER-B'
             if "mark_published_component(root," in code:
                 import ast
                 state['parent']=ast.literal_eval(code.split("mark_published_component(root,",1)[1].split(')',1)[0])
-            if 'shutil.copyfile' in code:state['accepted']=state['model']
+            if "shutil.copyfile('/workspace/artifacts/model.blend'" in code:state['accepted']=state['model']
             if 'open_mainfile' in code:state['model']=state['accepted']
             output = 'STUDIO_OK:' + operation
             if verbose_export and 'bpy.ops.export_scene.gltf' in code:
@@ -74,15 +74,31 @@ class StudioTests(unittest.TestCase):
             if name=='shared_source.blend':return b'BLENDER-material-only'
             if name=='model.blend':return state['model']
             if name=='accepted.blend':return state['accepted']
+            if name=='accepted.glb':return b'glTF'+state['accepted']
             if name=='model.glb':return b'glTF'+state['model']
             return raster((64,64),'PNG')
         broker.download.side_effect=download
-        outputs=[{'model':REFERENCE_MODEL,'image':'data:image/jpeg;base64,'+base64.b64encode(raster()).decode(),'chargeCents':8},*actions]
+        outputs=list(actions)
+        verdicts=list(quality_verdicts or [])
         def stream(method,url,**kwargs):
             requests.append(kwargs['json']);timeline.append('inference-'+kwargs['json']['kind'])
-            if not outputs:raise RuntimeError('budget exhausted')
-            value=outputs.pop(0)
-            response=Mock();response.iter_bytes.return_value=[json.dumps(value).encode()]
+            request=kwargs['json'];kind=request['kind']
+            if kind=='reference': value={'model':REFERENCE_MODEL,'image':'data:image/jpeg;base64,'+base64.b64encode(raster()).decode(),'chargeCents':8}
+            elif kind=='strategy':
+                evidence='Visible coherent geometry with appropriate silhouette and structural proportions.'
+                value={'strategy':{'subjectClass':'architecture','styleUse':evidence,'geometryApproach':evidence,'proportions':[evidence],'stages':[evidence]*3,'acceptanceChecks':dict.fromkeys(['silhouette','proportions','construction','materials','presentation'],evidence)}}
+            elif kind=='review':
+                if not verdicts: raise RuntimeError('review budget exhausted')
+                value=verdicts.pop(0)
+                if isinstance(value,Exception): raise value
+                value={'candidateRevision':request['candidateRevision'],'glbSha256':request['glbSha256'],**value}
+            else:
+                if not outputs:raise RuntimeError('budget exhausted')
+                value=outputs.pop(0)
+                if isinstance(value,Exception): raise value
+            if kind==cancel_after: row['cancelRequested']=True
+            if kind=='review' and mutate_after_review: state['model']=b'BLENDER-B'
+            response=Mock();response.status_code=409 if value.get('code')=='quality_review_reserved' else 200;response.iter_bytes.return_value=[json.dumps(value).encode()]
             context=Mock();context.__enter__=Mock(return_value=response);context.__exit__=Mock(return_value=False)
             return context
         client=Mock();client.__enter__=Mock(return_value=client);client.__exit__=Mock(return_value=False);client.stream.side_effect=stream
