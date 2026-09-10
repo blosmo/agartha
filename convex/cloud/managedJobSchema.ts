@@ -4,6 +4,7 @@ export const componentSharing = v.object({license:v.union(v.literal("CC0-1.0"),v
 export const managedStatus = v.union(v.literal("queued"), v.literal("running"), v.literal("completed"), v.literal("partial"), v.literal("failed"), v.literal("cancelled"));
 export const managedJobTables = {
   managedJobs: defineTable({
+    downloadBytes: v.optional(v.number()), downloadWindowStart: v.optional(v.number()), downloadRequests: v.optional(v.number()),
     jobId: v.string(), requestId: v.string(), agentId: v.string(), livemode: v.boolean(), brief: v.string(), shareMaterials: v.optional(v.boolean()), shareComponents: v.optional(componentSharing), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), referenceReady: v.optional(v.boolean()), chargedReferenceCents: v.optional(v.number()), budgetCents: v.number(), reservationId: v.string(),
     status: managedStatus, cancelled: v.boolean(), progress: v.string(), executorId: v.optional(v.string()),
     reservedAiCents: v.number(), chargedAiCents: v.number(), pendingAiCents: v.number(), releasedAiCents: v.number(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()), videoReady: v.optional(v.boolean()),

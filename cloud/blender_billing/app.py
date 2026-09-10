@@ -12,7 +12,7 @@ APP_NAME = "agartha-paid-blender"
 app = modal.App(APP_NAME)
 source = Path(__file__).resolve().parents[2] / "cloud"
 image = (modal.Image.debian_slim(python_version="3.12")
-         .pip_install("modal==1.5.3", "mcp==1.26.0", "starlette==1.6.0", "httpx==0.28.1", "Pillow==11.3.0")
+         .pip_install("modal==1.5.3", "mcp==1.28.1", "starlette==1.6.0", "httpx==0.28.1", "Pillow==12.3.0")
          .add_local_dir(source / "blender_billing", "/opt/agartha/cloud/blender_billing", copy=True,
                         ignore=lambda path: path.name.startswith("test_") or "__pycache__" in path.parts)
          .add_local_dir(source / "blender_mcp", "/opt/agartha/cloud/blender_mcp", copy=True,

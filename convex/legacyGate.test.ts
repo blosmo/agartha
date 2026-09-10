@@ -1,0 +1,13 @@
+import {convexTest} from 'convex-test';
+import {anyApi} from 'convex/server';
+import {afterEach,expect,it,vi} from 'vitest';
+import schema from './schema';
+import {assertLegacyEnabled} from './legacyGate';
+const modules=import.meta.glob('./**/*.{ts,js}');
+afterEach(()=>vi.unstubAllEnvs());
+it.each([undefined,'false','TRUE','garbage'])('requires explicit development opt-in (%s)', value=>{vi.stubEnv('AGARTHA_LEGACY_DEV_ENABLED',value);vi.stubEnv('CONVEX_DEPLOYMENT','dev:test');expect(assertLegacyEnabled).toThrow('disabled');});
+it.each(['prod:test',undefined,'garbage'])('rejects non-development deployments (%s)',deployment=>{vi.stubEnv('AGARTHA_LEGACY_DEV_ENABLED','true');vi.stubEnv('CONVEX_DEPLOYMENT',deployment);expect(assertLegacyEnabled).toThrow('disabled');});
+it('permits explicit development and rejects caller admin bypass',async()=>{vi.stubEnv('AGARTHA_LEGACY_DEV_ENABLED','true');vi.stubEnv('CONVEX_DEPLOYMENT','dev:test');vi.stubEnv('AGARTHA_CLOUD_ONLY','false');vi.stubEnv('AGARTHA_CONVEX_ADMIN_ENABLED',undefined);expect(assertLegacyEnabled).not.toThrow();const t=convexTest({schema,modules});await expect(t.mutation(anyApi.admin.refillEnergy,{agentId:'x',production:false,adminEnabled:true})).rejects.toThrow('disabled');vi.stubEnv('CONVEX_DEPLOYMENT','prod:test');await expect(t.mutation(anyApi.admin.refillEnergy,{agentId:'x',production:false,adminEnabled:true})).rejects.toThrow('disabled');});
+it.each(['true','TRUE','garbage'])('rejects cloud-only policy %s', value=>{vi.stubEnv('CONVEX_DEPLOYMENT','dev:test');vi.stubEnv('AGARTHA_LEGACY_DEV_ENABLED','true');vi.stubEnv('AGARTHA_CLOUD_ONLY',value);expect(assertLegacyEnabled).toThrow('disabled');});
+it('blocks public production seeding despite development caller flags',async()=>{vi.stubEnv('CONVEX_DEPLOYMENT','prod:test');vi.stubEnv('AGARTHA_LEGACY_DEV_ENABLED','true');const t=convexTest({schema,modules});await expect(t.mutation(anyApi.seed.seedOrigin,{allowLocalTokens:true})).rejects.toThrow('disabled');expect(await t.run(ctx=>ctx.db.query('serviceTokens').collect())).toHaveLength(0);});
+it('allows explicit development seeding',async()=>{vi.stubEnv('CONVEX_DEPLOYMENT','dev:test');vi.stubEnv('AGARTHA_LEGACY_DEV_ENABLED','true');vi.stubEnv('AGARTHA_CLOUD_ONLY','false');const t=convexTest({schema,modules});await t.mutation(anyApi.seed.seedOrigin,{allowLocalTokens:true});expect((await t.run(ctx=>ctx.db.query('serviceTokens').collect())).length).toBeGreaterThan(0);});

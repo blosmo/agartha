@@ -90,25 +90,35 @@ class ManagedFiles:
                     shutil.rmtree(child)
             self.commit()
 
-    def read(self, job_id: str, name: str) -> bytes:
+    def read(self, job_id: str, name: str, authorize: Callable[[int], Any] | None = None) -> bytes:
         if name not in NAMES:
             raise ValueError('Unknown artifact.')
         with self.storage.transaction():
             directory = self.directory(job_id)
             if name in {'reference.jpg', 'review.json'}:
                 metadata = json.loads((directory / 'reference-meta.json').read_text())
-                if time.time() - metadata['created'] > 7 * 86400:
-                    raise ValueError('Artifact retention has expired.')
-                payload = (directory / name).read_bytes()
-                if len(payload) > FILE_LIMIT: raise ValueError('Artifact exceeds its limit.')
-                return payload
-            metadata = json.loads((directory / 'current.json').read_text())
-            if time.time() - metadata['created'] > 7 * 86400 or not re.fullmatch('[a-f0-9]{32}', metadata['revision']):
+                path = directory / name
+            else:
+                metadata = json.loads((directory / 'current.json').read_text())
+                if not re.fullmatch('[a-f0-9]{32}', metadata['revision']):
+                    raise ValueError('Invalid artifact revision.')
+                path = directory / metadata['revision'] / name
+            if time.time() - metadata['created'] > 7 * 86400:
                 raise ValueError('Artifact retention has expired.')
-            payload = (directory / metadata['revision'] / name).read_bytes()
-            if len(payload) > FILE_LIMIT:
-                raise ValueError('Artifact exceeds its limit.')
-            return payload
+            # Keep the validated descriptor and storage transaction through authorization
+            # and bounded read so replacement/growth cannot return unreserved bytes.
+            with path.open('rb') as artifact:
+                size = os.fstat(artifact.fileno()).st_size
+                if size > FILE_LIMIT:
+                    raise ValueError('Artifact exceeds its limit.')
+                if authorize is not None:
+                    authorization = authorize(size)
+                    if authorization.get('bytes') != size:
+                        raise ValueError('Artifact download authorization mismatch.')
+                payload = artifact.read(size + 1)
+                if len(payload) != size:
+                    raise ValueError('Artifact changed during download.')
+                return payload
 
     def save_reference(self, job_id: str, payload: bytes, model: str) -> None:
         from PIL import Image

@@ -267,7 +267,7 @@ async fn admin_refill_energy_requires_admin_token_and_caps_at_agent_cap() {
         .unwrap()
         .energy
         .current = 3;
-    let app = app(ApiState::new(state));
+    let app = app(ApiState::with_admin_token(state, Some("token-admin-local".into())));
     let body = json!({ "agentId": "agent-moss-archivist" });
 
     let forbidden = request(Method::POST, "/admin/energy/refill", Some(body.clone()))
@@ -303,7 +303,7 @@ async fn admin_refill_energy_can_add_a_partial_amount() {
         .unwrap()
         .energy
         .current = 3;
-    let app = app(ApiState::new(state));
+    let app = app(ApiState::with_admin_token(state, Some("token-admin-local".into())));
     let body = json!({ "agentId": "agent-moss-archivist", "amount": 5 });
 
     let refill = request(Method::POST, "/admin/energy/refill", Some(body.clone()))
@@ -349,4 +349,14 @@ fn request(method: Method, path: &str, body: Option<Value>) -> axum::http::reque
 async fn json_body(response: axum::response::Response) -> Value {
     let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
     serde_json::from_slice(&bytes).unwrap()
+}
+
+#[tokio::test]
+async fn missing_admin_configuration_denies_known_demo_token() {
+    let app = app(ApiState::with_admin_token(ServerState::seeded_origin(), None));
+    let body = json!({"agentId":"agent-moss-archivist", "amount": 5});
+    let request = request(Method::POST, "/admin/energy/refill", Some(body.clone()))
+        .header(header::AUTHORIZATION, "Bearer token-admin-local")
+        .body(Body::from(body.to_string())).unwrap();
+    assert_eq!(app.oneshot(request).await.unwrap().status(), StatusCode::FORBIDDEN);
 }

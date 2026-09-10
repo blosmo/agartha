@@ -213,3 +213,16 @@ describe('reference-guided job accounting', () => {
     await expect(t.mutation(api.recordManagedAcceptance, { jobId: 'job', executorId: 'worker' })).rejects.toThrow('checkpoint');
   });
 });
+it('atomically caps concurrent artifact downloads and preserves frozen-owner access', async()=>{
+ const {t,actor}=await setup();await t.mutation(api.createManagedJob,create);
+ await t.run(async ctx=>{const row=await ctx.db.query('managedJobs').first();await ctx.db.patch(row!._id,{downloadBytes:255_999_900});const wallet=await ctx.db.query('blenderWallets').withIndex('by_agent_mode',q=>q.eq('agentId',actor.agentId).eq('livemode',false)).unique();await ctx.db.patch(wallet!._id,{frozen:true});});
+ const results=await Promise.allSettled(Array.from({length:4},()=>t.mutation(api.authorizeManagedDownload,{token,jobId:'job',bytes:100})));
+ expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+ expect((await t.query(api.getManagedJob,{token,jobId:'job'})).downloadBytes).toBe(256_000_000);
+ await expect(t.mutation(api.authorizeManagedDownload,{token:tokenB,jobId:'job',bytes:1})).rejects.toThrow();
+});
+it('limits artifact request frequency independently of byte allowance',async()=>{
+ const {t}=await setup();await t.mutation(api.createManagedJob,create);
+ for(let i=0;i<32;i++)await t.mutation(api.authorizeManagedDownload,{token,jobId:'job',bytes:1});
+ await expect(t.mutation(api.authorizeManagedDownload,{token,jobId:'job',bytes:1})).rejects.toThrow('allowance');
+});

@@ -44,7 +44,7 @@ def build_image():
         "git clone --filter=blob:none https://github.com/ahujasid/blender-mcp.git /opt/blender-mcp; "
         f"cd /opt/blender-mcp && git checkout {UPSTREAM_COMMIT}; "
         "python -m pip install --no-cache-dir .; "
-        "python -m pip install --no-cache-dir 'mcp==1.26.0'; "
+        "python -m pip install --no-cache-dir 'mcp==1.28.1' 'Pillow==12.3.0'; "
         f"blender_site=$(find /opt/blender-{BLENDER_VERSION}-linux-x64/{BLENDER_SERIES}/python/lib -maxdepth 2 -type d -name site-packages -print -quit); "
         "test -n \"$blender_site\"; "
         "python -m pip install --no-cache-dir --upgrade --target \"$blender_site\" requests==2.32.4; "

@@ -85,14 +85,30 @@ export const createManagedJob = internalMutation({
   handler: (ctx, args) => createManagedJobInTransaction(ctx, args),
 });
 
-export const getManagedJob = internalQuery({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => { const actor = await requireBillingOwner(ctx, args.token); const row = await job(ctx, args.jobId); if (row.agentId !== actor.agentId) {
+async function accessibleJob(ctx: QueryCtx | MutationCtx, args: {token: string; jobId: string}) { const actor = await requireBillingOwner(ctx, args.token); const row = await job(ctx, args.jobId); if (row.agentId !== actor.agentId) {
   const allowance = await allowanceForJob(ctx, row.agentId, row.livemode, row.jobId);
-  if (allowance && (allowance.sponsorId === actor.agentId || allowance.recipientId === actor.agentId)) return sanitized(ctx, row);
+  if (allowance && (allowance.sponsorId === actor.agentId || allowance.recipientId === actor.agentId)) return row;
   const pool = await ctx.db.query('playgroundFundingPools').withIndex('by_wallet', q => q.eq('walletOwner', row.agentId)).unique();
   const proposal = pool ? await ctx.db.query('playgroundProjects').withIndex('by_project', q => q.eq('projectId', pool.projectId)).unique() : null;
   const backers = pool ? [...await fundingBackings(ctx, pool.projectId, row.livemode, 'held'), ...await fundingBackings(ctx, pool.projectId, row.livemode, 'settled')] : [];
   if (!pool || pool.jobId !== row.jobId || (proposal?.creatorId !== actor.agentId && !(terminal(row) && backers.some(b => b.agentId === actor.agentId && b.status !== 'withdrawn')))) throw new ConvexError({ code: "not_found", message: "Managed job not found." });
-} return sanitized(ctx, row); } });
+} return row; }
+export const getManagedJob = internalQuery({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => sanitized(ctx, await accessibleJob(ctx, args)) });
+// Charged before transfer, including failed transfers, to avoid refund/retry races.
+export const authorizeManagedDownload = internalMutation({
+  args: {token: v.string(), jobId: v.string(), bytes: v.number()},
+  handler: async (ctx, args) => {
+    const row = await accessibleJob(ctx, args);
+    assertCents(args.bytes, 'bytes');
+    const used = row.downloadBytes ?? 0, now = Date.now();
+    const fresh = now - (row.downloadWindowStart ?? 0) >= 60_000;
+    const requests = (fresh ? 0 : row.downloadRequests ?? 0) + 1;
+    if (requests > 32 || args.bytes > 16 * 1024 * 1024 || used + args.bytes > 256_000_000)
+      throw new ConvexError({code: 'quota', message: 'Managed artifact download allowance exhausted.'});
+    await ctx.db.patch(row._id, {downloadBytes: used + args.bytes, downloadWindowStart: fresh ? now : row.downloadWindowStart ?? now, downloadRequests: requests});
+    return {bytes: args.bytes};
+  },
+});
 export const getManagedJobForBroker = internalQuery({ args: { jobId: v.string() }, handler: async (ctx, args) => {
   const row = await job(ctx, args.jobId);
   if (row.agentId.startsWith('playground-allowance-')) {

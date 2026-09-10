@@ -260,6 +260,9 @@ def create_app(*, workspace: Path | None = None, require_token: bool = False,
 class SessionASGI:
     """Small route wrapper that delegates MCP requests to upstream's ASGI app."""
     def __init__(self, upstream: Any, activity: Activity, store: SessionStore, *, require_token: bool = False) -> None:
+        self.expected_token = os.environ.get("MCP_CONNECT_TOKEN")
+        if require_token and not (self.expected_token or "").strip():
+            raise RuntimeError("MCP_CONNECT_TOKEN is required when token authentication is enabled.")
         self.upstream, self.activity, self.store, self.require_token = upstream, activity, store, require_token
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
@@ -267,7 +270,7 @@ class SessionASGI:
             return await self.upstream(scope, receive, send)
         path = scope.get("path", "")
         headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
-        expected = os.environ.get("MCP_CONNECT_TOKEN")
+        expected = self.expected_token
         if (self.require_token or expected) and headers.get("authorization") != f"Bearer {expected}":
             await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"text/plain")]})
             await send({"type": "http.response.body", "body": b"Unauthorized"})

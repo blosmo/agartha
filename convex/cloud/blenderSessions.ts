@@ -157,6 +157,7 @@ export const claimLaunch = internalMutation({
     identifier(args.reservationId, "reservationId"); identifier(args.operationId, "operationId");
     const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique();
     if (!reservation) throw new Error("Reservation not found.");
+    if ((await getOrCreateWallet(ctx, reservation.agentId, reservation.livemode)).frozen) throw new Error("Blender funding authority is frozen.");
     const prior = await ctx.db.query("blenderSessionOperations").withIndex("by_operation", q => q.eq("operationId", args.operationId)).unique();
     if (prior) {
       if (prior.action !== "launch" || prior.reservationId !== reservation.reservationId || prior.generation !== args.launchGeneration) throw new Error("Launch operation was reused with a different payload.");
@@ -210,6 +211,7 @@ export const claimStartup = internalMutation({
     identifier(args.executorId, "executorId");
     const row = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique();
     if (!row || row.status !== "launching" || row.launchGeneration !== args.launchGeneration || row.launchClaimedAt === undefined) throw new Error("Stale startup claim.");
+    if ((await getOrCreateWallet(ctx, row.agentId, row.livemode)).frozen) throw new Error("Blender funding authority is frozen.");
     const now = Date.now();
     if (now > row.launchClaimedAt + 60_000) return { claimed: false, expired: true, reservationId: row.reservationId };
     if (row.executorId && row.executorId !== args.executorId) return { claimed: false, expired: false, reservationId: row.reservationId };
@@ -327,6 +329,7 @@ export const authorizeOperation = internalMutation({
     if (args.responseBytes > BLENDER_BILLING.responseBytes) throw new Error("Response exceeds reservation limit.");
     const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique();
     if (!reservation || reservation.status !== "running" || reservation.stopRequested || reservation.launchGeneration !== args.launchGeneration) throw new Error("Operation is not authorized for this session.");
+    if ((await getOrCreateWallet(ctx, reservation.agentId, reservation.livemode)).frozen) throw new Error("Blender funding authority is frozen.");
     const prior = await ctx.db.query("blenderSessionOperations").withIndex("by_operation", q => q.eq("operationId", args.operationId)).unique();
     if (prior) { if (prior.action !== "operation" || prior.reservationId !== reservation.reservationId || prior.generation !== args.launchGeneration || prior.responseBytes !== args.responseBytes || prior.payloadFingerprint !== args.payloadFingerprint) throw new Error("Operation request was reused with a different payload."); return { operationId: prior.operationId, responseBytes: prior.responseBytes, reused: true, state: prior.state, resultRef: prior.resultRef }; }
     const now = Date.now(); const window = await ctx.db.query("blenderSessionCallWindows").withIndex("by_reservation", q => q.eq("reservationId", reservation.reservationId)).unique();

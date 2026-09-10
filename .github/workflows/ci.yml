@@ -77,7 +77,7 @@ jobs:
           python3 -m venv .venv
           .venv/bin/python -m pip install -r cloud/blender_mcp/requirements-client.txt
           .venv/bin/python -m unittest discover -s cloud/blender_billing -t . -p 'test_*.py'
-          .venv/bin/python -m unittest cloud.blender_mcp.test_app cloud.blender_mcp.test_runtime cloud.blender_mcp.test_transport cloud.blender_mcp.test_local cloud.blender_mcp.test_asset_templates
+          .venv/bin/python -m unittest cloud.blender_mcp.test_app cloud.blender_mcp.test_session_auth cloud.blender_mcp.test_runtime cloud.blender_mcp.test_transport cloud.blender_mcp.test_local cloud.blender_mcp.test_asset_templates
       - run: npm run build
       - name: Test Rust workspace
         run: |

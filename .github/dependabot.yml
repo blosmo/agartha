@@ -14,3 +14,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  - package-ecosystem: pip
+    directory: /cloud/blender_mcp
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

@@ -31,6 +31,7 @@ const DEFAULT_BIND_ADDR: &str = "127.0.0.1:8787";
 pub struct ApiState {
     world: Arc<Mutex<ServerState>>,
     patches: broadcast::Sender<PatchEnvelopeDto>,
+    admin_token: Option<String>,
 }
 
 impl ApiState {
@@ -39,10 +40,15 @@ impl ApiState {
     }
 
     pub fn new(world: ServerState) -> Self {
+        Self::with_admin_token(world, std::env::var("AGARTHA_ADMIN_TOKEN").ok())
+    }
+
+    pub fn with_admin_token(world: ServerState, admin_token: Option<String>) -> Self {
         let (patches, _) = broadcast::channel(256);
         Self {
             world: Arc::new(Mutex::new(world)),
             patches,
+            admin_token: admin_token.filter(|token| !token.trim().is_empty()),
         }
     }
 }
@@ -200,7 +206,7 @@ async fn admin_refill_energy(
     headers: HeaderMap,
     Json(request): Json<AdminRefillEnergyRequestDto>,
 ) -> Result<Json<AdminRefillEnergyResponseDto>, ApiResponseError> {
-    admin_auth_from_headers(&headers)?;
+    admin_auth_from_headers(&headers, state.admin_token.as_deref())?;
     let mut world = state
         .world
         .lock()
@@ -380,10 +386,9 @@ fn auth_from_headers(headers: &HeaderMap) -> Result<AuthContext, ApiResponseErro
     Ok(AuthContext::bearer(token))
 }
 
-fn admin_auth_from_headers(headers: &HeaderMap) -> Result<(), ApiResponseError> {
+fn admin_auth_from_headers(headers: &HeaderMap, expected: Option<&str>) -> Result<(), ApiResponseError> {
     let auth = auth_from_headers(headers)?;
-    let expected =
-        std::env::var("AGARTHA_ADMIN_TOKEN").unwrap_or_else(|_| "token-admin-local".to_string());
+    let expected = expected.ok_or_else(|| ApiResponseError::from(RejectionReason::PermissionDenied))?;
     if auth.bearer_token != expected {
         return Err(ApiResponseError::from(RejectionReason::PermissionDenied));
     }

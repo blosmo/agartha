@@ -1,4 +1,4 @@
-import { assertLegacyEnabled } from './legacyGate';
+import { assertLegacyEnabled, legacyProductionPolicy } from './legacyGate';
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { MATERIAL, type CellSample, type ChunkCoord, type WorldCoord } from "@agartha/protocol/world";
@@ -45,7 +45,7 @@ export const observe = query({
       agentId: args.agentId,
       scope: "agent:read",
       now,
-      production: args.production ?? false,
+      production: legacyProductionPolicy(),
     });
     if (!auth.ok) throw new Error(auth.reason);
     const agent = await ctx.db
@@ -115,7 +115,7 @@ export const quote = mutation({
       agentId: parsed.envelope.agentId,
       scope: "agent:write",
       now,
-      production: args.production ?? false,
+      production: legacyProductionPolicy(),
     });
     if (!auth.ok) return { quoteId: "quote-rejected", cost: 0, reason: auth.reason, expectedChunkVersions: {} };
 
@@ -155,7 +155,7 @@ export const act = mutation({
       agentId: envelope.agentId,
       scope: "agent:write",
       now,
-      production: args.production ?? false,
+      production: legacyProductionPolicy(),
     });
     if (!auth.ok) return rejectedResult(auth.reason);
 
@@ -207,7 +207,7 @@ export const clearAllCells = mutation({
       agentId: args.agentId,
       scope: "agent:write",
       now,
-      production: args.production ?? false,
+      production: legacyProductionPolicy(),
     });
     if (!auth.ok) return rejectedResult(auth.reason);
 
@@ -346,7 +346,7 @@ export const paintBrowserCells = mutation({
       agentId: args.agentId,
       scope: "agent:write",
       now,
-      production: args.production ?? false,
+      production: legacyProductionPolicy(),
     });
     if (!auth.ok) return rejectedResult(auth.reason);
 
@@ -424,7 +424,7 @@ async function authenticateWrite(
     agentId: args.agentId,
     scope: "agent:write",
     now,
-    production: args.production ?? false,
+    production: legacyProductionPolicy(),
   });
 }
 

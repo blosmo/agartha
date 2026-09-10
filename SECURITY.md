@@ -15,3 +15,9 @@ The Vite development server and legacy Rust demo use local development convenien
 `VITE_*` values are bundled into public JavaScript. Gateway, renderer, operator, and administrator credentials belong only in server-side secret stores. `.env*`, `.agartha/`, and `.vercel/` contain private state and must not be committed. If a credential leaks, revoke or rotate it first; deleting the file does not revoke access.
 
 Test security changes against local fixtures or an authorized isolated staging deployment. Public demo contributions and cloud load tests require operator coordination.
+
+## Automated checks
+
+CI scans Git history with Gitleaks and checks npm, Python, and Rust dependencies for published advisories. Dependabot tracks all three dependency ecosystems and GitHub Actions. Historical scanner exceptions in `.gitleaksignore` identify exact reviewed test fixtures; do not suppress entire files or secret rules. These checks complement review and do not prove that a deployment is secure.
+
+The archived Convex API is disabled by default. Local development requires both a `dev:` deployment and `AGARTHA_LEGACY_DEV_ENABLED=true`; production and cloud-only deployments cannot enable it. The Rust demo administrator API requires an explicit `AGARTHA_ADMIN_TOKEN`. Keep independent secrets for development, preview, and production, and retain fork approval and preview access protections on the hosting provider.
