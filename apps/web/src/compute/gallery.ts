@@ -28,9 +28,9 @@ if (hosts.length) {
       host.dataset.state = 'ready'; host.dataset.backend = viewer.backend;
       host.querySelector('img')?.setAttribute('aria-hidden', 'true');
       document.getElementById(`${host.dataset.inlineModel}-status`)!.textContent = 'Drag to explore';
-      const reset = document.querySelector<HTMLButtonElement>(`[data-model-reset="${host.dataset.inlineModel}"]`)!;
-      reset.hidden = false;
-      reset.addEventListener('click', () => viewer.reset(), { signal: lifetime.signal });
+      const reset = document.querySelector<HTMLButtonElement>(`[data-model-reset="${host.dataset.inlineModel}"]`);
+      if (reset) reset.hidden = false;
+      reset?.addEventListener('click', () => viewer.reset(), { signal: lifetime.signal });
     } catch { if (!lifetime.signal.aborted) fallback(host); }
     finally { pending.delete(host); }
   }
