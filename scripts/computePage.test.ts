@@ -36,14 +36,19 @@ it('copies the custom brief, intended use and total budget without submitting pr
   const prompt=writeText.mock.calls[0][0];
   expect(prompt).toContain('Task: <script>private teapot</script>');
   expect(prompt).toContain('Intended use: 3D printing');
-  expect(prompt).toContain('Maximum TOTAL task usage budget: $12.75 USD');
-  expect(prompt).toContain('compute, model inference and review');
-  expect(prompt).toContain('wait for my approval');
-  expect(prompt).toContain('If model or review costs cannot be measured and capped');
-  expect(prompt).toContain('Keep the best checkpoint');
-  expect(prompt).toContain('Stop early');
-  expect(prompt).toContain('before stopping');
-  expect(prompt).toContain('Report unspent budget only when total costs are known');
+  expect(prompt).toContain('/compute/skill.md');
+  expect(prompt).toContain('Maximum managed job budget: $12.75 USD');
+  expect(prompt).toContain('service Astra, generated references when used, independent review and Blender compute');
+  expect(prompt).toContain('outside agent platform is separate');
+  expect(prompt).toContain('ask once before creating the paid job');
+  expect(prompt).toContain('continue without asking again for the same job');
+  expect(prompt).toContain('/api/blender/jobs');
+  expect(prompt).toContain('same IDs and exact payload');
+  expect(prompt).toContain('Buying credit never starts work');
+  expect(prompt).toContain('partial, failed or cancelled status honestly');
+  expect(prompt).not.toContain('/compute/direct.md');
+  expect(prompt).not.toContain('Build a blockout');
+  expect(prompt).not.toContain('compute quotes');
   expect(el('agent-prompt').querySelector('script')).toBeNull();
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(fetcher.mock.calls[0][0]).toBe('/api/blender/pricing');
@@ -55,12 +60,12 @@ it('copies the custom brief, intended use and total budget without submitting pr
 
 it('treats effort presets as editable budgets and keeps the session calculator independent', async()=>{
   await boot();
-  const detailed=document.querySelector<HTMLButtonElement>('[data-budget="30.00"]')!;
+  const detailed=document.querySelector<HTMLButtonElement>('[data-budget="20.00"]')!;
   detailed.click();
-  expect((el('budget') as HTMLInputElement).value).toBe('30.00');
+  expect((el('budget') as HTMLInputElement).value).toBe('20.00');
   expect(detailed.getAttribute('aria-pressed')).toBe('true');
   const prompt=el('agent-prompt').textContent;
-  expect(prompt).toContain('$30.00 USD');
+  expect(prompt).toContain('$20.00 USD');
   input('minutes','30');
   expect(el('estimate').textContent).toBe('$1.65 compute session cap');
   expect(el('agent-prompt').textContent).toBe(prompt);
@@ -70,7 +75,7 @@ it('treats effort presets as editable budgets and keeps the session calculator i
   expect(el('agent-prompt').textContent).toContain('$7.25 USD');
 });
 
-it.each(['','0','-5','0.39','1.005','9007199254740992'])('rejects invalid budget %s and removes the stale plan',async(value)=>{
+it.each(['','0','-5','0.39','.75','20.01','30','1.005','9007199254740992'])('rejects invalid budget %s and removes the stale plan',async(value)=>{
   await boot();
   const writeText=clipboard();
   input('budget',value);
@@ -84,10 +89,10 @@ it.each(['','0','-5','0.39','1.005','9007199254740992'])('rejects invalid budget
   expect(el('budget-error').hidden).toBe(true);
 });
 
-it('accepts a sub-dollar amount written without the leading zero',async()=>{
+it('accepts the one-dollar lower bound',async()=>{
   await boot();
-  input('budget','.75');
-  expect(el('agent-prompt').textContent).toContain('$0.75 USD');
+  input('budget','1');
+  expect(el('agent-prompt').textContent).toContain('$1.00 USD');
 });
 
 it('requires a meaningful brief before copying a plan',async()=>{
@@ -100,27 +105,37 @@ it('requires a meaningful brief before copying a plan',async()=>{
   expect(el('agent-prompt').textContent).toBe('Describe a model to prepare your agent instructions.');
 });
 
-it('recovers failed pricing and revalidates the task budget against new rates',async()=>{
+it('recovers failed Direct Blender pricing without changing managed budget bounds',async()=>{
   const fetcher=vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ok:true,json:async()=>({...rates,minimumMinutes:8,minimumCents:800,priceCentsPerMinute:10,topUpCents:[1000]})});
   await boot(fetcher);
   expect(el('estimate').textContent).toContain('published estimate');
-  expect(el('agent-prompt').textContent).toContain('Live compute pricing is unverified');
+  expect(el('agent-prompt').textContent).toContain('/compute/skill.md');
   expect(el('retry-pricing').hidden).toBe(false);
   el('retry-pricing').click();
   await vi.waitFor(()=>expect(el('estimate').textContent).toBe('$8.00 compute session cap'));
   expect(el('price-description').textContent).toContain('first 8 minutes');
   expect(el('price-description').textContent).toContain('Buy $10.00 in credits');
-  expect(el('budget-error').textContent).toContain('at least $8.00');
+  expect(el('budget-error').hidden).toBe(true);
   expect(el('retry-pricing').hidden).toBe(true);
   input('budget','15');
-  expect(el('agent-prompt').textContent).toContain('Current compute pricing: $8.00');
+  expect(el('agent-prompt').textContent).toContain('Maximum managed job budget: $15.00 USD');
+  expect(el('agent-prompt').textContent).not.toContain('first 8 running minutes');
 });
 
-it.each([{...rates,currency:'eur'},{...rates,maximumMinutes:3},{...rates,minimumCents:Number.MAX_SAFE_INTEGER},{...rates,topUpCents:[]}])('rejects invalid API pricing without presenting a verified session cap',async(data)=>{
+it.each([{...rates,currency:'eur'},{...rates,maximumMinutes:3},{...rates,minimumCents:Number.MAX_SAFE_INTEGER},{...rates,topUpCents:[]}])('rejects invalid Direct Blender pricing without changing the managed handoff',async(data)=>{
   await boot(vi.fn().mockResolvedValue({ok:true,json:async()=>data}));
   expect(el('estimate').textContent).toBe('$0.40 published estimate');
-  expect(el('agent-prompt').textContent).toContain('Live compute pricing is unverified');
+  expect(el('agent-prompt').textContent).toContain('/compute/skill.md');
   expect(el('retry-pricing').hidden).toBe(false);
+});
+
+it('labels Direct Blender pricing and publishes truthful managed reservation limits',async()=>{
+  await boot();
+  expect(el('price-description').textContent).toContain('Direct Blender compute:');
+  expect(document.body.textContent).toContain('Direct Blender compute excludes the controller agent’s AI charges');
+  expect(document.body.textContent).toContain('either path may have separate outside-platform fees');
+  expect(document.body.textContent).toContain('Version 3 managed jobs reserve 30 minutes at caps of at least $5 and 10 minutes below $5.');
+  expect(document.querySelector('a[href="/compute/direct.md"]')?.textContent).toContain('Direct Blender');
 });
 
 it('reveals and selects the plan when clipboard access fails',async()=>{

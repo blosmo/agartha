@@ -75,7 +75,7 @@
         </div>
         <div id="direct" role="tabpanel" aria-labelledby="direct-tab" hidden><div id="direct-start">
         <h2 id="plan-title">Plan with your agent</h2>
-        <p class="form-intro">Approve your agent’s plan and payment before it starts.</p>
+        <p class="form-intro">Copy a managed brief and budget to your agent. The service handles Blender and review.</p>
         <form id="plan-form" aria-labelledby="plan-title" novalidate hidden>
           <label for="brief">Describe your model (required)</label>
           <textarea id="brief" name="brief" aria-describedby="brief-error" rows="3" maxlength="2000" required placeholder="A ceramic teapot with a wide handle and subtle leaf details"></textarea>
@@ -92,12 +92,12 @@
             <div class="budget-presets">
               <button type="button" data-budget="5.00" aria-pressed="true"><span class="selection-mark" aria-hidden="true">✓</span>$5</button>
               <button type="button" data-budget="15.00" aria-pressed="false"><span class="selection-mark" aria-hidden="true">✓</span>$15</button>
-              <button type="button" data-budget="30.00" aria-pressed="false"><span class="selection-mark" aria-hidden="true">✓</span>$30</button>
+              <button type="button" data-budget="20.00" aria-pressed="false"><span class="selection-mark" aria-hidden="true">✓</span>$20</button>
             </div>
           </fieldset>
-          <label for="budget">Spending limit (USD, required)</label>
+          <label for="budget">Managed job budget (USD, required)</label>
           <input id="budget" name="budget" type="text" inputmode="decimal" value="5.00" required aria-describedby="budget-help budget-error">
-          <p id="budget-help" class="budget-help">Includes compute, AI and review. Your agent must track and cap the total.</p>
+          <p id="budget-help" class="budget-help">$1–$20 including service inference, review and Blender compute. Outside platform fees are separate.</p>
           <p id="budget-error" class="field-error" hidden></p>
           <p id="plan-context">A higher budget does not guarantee better results.</p>
           <div class="plan-actions"><button id="copy" type="submit">Copy plan</button><span id="copy-status" role="status"></span></div>
@@ -112,15 +112,15 @@
     <section class="pricing" id="pricing" aria-labelledby="price-title">
       <div>
         <h2 id="price-title">Pay for what you use</h2>
-        <p id="price-description">Compute: $0.40 for the first 5 minutes, then $0.05 per started minute. Buy $5 or $20 in credits.</p>
-        <p class="note">Astra usage also counts toward your budget. With your own agent, AI charges are separate.</p>
+        <p id="price-description">Direct Blender compute: $0.40 for the first 5 minutes, then $0.05 per started minute. Buy $5 or $20 in credits.</p>
+        <p class="note">Managed service Astra, references, review and Blender usage stay inside the job cap. Direct Blender compute excludes the controller agent’s AI charges; either path may have separate outside-platform fees.</p>
         <p class="note">You approve each credit purchase. No subscription or automatic top-ups.</p>
         <p class="note">Idle time is billed; shutdown starts after 60 idle seconds. Each resumed session has a new minimum charge.</p>
       </div>
       <div>
-        <details><summary>Session limits</summary><p>Each managed job reserves up to 10 minutes of compute, plus Astra usage. More budget does not guarantee better results.</p></details>
+        <details><summary>Session limits</summary><p>Version 3 managed jobs reserve 30 minutes at caps of at least $5 and 10 minutes below $5. Legacy reference-guided jobs reserve 30 minutes; other legacy jobs reserve 10. Every reservation stays inside its approved job cap. More budget does not guarantee better results.</p></details>
         <details id="session-calculator" hidden>
-          <summary>Estimate compute cost</summary>
+          <summary>Estimate Direct Blender compute cost</summary>
           <label for="minutes">Reserved time: <strong id="duration">5 minutes</strong></label>
           <input id="minutes" type="range" min="5" max="30" step="1" value="5">
           <output for="minutes" id="estimate">$0.40 published estimate</output>
