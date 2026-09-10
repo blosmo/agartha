@@ -56,13 +56,13 @@
       el('reference-option').hidden = capabilities?.references?.enabled !== true;
       el('references').disabled = Boolean(job) || capabilities?.references?.enabled !== true;
       referenceHelp();
-      el('availability').textContent = capabilities?.enabled === true ? 'Managed creation is available.' : 'Managed creation is not available yet. Direct Blender instructions are below.';
+      el('availability').textContent = capabilities?.enabled === true ? 'Ready to create.' : 'Creation is unavailable. Select Use your agent to continue.';
       el('submit').disabled = capabilities?.enabled !== true || Boolean(job) || busy;
       document.querySelectorAll('[data-fund]').forEach(button => { button.disabled = pricing.purchasesEnabled !== true || pricing.paymentMode !== 'live'; });
-    } catch (err) { capabilities = null; el('submit').disabled = true; el('availability').textContent = 'Creation availability could not be verified. Refresh to try again.'; error(err); }
+    } catch (err) { capabilities = null; el('submit').disabled = true; el('availability').textContent = 'Unable to check availability. Select Refresh availability to retry.'; error(err); }
   }
   function referenceHelp() {
-    el('budget-help').textContent = capabilities?.references?.enabled === true && el('references').checked ? '$5–$20 total, including design references, Astra, and Blender. Charged for actual usage; unused credits stay in your wallet.' : '$1–$20, including Astra and Blender. Charged for actual usage; unused credits stay in your wallet. A higher budget does not guarantee a better model.';
+    el('budget-help').textContent = capabilities?.references?.enabled === true && el('references').checked ? '$5–$20 for references, Astra and Blender. Pay for usage; keep unused credits.' : '$1–$20 for Astra and Blender. Pay for usage; keep unused credits.';
   }
   el('references').addEventListener('change', referenceHelp);
   function savedJob() { localStorage.setItem(jobKey, JSON.stringify(job)); }
