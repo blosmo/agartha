@@ -123,3 +123,16 @@ it('routes a complete authenticated publication and public capability discovery'
  const publicFile=await t.fetch(`/cloud/assets/${upload.id}/files/preview`,{headers:{'x-agartha-gateway-key':'asset-gateway'}});expect(publicFile.status).toBe(200);expect((await publicFile.json()).assetFile).toBe(true);
  vi.unstubAllEnvs();
 });
+it('finds reusable parts and variants without losing filtered pagination',async()=>{
+ const t=await setup(),parent=await finish(t,await begin(t,{metadata:{name:'Window'}}));
+ await t.run(async ctx=>{
+  const row=(await ctx.db.query('cloudAssets').first())!;const {_id,_creationTime,...data}=row;
+  await ctx.db.delete(_id);
+  for(let i=1;i<=30;i++)await ctx.db.insert('cloudAssets',{...data,bundleId:`bundle-${i.toString(16).padStart(64,'0')}`,metadata:{name:i===30?'Tall WINDOW':'Rock',...(i===30?{parentId:parent.id}:{})}});
+ });
+ const first=await t.query(anyApi.cloud.assets.list,{q:'window'});expect(first.entries).toEqual([]);expect(first.cursor).not.toBeNull();
+ const second=await t.query(anyApi.cloud.assets.list,{q:'window',cursor:first.cursor,parentId:parent.id});
+ expect(second.entries).toHaveLength(1);expect(second.entries[0].metadata.name).toBe('Tall WINDOW');expect(second.cursor).toBeNull();
+ await expect(t.query(anyApi.cloud.assets.list,{q:'x'.repeat(101)})).rejects.toThrow('100');
+ await expect(t.query(anyApi.cloud.assets.list,{parentId:'invalid'})).rejects.toThrow('parent');
+});

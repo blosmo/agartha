@@ -75,6 +75,7 @@ def build_image():
             or path.name == "verify.py"
             or "__pycache__" in path.parts,
         )
+        .add_local_file(REPOSITORY_ROOT / "scripts" / "seed" / "starter_kit.py", "/opt/agartha-blender/starter_kit.py", copy=True)
         .add_local_dir(REPOSITORY_ROOT / "apps" / "web" / "public" / "materials",
                        "/opt/agartha-assets/materials", copy=True)
         .env(

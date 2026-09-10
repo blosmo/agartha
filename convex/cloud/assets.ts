@@ -10,7 +10,15 @@ import {ASSET_LIMITS,BUNDLE_ID,canonicalAssetIdentity,normalizeAssetMetadata,art
 export function publicAsset(row:Doc<'cloudAssets'>){return {id:row.bundleId,modelId:row.modelId,creatorAgentId:row.agentId,author:row.author,metadata:row.metadata,createdAt:new Date(row.createdAt).toISOString(),source:{...row.source,contentUrl:`/api/assets/${row.bundleId}/files/source`},preview:{...row.preview,contentUrl:`/api/assets/${row.bundleId}/files/preview`}};}
 async function byId(ctx:QueryCtx|MutationCtx,id:string){if(!BUNDLE_ID.test(id))fail('invalid','Invalid bundle ID.');const row=await ctx.db.query('cloudAssets').withIndex('by_bundle',q=>q.eq('bundleId',id)).unique();if(!row)fail('not_found','Asset is not published.');return row;}
 export const get=internalQuery({args:{id:v.string()},handler:async(ctx,{id})=>publicAsset(await byId(ctx,id))});
-export const list=internalQuery({args:{cursor:v.optional(v.string())},handler:async(ctx,{cursor})=>{if(cursor&&!BUNDLE_ID.test(cursor))fail('invalid','Invalid asset cursor.');const rows=await ctx.db.query('cloudAssets').withIndex('by_bundle',q=>q.gt('bundleId',cursor??'')).take(26);return {entries:rows.slice(0,25).map(publicAsset),cursor:rows.length>25?rows[24].bundleId:null};}});
+export const list=internalQuery({args:{cursor:v.optional(v.string()),q:v.optional(v.string()),parentId:v.optional(v.string())},handler:async(ctx,{cursor,q,parentId})=>{
+ if(cursor&&!BUNDLE_ID.test(cursor)||parentId&&!BUNDLE_ID.test(parentId))fail('invalid','Invalid asset cursor or parent ID.');
+ if(q!==undefined&&q.length>100)fail('invalid','Asset search must be at most 100 characters.');
+ const rows=await ctx.db.query('cloudAssets').withIndex('by_bundle',query=>query.gt('bundleId',cursor??'')).take(26);
+ const query=(q??'').trim().toLowerCase();
+ const entries=rows.slice(0,25).filter(row=>(!parentId||row.metadata.parentId===parentId)&&(!query||`${row.metadata.name} ${row.metadata.description??''}`.toLowerCase().includes(query))).map(publicAsset);
+ // Cursor follows scanned rows, including an empty filtered page.
+ return {entries,cursor:rows.length>25?rows[24].bundleId:null};
+}});
 export const file=internalQuery({args:{id:v.string(),role:artifactRoleValue},handler:async(ctx,{id,role})=>{const row=await byId(ctx,id),url=await ctx.storage.getUrl(row[role==='source'?'sourceId':'previewId']);if(!url)fail('not_found','Asset file unavailable.');return {assetFile:true,url,bytes:row[role].bytes,contentType:artifactContentType(role)};}});
 async function referenced(ctx:QueryCtx|MutationCtx,storageId:Id<'_storage'>){
  return Boolean(await ctx.db.query('cloudAssets').withIndex('by_source',q=>q.eq('sourceId',storageId)).first()||await ctx.db.query('cloudAssets').withIndex('by_preview',q=>q.eq('previewId',storageId)).first()||await ctx.db.query('cloudAssetUploads').withIndex('by_source',q=>q.eq('sourceId',storageId)).first()||await ctx.db.query('cloudAssetUploads').withIndex('by_preview',q=>q.eq('previewId',storageId)).first());

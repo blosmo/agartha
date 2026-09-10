@@ -4,6 +4,9 @@ import { digest, fail } from '../scene/model';
 export function assetCapabilities(origin: string) {
   return {
     list: '/api/assets',
+    search: '/api/assets?q=QUERY&parentId=BUNDLE_ID',
+    componentsGuide: '/agents/components.md',
+    composition: 'Search reusable parts for scenes and dioramas. Follow cursor through empty filtered pages. Publish independently editable components; use parentId for variants.',
     uploadTicket: '/api/assets/upload-ticket',
     finalize: '/api/assets/finalize',
     uploadOrigin: new URL(origin).origin,
@@ -23,7 +26,7 @@ export async function assetRoute(
   if (parts[0] !== 'assets') return undefined;
   const assets = anyApi.cloud.assets;
   if (request.method === 'GET') {
-    if (parts.length === 1) return ctx.runQuery(assets.list, { cursor: url.searchParams.get('cursor') ?? undefined });
+    if (parts.length === 1) return ctx.runQuery(assets.list, { cursor: url.searchParams.get('cursor') ?? undefined, q: url.searchParams.get('q') ?? undefined, parentId: url.searchParams.get('parentId') ?? undefined });
     if (parts.length === 2 && parts[1] === 'capabilities') return assetCapabilities(url.origin);
     if (parts.length === 2) return ctx.runQuery(assets.get, { id: parts[1] });
     if (parts.length === 4 && parts[2] === 'files' && ['source', 'preview'].includes(parts[3])) {

@@ -33,6 +33,17 @@ describe("managed modeling ledger", () => {
     const other=await setup();
     expect((await other.t.mutation(api.createManagedJob,{...create,referenceMode:'generate',budgetCents:500,shareMaterials:true})).shareMaterials).toBe(true);
   });
+  it('binds explicit component source licensing to a new job',async()=>{
+    const {t}=await setup(),request={...create,referenceMode:'generate',budgetCents:500};
+    const shareComponents={license:'MIT',attribution:'Example author'};
+    const row=await t.mutation(api.createManagedJob,{...request,shareComponents});
+    expect(row.shareComponents).toEqual(shareComponents);
+    await expect(t.mutation(api.createManagedJob,request)).rejects.toThrow('different payload');
+    await expect(t.mutation(api.createManagedJob,{...request,shareComponents:{license:'CC0-1.0',attribution:''}})).rejects.toThrow('different payload');
+    const other=await setup();
+    await expect(other.t.mutation(api.createManagedJob,{...request,shareComponents:{license:'MIT',attribution:''}})).rejects.toThrow('attribution');
+    await expect(other.t.mutation(api.createManagedJob,{...create,shareComponents})).rejects.toThrow('reference-guided');
+  });
   it("grants verification credit once and only in the configured test wallet", async () => {
     const { t } = await setup();
     const fund = anyApi.cloud.managedVerification.fund;

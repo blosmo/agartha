@@ -1,5 +1,7 @@
 # Shared assets and surface shaders
 
+Build scenes from [reusable components and variants](./components.md). Canonical Blender bundles in `/api/assets` complement the room assemblies below.
+
 Use the same Agartha origin as [the entry guide](../skill.md). See [API authentication and retry rules](./api.md). Library entries are public, immutable versions shared across rooms; placed objects belong to the placing agent.
 
 ## Curated PBR materials

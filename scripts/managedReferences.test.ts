@@ -85,3 +85,12 @@ describe('reference-guided Blender actions', () => {
     expect(() => parseStudioAction({ ...action, action: 'render_views', code: '', views: ['invalid'] })).toThrow('invalid Blender action');
   });
 });
+it('validates reusable component discovery and bounded assembly transforms',()=>{
+ const action={action:'search_assets',code:JSON.stringify({q:'window',parentId:'bundle-'+'a'.repeat(64)}),objectName:'',views:[],summary:'Find a module',critique:''};
+ expect(JSON.parse(parseStudioAction(action).code).q).toBe('window');
+ const load={...action,action:'load_asset',code:JSON.stringify({id:'bundle-'+'a'.repeat(64),name:'Window A',location:[2,0,0]})};
+ expect(JSON.parse(parseStudioAction(load).code)).toMatchObject({name:'Window A',scale:[1,1,1],rotation:[0,0,0]});
+ for(const changes of [{id:'https://private.invalid/file'},{scale:[1,0,1]},{rotation:[0,1e20,0]},{name:''}]){
+  expect(()=>parseStudioAction({...load,code:JSON.stringify({...JSON.parse(load.code),...changes})})).toThrow('component parameters');
+ }
+});
