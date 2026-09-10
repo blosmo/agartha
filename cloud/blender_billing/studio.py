@@ -60,6 +60,8 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     reference_saved = False
     accepted_revision: int | None = None
     revision = 0
+    # Restores change the current candidate, never the allocation counter.
+    revision_sequence = 0
     reviewed_views: set[str] = set()
     rendered: list[dict[str, str]] = []
     references: list[dict[str, str]] = []
@@ -350,7 +352,8 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['codeSha256'] = hashlib.sha256(code.encode()).hexdigest()
                     result = execute(code + '\n' + EXPORT, operation)
                     candidate = exported(); files.save(job_id, candidate)
-                    revision += 1; saved = scene_matches = True
+                    revision_sequence += 1
+                    revision = revision_sequence; saved = scene_matches = True
                     broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
                     # Every edit produces actual evidence; the next action can request more.
                     rendered = inspect(['hero', 'front', 'right'], '', operation + '-inspect')

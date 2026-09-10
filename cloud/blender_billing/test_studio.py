@@ -52,6 +52,7 @@ class StudioTests(unittest.TestCase):
             params=request['params'];code=params['arguments'].get('code','')
             if 'BROKEN' in code:return {'result':{'isError':True,'content':[{'text':'Geometry edit failed'}]}}
             if 'REVISION_B' in code or final_mutation and operation == 'worker-final-render':state['model']=b'BLENDER-B'
+            if 'REVISION_C' in code:state['model']=b'BLENDER-C'
             if "mark_published_component(root," in code:
                 import ast
                 state['parent']=ast.literal_eval(code.split("mark_published_component(root,",1)[1].split(')',1)[0])

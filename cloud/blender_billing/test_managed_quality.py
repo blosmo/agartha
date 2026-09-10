@@ -101,6 +101,21 @@ class ManagedQualityTests(unittest.TestCase):
         self.assertEqual(store.accepted_quality('job')['candidateRevision'],1)
         self.assertEqual(finish['status'],'completed')
 
+    def test_restore_then_edit_allocates_a_fresh_candidate_and_review_operation(self):
+        store,_,requests,_,finish,_=self.run_quality([
+            action('edit','REVISION_A'),action('accept'),
+            action('edit','REVISION_B'),action('accept'),
+            action('restore'),action('edit','REVISION_C'),action('accept'),action('finish'),
+        ],quality_verdicts=[verdict(),verdict(False),verdict()])
+        reviews=[request for request in requests if request['kind']=='review']
+        self.assertEqual([request['candidateRevision'] for request in reviews],[1,2,3])
+        self.assertEqual([request['operationId'] for request in reviews],['worker-review-1','worker-review-2','worker-review-3'])
+        self.assertEqual(len({request['glbSha256'] for request in reviews}),3)
+        self.assertEqual(store.read('job','model.glb'),b'glTFBLENDER-C')
+        self.assertEqual(store.read('job','model.blend'),b'BLENDER-C')
+        self.assertEqual(store.accepted_quality('job')['candidateRevision'],3)
+        self.assertEqual(finish['status'],'completed');self.assertTrue(finish['visuallyInspected'])
+
     def test_final_render_cannot_replace_reviewed_geometry_or_source(self):
         store,_,_,_,finish,_=self.run_quality([action('edit','REVISION_A'),action('accept'),action('finish')],quality_verdicts=[verdict()],final_mutation=True)
         self.assertEqual(store.read('job','model.glb'),b'glTFBLENDER-A');self.assertEqual(store.read('job','model.blend'),b'BLENDER-A')
