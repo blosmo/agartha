@@ -60,10 +60,24 @@ export async function createGalleryViewer(host: HTMLElement, slug: string, signa
     const fill = new THREE.DirectionalLight(0xd7e7ff, .55); fill.position.set(3, 2, 1); scene.add(fill);
     const rim = new THREE.DirectionalLight(0xffecd2, 1.7); rim.position.set(1, 3, -3); scene.add(rim);
 
-    const response = await fetch(`/compute/gallery/${slug}/model.glb`, { signal });
-    if (!response.ok) throw new Error('The model could not be loaded.');
-    const gltf = await new GLTFLoader().parseAsync(await response.arrayBuffer(), `/compute/gallery/${slug}/`);
-    gltf.scene.traverse(object => {
+    let model: THREE.Group;
+    if (slug === 'platonic-solids') {
+      model = new THREE.Group();
+      const shapes = [new THREE.TetrahedronGeometry(.62), new THREE.BoxGeometry(.82, .82, .82),
+        new THREE.OctahedronGeometry(.62), new THREE.DodecahedronGeometry(.58), new THREE.IcosahedronGeometry(.6)];
+      const colors = [0xc7a273, 0x809b83, 0xc1856c, 0xa5b8c0, 0xd4bd84];
+      shapes.forEach((geometry, i) => {
+        const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: colors[i], roughness: .38, metalness: .12, flatShading: true }));
+        mesh.position.set((i % 3 - (i < 3 ? 1 : .5)) * 1.5, .7, i < 3 ? -.85 : .85);
+        mesh.rotation.set(.12, i * .4, .08);
+        model.add(mesh);
+      });
+    } else {
+      const response = await fetch(`/compute/gallery/${slug}/model.glb`, { signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]) });
+      if (!response.ok) throw new Error('The model could not be loaded.');
+      model = (await new GLTFLoader().parseAsync(await response.arrayBuffer(), `/compute/gallery/${slug}/`)).scene;
+    }
+    model.traverse(object => {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) return;
       geometries.add(mesh.geometry); mesh.receiveShadow = true;
@@ -78,10 +92,10 @@ export async function createGalleryViewer(host: HTMLElement, slug: string, signa
     });
     signal.throwIfAborted();
     if (disposed) throw new Error('Graphics became unavailable.');
-    const bounds = new THREE.Box3().setFromObject(gltf.scene), sphere = bounds.getBoundingSphere(new THREE.Sphere());
+    const bounds = new THREE.Box3().setFromObject(model), sphere = bounds.getBoundingSphere(new THREE.Sphere());
     if (!Number.isFinite(sphere.radius) || sphere.radius <= 0) throw new Error('Invalid model geometry.');
-    gltf.scene.position.sub(sphere.center);
-    const normalized = new THREE.Group(); normalized.scale.setScalar(1 / (sphere.radius * 2)); normalized.add(gltf.scene); scene.add(normalized);
+    model.position.sub(sphere.center);
+    const normalized = new THREE.Group(); normalized.scale.setScalar(1 / (sphere.radius * 2)); normalized.add(model); scene.add(normalized);
     const floorGeometry = new THREE.PlaneGeometry(4, 4), floorMaterial = new THREE.ShadowMaterial({ color: 0x343c32, opacity: .2 });
     geometries.add(floorGeometry); materials.add(floorMaterial);
     const floor = new THREE.Mesh(floorGeometry, floorMaterial); floor.rotation.x = -Math.PI / 2;
@@ -110,6 +124,7 @@ export async function createGalleryViewer(host: HTMLElement, slug: string, signa
       camera.updateProjectionMatrix(); controls!.update(); schedule();
     }
     resize = new ResizeObserver(fit); resize.observe(host); fit();
+    composer.render();
     host.addEventListener('keydown', event => {
       if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '+', '=', '-', '0'].includes(event.key)) return;
       event.preventDefault(); interacted = true;
