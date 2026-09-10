@@ -8,6 +8,7 @@ import { reconcileCreditPayment } from '../packages/billing/reconcile.js';
 import { BillingHttpError } from '../packages/billing/ledgerClient.js';
 import { jsonBody, jsonResponse, paymentEnvironment, reconciliationLedger, sendBillingError, type BillingRequest } from '../packages/billing/http.js';
 import { CheckoutReceiptError, checkoutReturnUrls, checkoutPaymentUrl, checkoutRedirectDestination, confirmCheckoutReceipt, requireCheckoutEnvironmentMode, requireCheckoutSessionId, type CheckoutReceiptLedger } from '../packages/billing/checkoutConfirmation.js';
+import { createHash } from 'node:crypto';
 
 function publicBase() {
   const value = process.env.AGARTHA_PUBLIC_URL;
@@ -54,6 +55,9 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
   if ((!path || path === 'capabilities') && req.method === 'GET') {
     const header = req.headers.authorization;
     const discoveryToken = typeof header === 'string' && /^Bearer [a-f0-9]{64}$/.test(header) ? header.slice(7) : undefined;
+    const discoveryAgentId = discoveryToken ? `agent-${createHash('sha256').update(discoveryToken).digest('hex').slice(0, 24)}` : undefined;
+    const workflowVersion = process.env.AGARTHA_MANAGED_WORKFLOW_VERSION === '3' || discoveryAgentId === process.env.AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID ? 3 : undefined;
+    const referenceModelingEnabled = referencesEnabled(discoveryToken);
     jsonResponse(res, {
       name: 'Agartha Compute', version: '1.0.0',
       description: 'Give your agent access to Astra for managed 3D modeling with a total budget, or use Direct Blender. No Agartha world or room required.',
@@ -61,7 +65,7 @@ export default async function handler(req: BillingRequest, res: ServerResponse) 
       modelingGuide: '/compute/modeling.md', toolkitGuide: '/agents/blender-quality.md', toolkit: '/agents/blender-toolkit.py', advancedToolkit: '/agents/blender-advanced.py', bakingToolkit: '/agents/blender-baking.py', advancedGuide: '/agents/blender-advanced.md',
       registration: '/api/session', pricing: '/api/blender/pricing', balance: '/api/blender/balance',
       purchases: '/api/blender/purchases', quotes: '/api/blender/quotes', sessions: '/api/blender/sessions',
-      managed: { enabled: managedEnabled(discoveryToken, req), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, references: { enabled: referencesEnabled(discoveryToken), model: 'openai/gpt-image-2.5-flare', minimumBudgetCents: 500 }, components:{library:'/api/assets',templates:'/api/assets/templates',guide:'/agents/components.md',publicationOption:'shareComponents',publicationDefault:false,licenseRequired:true}, materials:{library:'/api/materials/library',guide:'/agents/material-authoring.md',publicationOption:'shareMaterials',publicationDefault:false}, jobs: '/api/blender/jobs' },
+      managed: { enabled: managedEnabled(discoveryToken, req), ...(workflowVersion === undefined ? {} : { workflowVersion }), model: 'openai/gpt-6-astra', minimumBudgetCents: 100, maximumBudgetCents: 2000, defaultReferenceMode: workflowVersion === 3 && referenceModelingEnabled ? 'generate' : 'none', references: { enabled: referenceModelingEnabled, model: 'openai/gpt-image-2.5-flare', minimumBudgetCents: 500 }, components:{library:'/api/assets',templates:'/api/assets/templates',guide:'/agents/components.md',publicationOption:'shareComponents',publicationDefault:false,licenseRequired:true}, materials:{library:'/api/materials/library',guide:'/agents/material-authoring.md',publicationOption:'shareMaterials',publicationDefault:false}, jobs: '/api/blender/jobs' },
       interfaces: ['http', 'mcp'], artifactFormats: ['glb', 'blend', 'png', 'mp4'],
       authentication: 'Bearer agent token; the same stable identity owns Agartha and Compute credits.',
       availability: 'Read pricing for purchase status. Quotes check compute activation and account eligibility. Discovery does not guarantee capacity.',

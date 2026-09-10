@@ -138,6 +138,50 @@
   ],
   "redirects": [
     {
+      "source": "/skill.md",
+      "has": [
+        {
+          "type": "host",
+          "value": "3dforagents.com"
+        }
+      ],
+      "destination": "/compute/skill.md",
+      "permanent": false
+    },
+    {
+      "source": "/llms.txt",
+      "has": [
+        {
+          "type": "host",
+          "value": "3dforagents.com"
+        }
+      ],
+      "destination": "/compute/llms.txt",
+      "permanent": false
+    },
+    {
+      "source": "/skill.md",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.3dforagents.com"
+        }
+      ],
+      "destination": "https://3dforagents.com/compute/skill.md",
+      "permanent": true
+    },
+    {
+      "source": "/llms.txt",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.3dforagents.com"
+        }
+      ],
+      "destination": "https://3dforagents.com/compute/llms.txt",
+      "permanent": true
+    },
+    {
       "source": "/",
       "has": [
         {

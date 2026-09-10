@@ -55,6 +55,7 @@
       capabilities = data.managed;
       el('reference-option').hidden = capabilities?.references?.enabled !== true;
       el('references').disabled = Boolean(job) || capabilities?.references?.enabled !== true;
+      if (!job) el('references').checked = capabilities?.defaultReferenceMode === 'generate';
       referenceHelp();
       el('availability').textContent = capabilities?.enabled === true ? 'Ready to create.' : 'Creation is unavailable. Select Use your agent to continue.';
       el('submit').disabled = capabilities?.enabled !== true || Boolean(job) || busy;
@@ -78,11 +79,12 @@
   }
   function render(data) {
     const done = terminal.has(data.status);
+    if (data.referenceMode === 'generate' || data.referenceMode === 'none') el('references').checked = data.referenceMode === 'generate';
     el('job').hidden = false;
     el('progress').textContent = `${data.status || 'Request saved'}${typeof data.progress === 'string' ? ` — ${data.progress}` : ''}${done && typeof data.reason === 'string' && data.reason !== data.progress ? ` — ${data.reason}` : ''}`;
     const charged = (data.chargedAiCents || 0) + (data.computeChargedCents || 0);
     el('cost').textContent = `${money(charged)} charged of ${money(job.budgetCents)} cap. ${money(data.pendingAiCents || 0)} AI usage pending reconciliation.${data.computeStatus ? ` Compute: ${data.computeStatus}.` : ''}`;
-    el('inspection').textContent = data.visuallyInspected === true ? 'Astra inspected a preview. Review the downloaded model for your intended use.' : 'Visual inspection has not been confirmed.';
+    el('inspection').textContent = data.visuallyInspected === true ? 'Independent visual review accepted this checkpoint. Review the downloaded model for your intended use.' : 'Independent visual acceptance has not been confirmed.';
     el('cancel').hidden = done; el('new').hidden = !done; el('retry').hidden = done;
     el('artifacts').replaceChildren();
     for (const artifact of data.artifacts || []) {
@@ -135,10 +137,10 @@
     const brief = el('brief').value.trim(); const amount = el('budget').value.trim();
     if (new TextEncoder().encode(brief).length > 4000) { error(new Error('Shorten the model brief to fit the 4,000-byte limit.')); el('brief').focus(); return; }
     const cents = /^\d+(?:\.\d{1,2})?$/.test(amount) ? Math.round(Number(amount) * 100) : NaN;
-    const referenceMode = !el('references').disabled && el('references').checked ? 'generate' : 'none';
+    const referenceMode = !el('references').disabled && el('references').checked ? (capabilities?.defaultReferenceMode === 'generate' ? undefined : 'generate') : 'none';
     if (referenceMode === 'generate' && cents < 500) { error(new Error('Allow at least $5 for visual references, modeling, and rendering.')); return; }
     if (!brief || !Number.isSafeInteger(cents) || cents < (capabilities.minimumBudgetCents || 100) || cents > (capabilities.maximumBudgetCents || 2000)) { error(new Error('Enter a model brief and a total budget between $1 and $20.')); return; }
-    try { job = { jobId: crypto.randomUUID(), requestId: crypto.randomUUID(), brief, budgetCents: cents, referenceMode }; savedJob(); } catch (err) { job = null; error(err); return; }
+    try { job = { jobId: crypto.randomUUID(), requestId: crypto.randomUUID(), brief, budgetCents: cents, ...(referenceMode === undefined ? {} : { referenceMode }) }; savedJob(); } catch (err) { job = null; error(err); return; }
     el('brief').disabled = true; el('budget').disabled = true; el('references').disabled = true; start();
   });
   el('retry').addEventListener('click', start);
@@ -176,7 +178,7 @@
   try {
     token = localStorage.getItem(tokenKey);
     job = JSON.parse(localStorage.getItem(jobKey) || 'null');
-    if (job) { el('references').checked = job.referenceMode === 'generate'; el('brief').value = job.brief; el('budget').value = (job.budgetCents / 100).toFixed(2); el('brief').disabled = true; el('budget').disabled = true; el('job').hidden = false; poll(); }
+    if (job) { el('references').checked = job.referenceMode === 'generate' || job.referenceMode === undefined && job.budgetCents >= 500; el('brief').value = job.brief; el('budget').value = (job.budgetCents / 100).toFixed(2); el('brief').disabled = true; el('budget').disabled = true; el('job').hidden = false; poll(); }
     if (token) balance().catch(error);
   } catch (err) { error(err); }
   check();

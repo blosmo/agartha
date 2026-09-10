@@ -47,26 +47,34 @@ async function finish(ctx: MutationCtx, row: Job, status: "completed" | "partial
 async function sanitized(ctx: QueryCtx | MutationCtx, row: Job) {
   const { _id, _creationTime, executorId, agentId, ...safe } = row;
   const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", row.reservationId)).unique();
-  return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? (row.referenceMode === "generate" ? 165 : 65), computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
+  const longReservation = row.referenceMode === "generate" || row.workflowVersion === 3 && row.budgetCents >= 500;
+  return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? (longReservation ? 165 : 65), computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
 }
 export async function createManagedJobInTransaction(ctx: MutationCtx, args: { token: string; jobId: string; requestId: string; brief: string; shareMaterials?: boolean; shareComponents?: { license: "CC0-1.0" | "CC-BY-4.0" | "MIT"; attribution: string }; referenceMode?: "generate" | "none"; budgetCents: number; livemode: boolean }, fundingActorId?: string) {
     identifier(args.jobId, "jobId", 80); identifier(args.requestId, "requestId");
     if (!args.brief.trim() || new TextEncoder().encode(args.brief).length > 4000) throw new Error("Brief must contain 1 to 4000 UTF-8 bytes.");
     assertCents(args.budgetCents, "budgetCents");
     if (args.budgetCents < 100 || args.budgetCents > 2000) throw new Error("Budget must be 100 to 2000 cents.");
-    const referenceMode = args.referenceMode ?? "none", shareMaterials = args.shareMaterials ?? false;
-    const shareComponents=args.shareComponents?{license:args.shareComponents.license,attribution:args.shareComponents.attribution.trim().normalize('NFC')}:undefined;
-    if(shareComponents&&(referenceMode!=="generate"||shareComponents.attribution.length>500||shareComponents.license!=="CC0-1.0"&&!shareComponents.attribution))throw new Error("Component sharing requires reference-guided modeling and bounded license attribution.");
-    if (shareMaterials && referenceMode !== "generate") throw new Error("Material contributions require reference-guided modeling.");
-    if (referenceMode === "generate" && args.budgetCents < 500) throw new Error("Reference-guided jobs require a budget of at least 500 cents.");
     const authenticated = await requireBillingOwner(ctx, args.token);
     const actor = fundingActorId ? { ...authenticated, agentId: fundingActorId } : authenticated;
     const prior = await ctx.db.query("managedJobs").withIndex("by_owner_request", q => q.eq("agentId", actor.agentId).eq("livemode", args.livemode).eq("requestId", args.requestId)).unique();
-    if (prior) { if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || (prior.referenceMode ?? "none") !== referenceMode || (prior.shareMaterials ?? false) !== shareMaterials || JSON.stringify(prior.shareComponents??null)!==JSON.stringify(shareComponents??null)) throw new Error("Job request reused with different payload."); return sanitized(ctx, prior); }
+    const shareMaterials = args.shareMaterials ?? false;
+    const shareComponents=args.shareComponents?{license:args.shareComponents.license,attribution:args.shareComponents.attribution.trim().normalize('NFC')}:undefined;
+    if (prior) {
+      const referenceMismatch = args.referenceMode !== undefined && (prior.referenceMode ?? "none") !== args.referenceMode;
+      if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || referenceMismatch || (prior.shareMaterials ?? false) !== shareMaterials || JSON.stringify(prior.shareComponents??null)!==JSON.stringify(shareComponents??null)) throw new Error("Job request reused with different payload.");
+      return sanitized(ctx, prior);
+    }
+    const workflowVersion = process.env.AGARTHA_MANAGED_WORKFLOW_VERSION === "3" || process.env.AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID === authenticated.agentId ? 3 as const : undefined;
+    const referenceMode = args.referenceMode ?? (workflowVersion === 3 && args.budgetCents >= 500 && process.env.AGARTHA_REFERENCE_MODELING_ENABLED === "true" ? "generate" : "none");
+    if(shareComponents&&(referenceMode!=="generate"||shareComponents.attribution.length>500||shareComponents.license!=="CC0-1.0"&&!shareComponents.attribution))throw new Error("Component sharing requires reference-guided modeling and bounded license attribution.");
+    if (shareMaterials && referenceMode !== "generate") throw new Error("Material contributions require reference-guided modeling.");
+    if (referenceMode === "generate" && args.budgetCents < 500) throw new Error("Reference-guided jobs require a budget of at least 500 cents.");
     if (await ctx.db.query("managedJobs").withIndex("by_job", q => q.eq("jobId", args.jobId)).unique()) throw new Error("Job ID already exists.");
     const reservationId = `managed-${args.jobId}`;
-    const quote = await createQuoteInTransaction(ctx, { token: args.token, quoteId: reservationId, requestId: reservationId, minutes: referenceMode === "generate" ? 30 : 10, livemode: args.livemode }, fundingActorId);
-    if (quote.reserveCents !== (referenceMode === "generate" ? 165 : 65)) throw new Error("Managed compute pricing requires review.");
+    const reservationMinutes = (workflowVersion === 3 && args.budgetCents >= 500) || referenceMode === "generate" ? 30 : 10;
+    const quote = await createQuoteInTransaction(ctx, { token: args.token, quoteId: reservationId, requestId: reservationId, minutes: reservationMinutes, livemode: args.livemode }, fundingActorId);
+    if (quote.reserveCents !== (reservationMinutes === 30 ? 165 : 65)) throw new Error("Managed compute pricing requires review.");
     const reservation = await reserveSessionInTransaction(ctx, { token: args.token, quoteId: reservationId, reservationId, requestId: reservationId }, fundingActorId);
     await ctx.db.patch(reservation._id, { deferredStart: true });
     const ai = args.budgetCents - quote.reserveCents;
@@ -74,7 +82,7 @@ export async function createManagedJobInTransaction(ctx: MutationCtx, args: { to
     if (wallet.frozen || wallet.availableCents < ai) throw new Error("Insufficient available Blender credits.");
     await ctx.db.patch(wallet._id, { availableCents: wallet.availableCents - ai, heldCents: wallet.heldCents + ai });
     const now = Date.now();
-    const id = await ctx.db.insert("managedJobs", { jobId: args.jobId, requestId: args.requestId, agentId: actor.agentId, livemode: args.livemode, brief: args.brief, referenceMode, shareMaterials, ...(shareComponents?{shareComponents}:{}), chargedReferenceCents: 0, budgetCents: args.budgetCents, reservationId, status: "queued", cancelled: false, progress: "Queued", reservedAiCents: ai, chargedAiCents: 0, pendingAiCents: 0, releasedAiCents: 0, visuallyInspected: false, createdAt: now, updatedAt: now, deadlineAt: now + (referenceMode === "generate" ? 45 : 20) * 60_000 });
+    const id = await ctx.db.insert("managedJobs", { jobId: args.jobId, requestId: args.requestId, agentId: actor.agentId, livemode: args.livemode, brief: args.brief, ...(workflowVersion === undefined ? {} : { workflowVersion }), referenceMode, shareMaterials, ...(shareComponents?{shareComponents}:{}), chargedReferenceCents: 0, budgetCents: args.budgetCents, reservationId, status: "queued", cancelled: false, progress: "Queued", reservedAiCents: ai, chargedAiCents: 0, pendingAiCents: 0, releasedAiCents: 0, visuallyInspected: false, createdAt: now, updatedAt: now, deadlineAt: now + (reservationMinutes === 30 ? 45 : 20) * 60_000 });
     const row = (await ctx.db.get(id))!;
     await entry(ctx, row, "reserve", "reserve", -ai);
     return sanitized(ctx, row);
@@ -146,7 +154,7 @@ export const requestManagedCancel = internalMutation({ args: { token: v.string()
   const allowed = allowance && (allowance.sponsorId === actor.agentId || allowance.recipientId === actor.agentId);
   return cancelManagedJobInTransaction(ctx, args.jobId, allowed ? row.agentId : actor.agentId);
 } });
-export const claimManagedInference = internalMutation({ args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), maxCostCents: v.number(), payloadFingerprint: v.string(), kind: v.optional(v.union(v.literal("modeling"), v.literal("reference"))) }, handler: async (ctx, args) => {
+export const claimManagedInference = internalMutation({ args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), maxCostCents: v.number(), payloadFingerprint: v.string(), kind: v.optional(v.union(v.literal("modeling"), v.literal("reference"), v.literal("strategy"), v.literal("review"))) }, handler: async (ctx, args) => {
   identifier(args.operationId, "operationId"); identifier(args.payloadFingerprint, "payloadFingerprint"); assertCents(args.maxCostCents, "maxCostCents");
   if (!args.maxCostCents) throw new Error("Inference requires a positive reservation.");
   const row = await job(ctx, args.jobId);
@@ -157,6 +165,7 @@ export const claimManagedInference = internalMutation({ args: { jobId: v.string(
   if (row.status !== "running" || row.cancelled || row.deadlineAt <= Date.now() || wallet.frozen) throw new Error("Inference is not authorized.");
   const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", row.reservationId)).unique();
   if (!reservation || reservation.stopRequested || ["settled", "failed", "unknown"].includes(reservation.status)) throw new Error("Compute is no longer available for this job.");
+  if ((args.kind === "strategy" || args.kind === "review") && row.workflowVersion !== 3) throw new Error("This inference kind requires managed workflow version 3.");
   if (args.kind === "reference" && (row.referenceMode !== "generate" || row.referenceReady || args.operationId !== `${args.executorId}-reference`)) throw new Error("Reference generation is not available for this job.");
   if (row.pendingAiCents) throw new Error("Another inference is in flight.");
   if (args.maxCostCents > row.reservedAiCents - row.chargedAiCents - row.releasedAiCents) throw new Error("AI budget exhausted.");
@@ -197,12 +206,14 @@ export const finishManagedJob = internalMutation({
     if (args.progress.length > 1000) throw new Error("Progress exceeds 1000 characters.");
     const artifactsReady = args.artifactsReady ?? row.artifactsReady;
     if ((args.videoReady ?? row.videoReady) && !artifactsReady) throw new Error("A model checkpoint is required before recording video.");
+    const durableInspection = row.workflowVersion === 3 ? row.visuallyInspected : args.visuallyInspected;
+    const status = row.workflowVersion === 3 && args.status === "completed" && !durableInspection ? "partial" : args.status;
     await ctx.db.patch(row._id, {
       ...(args.artifactsReady === undefined ? {} : { artifactsReady: args.artifactsReady }),
       ...(args.videoReady === undefined ? {} : { videoReady: args.videoReady }),
-      visuallyInspected: args.visuallyInspected,
+      visuallyInspected: durableInspection,
     });
-    return finish(ctx, await job(ctx, args.jobId), args.status, args.progress, args.visuallyInspected);
+    return finish(ctx, await job(ctx, args.jobId), status, args.progress, durableInspection);
   },
 });
 
@@ -255,10 +266,12 @@ export const recordManagedReference = internalMutation({
 });
 
 export const recordManagedAcceptance = internalMutation({
-  args: { jobId: v.string(), executorId: v.string() },
+  args: { jobId: v.string(), executorId: v.string(), qualityApproved: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const row = await job(ctx, args.jobId);
-    if (row.executorId !== args.executorId || row.referenceMode !== "generate" || !row.artifactsReady) throw new Error("A reference-guided checkpoint is required.");
+    if (row.executorId !== args.executorId || !row.artifactsReady) throw new Error("A model checkpoint is required.");
+    if (row.workflowVersion === 3 && args.qualityApproved !== true) throw new Error("Independent quality approval is required.");
+    if (row.workflowVersion !== 3 && row.referenceMode !== "generate") throw new Error("A reference-guided checkpoint is required.");
     await ctx.db.patch(row._id, { visuallyInspected: true, updatedAt: Date.now() });
     return { visuallyInspected: true };
   },

@@ -1354,7 +1354,7 @@
             "description": "Managed creation unavailable"
           },
           "201": {
-            "description": "Reserved job state. chargedAiCents includes image generation and modeling; chargedReferenceCents is the image portion, not an additional charge. Reference-guided jobs reserve a 30-minute compute session within the total cap; legacy jobs reserve ten minutes. referenceReady exposes reference.jpg and review.json. Model artifacts appear after a validated export; visuallyInspected identifies accepted visual review. Turnaround video is included when available."
+            "description": "Reserved job state. New workflow-version-3 jobs persist their version and resolved reference choice. Version 3 reserves 30 minutes at caps of at least 500 cents and ten minutes below that; legacy reservations are unchanged. chargedAiCents includes image generation and modeling; chargedReferenceCents is the image portion, not an additional charge. referenceReady exposes reference.jpg; a version-3 checkpoint exposes review.json. Model artifacts appear after a validated export; visuallyInspected identifies durable independent acceptance. Turnaround video is included when available."
           }
         },
         "requestBody": {
@@ -1392,8 +1392,7 @@
                       "none",
                       "generate"
                     ],
-                    "default": "none",
-                    "description": "generate requests one GPT Image 2.5 Flare four-view reference sheet and the iterative Blender MCP workflow. Requires managed.references.enabled and a budget of at least 500 cents. Reference generation is charged within the same total cap."
+                    "description": "generate requests one GPT Image 2.5 Flare four-view reference sheet. none explicitly opts out. For workflow version 3, omission resolves to generate only when managed.references.enabled is true and budgetCents is at least 500; otherwise it resolves to none. The resolved choice is persisted and reference generation stays inside the same total cap."
                   }
                 }
               }

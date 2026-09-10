@@ -6,7 +6,11 @@ import { managedEnabled, referencesEnabled } from './http.js';
 const names = ['model.glb', 'model.blend', 'preview.png'];
 function links(row: Record<string, any>) {
   const base = `/api/blender/jobs/${encodeURIComponent(row.jobId)}`;
-  return { ...row, statusUrl: base, startUrl: `${base}/start`, cancelUrl: `${base}/cancel`, artifacts: [...(row.artifactsReady ? [...names, ...(row.videoReady ? ['turnaround.mp4'] : [])] : []), ...(row.referenceReady ? ['reference.jpg', 'review.json'] : [])].map(name => ({ name, url: `${base}/artifacts/${name}` })) };
+  const artifacts = [
+    ...(row.artifactsReady ? [...names, ...(row.videoReady ? ['turnaround.mp4'] : []), ...(row.workflowVersion === 3 ? ['review.json'] : [])] : []),
+    ...(row.referenceReady ? ['reference.jpg', ...(row.workflowVersion === 3 ? [] : ['review.json'])] : []),
+  ];
+  return { ...row, statusUrl: base, startUrl: `${base}/start`, cancelUrl: `${base}/cancel`, artifacts: artifacts.map(name => ({ name, url: `${base}/artifacts/${name}` })) };
 }
 export async function managedJobs(req: BillingRequest, res: ServerResponse, path: string, token: string, ledger: LedgerCall, livemode: boolean) {
   if (path === 'jobs' && req.method === 'POST') {

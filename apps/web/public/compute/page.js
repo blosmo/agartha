@@ -52,7 +52,7 @@ function updatePlan({ showErrors = false } = {}) {
   const pricingNote = verified
     ? `Current compute pricing: ${money(pricing.minimumCents)} for the first ${pricing.minimumMinutes} running minutes, then ${money(pricing.priceCentsPerMinute)} per additional begun minute. Sessions reserve ${pricing.minimumMinutes}–${pricing.maximumMinutes} minutes; get fresh quotes before reserving.`
     : `Live compute pricing is unverified. Check ${location.origin}/api/blender/pricing before planning paid work.`;
-  promptElement.textContent = `Read ${location.origin}/compute/skill.md and its modeling guide.
+  promptElement.textContent = `Read ${location.origin}/compute/direct.md and its modeling guide.
 Task: ${brief.value.trim()}
 Intended use: ${intendedUse.value}
 Maximum TOTAL task usage budget: ${money(cents)} USD, including compute, model inference and review. This is a ceiling, not a spending target.

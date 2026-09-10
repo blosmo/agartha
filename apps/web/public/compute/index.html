@@ -6,6 +6,7 @@
   <title>3D for Agents — Model within your budget</title>
   <meta name="description" content="Create 3D models with your agent. Set a budget, build in Blender, and download editable files.">
   <link rel="canonical" href="https://3dforagents.com/compute/">
+  <link rel="describedby" href="/compute/llms.txt">
   <link rel="alternate" type="text/plain" href="/compute/skill.md" title="Agent instructions">
   <link rel="stylesheet" href="/compute/page.css">
   <link rel="stylesheet" href="/compute/showcase.css">
@@ -60,8 +61,8 @@
         <button id="managed-check" type="button">Refresh availability</button>
         <form id="managed-form">
           <label for="managed-brief">Describe your model</label>
-          <textarea id="managed-brief" rows="4" maxlength="2000" required placeholder="A low-poly ceramic teapot with a wide handle, for a game"></textarea>
-          <label class="reference-option" id="managed-reference-option" hidden><input id="managed-references" type="checkbox" checked disabled> Create visual references first</label>
+          <textarea id="managed-brief" rows="4" maxlength="2000" required placeholder="A ceramic teapot with a wide handle and subtle leaf details, for a game"></textarea>
+          <label class="reference-option" id="managed-reference-option" hidden><input id="managed-references" type="checkbox" checked disabled> Create visual references first when the cap is at least $5</label>
           <label for="managed-budget">Total budget (USD)</label>
           <input id="managed-budget" type="text" inputmode="decimal" value="5.00" required aria-describedby="managed-budget-help">
           <p id="managed-budget-help">$1–$20 for Astra and Blender. Pay for usage; keep unused credits.</p>
@@ -77,7 +78,7 @@
         <p class="form-intro">Approve your agent’s plan and payment before it starts.</p>
         <form id="plan-form" aria-labelledby="plan-title" novalidate hidden>
           <label for="brief">Describe your model (required)</label>
-          <textarea id="brief" name="brief" aria-describedby="brief-error" rows="3" maxlength="2000" required placeholder="A low-poly ceramic teapot with a wide handle"></textarea>
+          <textarea id="brief" name="brief" aria-describedby="brief-error" rows="3" maxlength="2000" required placeholder="A ceramic teapot with a wide handle and subtle leaf details"></textarea>
           <p id="brief-error" class="field-error" hidden></p>
           <label for="intended-use">Where will you use it?</label>
           <select id="intended-use" name="intended-use">
@@ -131,7 +132,7 @@
       </div>
     </section>
 
-    <section><h2>Download and make it yours</h2><p>Get the model, editable Blender source and available previews. A 360° video is included when the budget allows.</p><p>Save your files within 7 days of creation, before downloads expire.</p><div class="links"><a href="/compute/skill.md">Agent quickstart</a><a href="/compute/modeling.md">Modeling guide</a><a href="/compute/openapi.json">API reference</a><a href="/agents/blender-billing.md">Billing and limits</a></div></section>
+    <section><h2>Download and make it yours</h2><p>Get the model, editable Blender source and available previews. A 360° video is included when the budget allows.</p><p>Save your files within 7 days of creation, before downloads expire.</p><div class="links"><a href="/compute/skill.md">Agent quickstart</a><a href="/compute/modeling.md">Modeling guide</a><a href="/compute/direct.md">Direct Blender</a><a href="/compute/openapi.json">API reference</a><a href="/agents/blender-billing.md">Billing and limits</a></div></section>
   </main>
   <footer><p>Independent of Blender Foundation. Blender is its registered trademark. <a href="https://www.blender.org/about/license/">Software license</a> · <a href="https://www.blender.org/about/trademark-policy/">Trademark policy</a></p></footer>
   <script type="module" src="/compute/showcase.js"></script>
