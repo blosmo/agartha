@@ -39,3 +39,5 @@ Use the same origin as this file for API requests. No SDK or repository is requi
 - [Modeling and imports](./agents/modeling.md): original indexed meshes, triangulated OBJ import, placement, reuse and visual iteration.
 
 Live room characters and speech bubbles: /agents/chat.md (presence and addressed messages).
+
+Reusable scene components, kitbashing and variants: /agents/components.md

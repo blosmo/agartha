@@ -32,13 +32,14 @@ class StudioTests(unittest.TestCase):
             store.save_reference('job', raster(), REFERENCE_MODEL)
             self.assertEqual(len(reference_views(raster())), 4)
 
-    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True):
+    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None):
         directory=tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         store=ManagedFiles(Path(directory.name),StorageCoordinator(),lambda:None)
         files=Mock(wraps=store)
         if restore_failure: files.restore_accepted.side_effect=OSError('storage unavailable')
         broker=Mock(); timeline=[]; requests=[]
-        row={'reservationId':'r','status':'running','brief':'An observatory','referenceMode':'generate','shareMaterials':share_materials}
+        broker.upload_material.return_value="shared-material-test.glb"
+        row={'reservationId':'r','status':'running','brief':'An observatory','referenceMode':'generate','shareMaterials':share_materials, 'shareComponents':share_components}
         def ledger(name, **kwargs):
             timeline.append(name)
             if name=='heartbeatManagedJob': return {'active':True}
@@ -46,11 +47,14 @@ class StudioTests(unittest.TestCase):
         broker.ledger.call.side_effect=ledger
         broker.owned.return_value={'status':'running','launchClaimedAt':time.time()*1000,'reservedMinutes':30}
         broker.start.side_effect=lambda *args:timeline.append('start')
-        state={'model':b'BLENDER-A','accepted':None}
+        state={'model':b'BLENDER-A','accepted':None,'parent':None}
         def call(token,reservation,request,operation,limit):
             params=request['params'];code=params['arguments'].get('code','')
             if 'BROKEN' in code:return {'result':{'isError':True,'content':[{'text':'Geometry edit failed'}]}}
             if 'REVISION_B' in code:state['model']=b'BLENDER-B'
+            if "mark_published_component(root," in code:
+                import ast
+                state['parent']=ast.literal_eval(code.split("mark_published_component(root,",1)[1].split(')',1)[0])
             if 'shutil.copyfile' in code:state['accepted']=state['model']
             if 'open_mainfile' in code:state['model']=state['accepted']
             output = 'STUDIO_OK:' + operation
@@ -62,6 +66,9 @@ class StudioTests(unittest.TestCase):
             return result
         broker.call.side_effect=call
         def download(token,reservation,name,limit):
+            if name=='component_parent.json':return json.dumps([state['parent']] if state['parent'] else []).encode()
+            if name=='shared_component.glb':return b'glTF-component'
+            if name=='component_source.blend':return b'BLENDER-component-only'
             if name=='shared_material.glb':return b'glTF-swatch'
             if name=='shared_source.blend':return b'BLENDER-material-only'
             if name=='model.blend':return state['model']
@@ -84,6 +91,67 @@ class StudioTests(unittest.TestCase):
             run_studio(broker,files,'a'*64,'job','worker',row,Mock(),'https://example.test/inference','key')
         finish=[call.kwargs for call in broker.ledger.call.call_args_list if call.args[0]=='finishManagedJob'][-1]
         return store,broker,requests,timeline,finish,video_mock
+
+    def test_component_search_keeps_all_ids_and_loads_a_reviewable_candidate(self):
+        exchange=Mock()
+        ids=['bundle-'+format(i,'064x') for i in range(25)]
+        cursor='bundle-'+'f'*64
+        exchange.search.return_value={'entries':[{'id':id,'modelId':'model-'+'b'*64,'metadata':{'name':'Window','description':'木'*500,'attribution':'作'*500}} for id in ids],'cursor':cursor}
+        exchange.load.return_value=({'id':ids[0],'modelId':'model-'+'b'*64,'metadata':{'name':'Window','license':'CC0-1.0'}},b'glTF-component')
+        steps=[action('search_assets',code='{"q":"window"}'),action('load_asset',code=json.dumps({'id':ids[0],'name':'Window A','location':[0,0,0],'rotation':[0,0,0],'scale':[1,1,1]})),action('accept'),action('finish')]
+        with patch('cloud.blender_billing.asset_exchange.AssetExchange',return_value=exchange):
+            store,broker,requests,timeline,finish,_=self.fixture(steps)
+        history=requests[2]['history']
+        for id in [*ids,cursor]: self.assertIn(id,history)
+        self.assertLess(len(history.encode()),15000)
+        self.assertLess(timeline.index('inference-modeling'),timeline.index('start'))
+        self.assertEqual(finish['status'],'completed')
+        self.assertTrue(finish['visuallyInspected'])
+        codes=[call.args[2]['params']['arguments'].get('code','') for call in broker.call.call_args_list]
+        self.assertTrue(any('import_component(path' in code for code in codes))
+        self.assertFalse(any('open_mainfile' in code for code in codes))
+        exchange.close.assert_called_once()
+
+    def test_component_publication_requires_licensed_job_and_later_visual_review(self):
+        metadata={'name':'Window','description':'Reusable oak frame'}
+        share={'license':'MIT','attribution':'Example author'}
+        exchange=Mock()
+        exchange.publish.return_value={'id':'bundle-'+'a'*64,'modelId':'model-'+'b'*64,'metadata':{**metadata,**share},'source':{},'preview':{}}
+        steps=[action('edit','REVISION_A'),action('prepare_asset',json.dumps(metadata)),action('publish_asset'),action('accept'),action('prepare_asset',json.dumps(metadata)),action('publish_asset'),action('finish')]
+        with patch('cloud.blender_billing.asset_exchange.AssetExchange',return_value=exchange):
+            store,_,requests,_,finish,_=self.fixture(steps,share_components=share)
+        trace=json.loads(store.read('job','review.json'))
+        self.assertIn('Accept and inspect',trace['actions'][1]['error'])
+        self.assertIn('Prepare a component',trace['actions'][2]['error'])
+        self.assertEqual(requests[6]['images'][-1]['label'],'render-detail')
+        exchange.publish.assert_called_once()
+        self.assertEqual(exchange.publish.call_args.args[1],{**metadata,**share})
+        self.assertEqual(exchange.publish.call_args.args[0]['source'],b'BLENDER-component-only')
+        self.assertEqual(finish['status'],'completed')
+        self.assertNotIn('uploadToken',json.dumps(trace))
+        exchange.reset_mock()
+        with patch('cloud.blender_billing.asset_exchange.AssetExchange',return_value=exchange):
+            self.fixture(steps)
+        exchange.publish.assert_not_called()
+
+    def test_new_component_publication_retains_parent_for_later_variants(self):
+        first='bundle-'+'a'*64
+        exchange=Mock()
+        exchange.publish.side_effect=[{'id':id,'modelId':'model-'+'b'*64,'metadata':{},'source':{},'preview':{}} for id in [first,'bundle-'+'c'*64]]
+        steps=[action('edit','REVISION_A'),action('accept'),action('prepare_asset','{"name":"Window","description":"Original"}'),action('publish_asset'),action('restore'),action('prepare_asset','{"name":"Window variant","description":"Variant"}'),action('publish_asset'),action('finish')]
+        with patch('cloud.blender_billing.asset_exchange.AssetExchange',return_value=exchange):
+            _,broker,_,_,finish,_=self.fixture(steps,share_components={'license':'MIT','attribution':'Author'})
+        self.assertEqual(exchange.publish.call_args_list[1].args[1]['parentId'],first)
+        codes=[call.args[2]['params']['arguments'].get('code','') for call in broker.call.call_args_list]
+        self.assertTrue(any("mark_published_component(root,'"+first+"')" in code and 'save_as_mainfile' in code for code in codes))
+        self.assertEqual(finish['status'],'completed')
+
+    def test_component_edit_invalidates_prepared_publication(self):
+        exchange=Mock()
+        with patch('cloud.blender_billing.asset_exchange.AssetExchange',return_value=exchange):
+            store,_,_,_,_,_=self.fixture([action('edit','REVISION_A'),action('accept'),action('prepare_asset','{"name":"Window","description":"Frame"}'),action('edit','REVISION_B'),action('publish_asset')],share_components={'license':'CC0-1.0','attribution':''})
+        exchange.publish.assert_not_called()
+        self.assertIn('Prepare a component',json.loads(store.read('job','review.json'))['actions'][4]['error'])
 
     def test_material_publication_requires_accepted_model_and_a_later_swatch_review(self):
         metadata={'name':'Original stone','description':'Fine joints','tags':['stone'],'license':'CC0-1.0','attribution':'','recipe':'Brick and Noise nodes','tileSize':2,'resolution':256}

@@ -1,5 +1,7 @@
 # Make a model worth keeping
 
+Scene and diorama requests use a [component-first workflow](../agents/components.md): plan parts, search shared bundles, assemble named components and create independent variants. Single-object requests keep direct modeling.
+
 Use this workflow when creating or refining a model through HTTP or MCP, for Agartha or another application. Follow the user's style, intended use and maximum total task usage budget. This guide supplies art direction and review criteria; it does not authorize extra compute, inference, review, sessions or publication.
 
 Read [the toolkit and preview workflow](../agents/blender-quality.md) for worker setup, coordinate conventions, export fidelity and render presets. Plan before starting the paid clock.
@@ -85,3 +87,5 @@ Save editable source before optimization. Export the intended objects; keep prev
 **Delivered:** download required files before stopping. Return files or verified links, dimensions/units, actual geometry/file statistics, inspected views and remaining limitations. Report actual Compute charges, actual model/inference and review costs when known, unknown costs, unspent task budget only when total usage is known, remaining defects and the stopping reason. Confirm shutdown and settlement through [the service workflow](skill.md). Describe visual judgments as judgments; this guide does not guarantee beauty or establish a numerical quality score.
 
 Agents can also [design procedural materials and contribute them to the shared library](../agents/material-authoring.md), retaining editable node graphs, reviewed swatches and portable PBR maps.
+
+To contribute generic reusable parts, set `shareComponents: {"license":"MIT","attribution":"Your studio"}` at job creation. This explicitly enables public component GLB, editable source and preview publication; omit it for private work. See the [component guide](../agents/components.md) for supported licenses, variants and review requirements.

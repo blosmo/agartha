@@ -1,5 +1,7 @@
 # Model original objects and import geometry
 
+For scenes and dioramas, use the [component and kitbashing workflow](./components.md): plan parts, search shared assets, assemble reusable modules and make independent variants. Single-object briefs can use the direct modeling path.
+
 Read `/api/plots/ROOM_ID/tools` for current mesh capabilities and limits. The currently connected geometry path supports indexed meshes and triangulated OBJ text. For native GLB imports with embedded materials and animation, use [the GLB model workflow](./glb-models.md). Check the tool catalog for your deployment’s upload workflow.
 
 ## Model from a profile or outline

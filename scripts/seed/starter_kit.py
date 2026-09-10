@@ -293,7 +293,7 @@ def export_runtime(path,collection=None,prefix=None):
         for obj in batches:
             obj.select_set(True)
         bpy.context.view_layer.objects.active=batches[0]
-        bpy.ops.export_scene.gltf(filepath=path,export_format='GLB',use_selection=True,export_yup=True,export_animations=False,export_cameras=False,export_lights=False,export_extras=False,export_texcoords=True,export_normals=True,export_materials='EXPORT')
+        bpy.ops.export_scene.gltf(filepath=path,export_format='GLB',use_selection=True,use_active_scene=True,export_yup=True,export_animations=False,export_cameras=False,export_lights=False,export_extras=False,export_texcoords=True,export_normals=True,export_materials='EXPORT')
     finally:
         # join() deletes the other objects but leaves their unused mesh data.
         for obj in temporary:

@@ -59,7 +59,9 @@ class MaterialExchange:
         if not isinstance(material_id,str) or not MATERIAL_ID.fullmatch(material_id):
             raise ValueError('Choose a shared material ID from search_materials.')
         entry = self.api('/api/materials/library/'+material_id)
-        model_id = entry.get('modelId')
+        return entry, self.download_model(entry.get('modelId'))
+
+    def download_model(self, model_id):
         if not isinstance(model_id,str) or not MODEL_ID.fullmatch(model_id):
             raise ValueError('Material has no valid swatch.')
         status, target, raw = self._request('GET', self.origin+'/api/models/'+model_id+'/file', limit=16_000_000)
@@ -70,7 +72,7 @@ class MaterialExchange:
             status, _, raw = self._request('GET', target, limit=16_000_000)
         if status != 200 or not raw.startswith(b'glTF') or 'model-'+hashlib.sha256(raw).hexdigest()!=model_id:
             raise ValueError('Shared material content does not match its immutable model ID.')
-        return entry, raw
+        return raw
 
     def _upload(self, url, ticket, data, content_type, expected_path):
         if url != self.storage_origin+expected_path or not re.fullmatch('[a-f0-9]{64}', ticket):
@@ -80,6 +82,12 @@ class MaterialExchange:
         return json.loads(raw)
 
     def publish(self, files, metadata, review, state):
+        bundle = self.publish_bundle(files,metadata,review,state)
+        if 'result' not in state:
+            state['result'] = self.api('/api/materials/library',{**metadata,'bundleId':bundle['id'],'review':state['review']})
+        return state['result']
+
+    def publish_bundle(self, files, metadata, review, state, *, parent_id=None):
         """Resume the same scoped upload tickets after a recoverable response failure."""
         if set(files) != {'glb','source','preview'} or any(not isinstance(v,bytes) or not v or len(v)>16_000_000 for v in files.values()):
             raise ValueError('Provide a bounded material GLB, material-only Blender source and preview.')
@@ -89,7 +97,7 @@ class MaterialExchange:
         if state.get('fingerprint',fingerprint)!=fingerprint: raise ValueError('Publication state belongs to different material content.')
         state['fingerprint'] = fingerprint
         state.setdefault('review',review)
-        if 'result' in state: return state['result']
+        if 'bundle' in state: return state['bundle']
         if 'modelTicket' not in state:
             state['modelTicket'] = self.api('/api/models/upload-ticket', {key:metadata[key] for key in ['name','description','license','attribution']})
         if 'model' not in state:
@@ -99,6 +107,7 @@ class MaterialExchange:
             state['assetTicket'] = self.api('/api/assets/upload-ticket',{
                 **{key:metadata[key] for key in ['name','description','license','attribution']},
                 'modelId':state['model']['id'],
+                **({'parentId':parent_id} if parent_id else {}),
                 **{key:{'bytes':len(files[key]),'sha256':hashlib.sha256(files[key]).hexdigest()} for key in ['source','preview']},
             })
         ticket = state['assetTicket']
@@ -107,8 +116,7 @@ class MaterialExchange:
                 self._upload(ticket['uploadUrls'][role],ticket['uploadToken'],files[role],content_type,'/asset-upload/'+role)
                 state[role+'Uploaded'] = True
         if 'bundle' not in state: state['bundle'] = self.api('/api/assets/finalize',{'uploadToken':ticket['uploadToken']})
-        state['result'] = self.api('/api/materials/library',{**metadata,'bundleId':state['bundle']['id'],'review':state['review']})
-        return state['result']
+        return state['bundle']
 
     def close(self):
         self.client.close()

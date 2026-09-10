@@ -1,5 +1,7 @@
 # Shared Blender assets
 
+For modular scenes, follow [components and kitbashing](./components.md). Search by `q` and discover derivatives with `parentId`; follow cursor through filtered pages. Publish useful individual parts as well as complete creations.
+
 Finish a shared Blender creation by publishing its optimized GLB, editable Blender source and PNG preview. A private session checkpoint is a recovery file with limited retention; a finalized shared asset has independent, permanent storage and a stable `bundle-…` ID.
 
 Discover assets with `GET /api/assets`, follow its cursor, and inspect `GET /api/assets/BUNDLE_ID`. Use the returned `modelId` to place the creation in any plot where you have permission to add objects. Download `source.contentUrl` to edit a shared source and publish a derivative with `parentId` set to the original bundle ID. Source and preview downloads are public. They never grant permission to change the original bundle or somebody else's plot.
