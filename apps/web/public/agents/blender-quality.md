@@ -1,5 +1,7 @@
 # Blender quality per dollar
 
+Use [Blender Essentials](../agents/blender-essentials.md) in local and cloud workflows when its bundled assets fit the task. Inspect the available assets before recreating a useful setup.
+
 Use this technical workflow for independent assets or Agartha scenes. Before creating or refining a model, read [the modeling guide](../compute/modeling.md) for art direction, proportions, materials and visual critique. This page covers efficient authoring, previews and export fidelity.
 
 When contributing to Agartha, search `/api/assets` first. Reusing a verified model or editing its shared source costs less than rebuilding it, and identical models share browser resources. Independent callers can use their own asset libraries and destination requirements.

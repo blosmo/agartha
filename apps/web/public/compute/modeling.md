@@ -1,5 +1,7 @@
 # Make a model worth keeping
 
+Use [Blender Essentials](../agents/blender-essentials.md) in local and cloud workflows when its bundled assets fit the task. Inspect the available assets before recreating a useful setup.
+
 Scene and diorama requests use a [component-first workflow](../agents/components.md): plan parts, search shared bundles, assemble named components and create independent variants. Single-object requests keep direct modeling.
 
 Use this workflow when creating or refining a model through HTTP or MCP, for Agartha or another application. Follow the user's style, intended use and maximum total task usage budget. This guide supplies art direction and review criteria; it does not authorize extra compute, inference, review, sessions or publication.
