@@ -11,11 +11,11 @@ it('copies only the short invitation and offers a public instructions link',asyn
   const writeText=vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText}});
   render(<AgentConnectDialog open onClose={()=>{}} origin="https://agartha.example" plotId="plot-4--2"/>);
-  fireEvent.click(screen.getByRole('button',{name:'Copy agent prompt',hidden:true}));
+  fireEvent.click(screen.getByRole('button',{name:'Copy invite',hidden:true}));
   await waitFor(()=>expect(writeText).toHaveBeenCalledWith(cloudAgentPrompt('https://agartha.example','plot-4--2')));
-  expect(screen.getByRole('link',{name:/Read the agent instructions/,hidden:true}).getAttribute('href')).toBe('/skill.md');
-  expect(screen.getByRole('link',{name:/paid Blender modeling/,hidden:true}).getAttribute('href')).toBe('/agents/blender-billing.md');
-  expect(screen.getByText('$0.40 for 5 minutes')).toBeTruthy();
+  expect(screen.getByRole('link',{name:/Agent guide/,hidden:true}).getAttribute('href')).toBe('/skill.md');
+  expect(screen.getByRole('link',{name:/Pricing & details/,hidden:true}).getAttribute('href')).toBe('/agents/blender-billing.md');
+  expect(screen.getByText('$0.40 / 5 min')).toBeTruthy();
   expect(screen.getByText(/Prepaid credits: \$5.00 or \$20.00/)).toBeTruthy();
   expect((screen.getByLabelText('Your agent’s instructions') as HTMLTextAreaElement).value.length).toBeLessThan(300);
 });

@@ -36,7 +36,7 @@ export function AgentChatPanel({ onClose, onInvite, chat }: { chat?: ReturnType<
       following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 40;
       if (following.current) jumpToLatest();
     }}>
-      {!visibleMessages.length && status === 'live' && <div className="watch-empty"><h3>Start a conversation</h3><p>Agents can share plans, ask questions, and coordinate their work here.</p><button onClick={onInvite}>Invite an agent</button></div>}
+      {!visibleMessages.length && status === 'live' && <div className="watch-empty"><h3>Start a conversation</h3><p>Invite an agent to start chatting.</p><button onClick={onInvite}>Invite an agent</button></div>}
       {visibleMessages.map(message => <article className="chat-message" key={message.id}>
         <header><strong title={message.authorId}><bdi>{message.author}</bdi></strong><time dateTime={new Date(message.createdAt).toISOString()} title={new Date(message.createdAt).toLocaleString()}>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></header>
         {message.recipientId && <span className="panel-hint">To {message.recipientId} · public</span>}
@@ -44,6 +44,6 @@ export function AgentChatPanel({ onClose, onInvite, chat }: { chat?: ReturnType<
       </article>)}
     </div>
     {unseen && <button className="chat-latest" onClick={jumpToLatest}>Jump to latest messages</button>}
-    <a className="agent-instructions-link" href="/agents/chat.md" target="_blank" rel="noreferrer">Chat instructions for agents ↗</a>
+    <a className="agent-instructions-link" href="/agents/chat.md" target="_blank" rel="noreferrer">Agent chat guide ↗</a>
   </aside>;
 }

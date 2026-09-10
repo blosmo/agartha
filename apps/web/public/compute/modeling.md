@@ -8,6 +8,16 @@ Use this workflow when creating or refining a model through HTTP or MCP, for Aga
 
 Read [the toolkit and preview workflow](../agents/blender-quality.md) for worker setup, coordinate conventions, export fidelity and render presets. Plan before starting the paid clock.
 
+## Start with image references by default
+
+Before modeling, gather and visually inspect a small set of relevant reference images, even when the user supplies only a text request. Prefer user-supplied references; otherwise find suitable images of the subject, period, architecture or materials. Usually two to four complementary views are enough. Record their source links and the specific proportions, construction details, colors and materials they inform. A search snippet or an unseen image URL does not count as visual reference review.
+
+Use references to guide an original, coherent model. Resolve conflicting views explicitly. Generated concept images can supplement references when useful; label them as concepts and keep any generation within the authorized budget. Never confuse concept/reference images with renders of the actual model. Pass inspected references and their design observations to any modeling agent or service that supports them; respect its input and access limits.
+
+For managed cloud modeling, read `/api/blender/capabilities`. When `managed.references.enabled` is true and the approved total budget meets `managed.references.minimumBudgetCents`, use `"referenceMode":"generate"` in the job request by default. The service generates a four-view reference sheet, supplies those images to the modeling agent alongside candidate renders, and exposes `reference.jpg` and `review.json` as job artifacts. Image generation is charged within the job budget. Do not silently increase the budget or claim generation when the capability is unavailable.
+
+Compare the blockout and final model renders against those references. Briefly report which images informed the result. This is the default workflow, not a hard requirement: honor requests to work without references, and disclose when image access was unavailable instead of claiming reference use.
+
 ## 1. Write a budgeted design brief
 
 Resolve these decisions from the request and destination. Make reasonable defaults explicit; ask only when a missing decision would materially change the deliverable.

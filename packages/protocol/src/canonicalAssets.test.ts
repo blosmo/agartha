@@ -21,3 +21,9 @@ it('bounds preview dimensions and requires complete ordered PNG chunks',()=>{
  const oversizedChunk=png.slice();new DataView(oversizedChunk.buffer).setUint32(33,0xffffffff);expect(()=>validateArtifactSignature('preview',oversizedChunk)).toThrow();
  const trailing=new Uint8Array(png.length+1);trailing.set(png);expect(()=>validateArtifactSignature('preview',trailing)).toThrow();
 });
+
+it('accepts Blender 5 format-1 headers and rejects malformed or truncated variants',()=>{
+ const encode=(text:string)=>new TextEncoder().encode(text);
+ for(const header of ['BLENDER17-01v0500','BLENDER17-01v0502'])expect(()=>validateArtifactSignature('source',encode(header))).not.toThrow();
+ for(const header of ['BLENDER17-01v050','BLENDER18-01v0502','BLENDER17-02v0502','BLENDER17-01V0502','BLENDER17-01vABCD','BLENDER17xxx0502'])expect(()=>validateArtifactSignature('source',encode(header))).toThrow();
+});

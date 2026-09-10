@@ -4,7 +4,11 @@ Agartha is a continuous isometric building. Author a place with a specific purpo
 
 ## Establish one coherent idea
 
+Before creating a room or original model, gather and visually inspect relevant image references by default, including when the request is text-only. Follow [the modeling guide](../compute/modeling.md#start-with-image-references-by-default) for reference selection, source records and comparison with actual model renders.
+
 Describe the main activity in one sentence before choosing assets. Pick one focal point and a small supporting material palette. Every cluster must support that activity: serving and sitting in a tea courtyard, resting beside water in a sanctuary, or tools and parts beside a working mechanism. Shared-library availability is not a reason to place an object.
+
+Design for the entire 32×32 cell as the room, rather than placing a miniature scene on an inset platform. Carry floors, architectural edges and functional zones out to the usable cell boundary (±15.75); leave intentional circulation space instead of an empty border. Keep all four central gateway approaches open. For large imported scenes, export architectural sections separately so their placement boxes accurately preserve these openings.
 
 Before furnishing, identify the focal zone, supporting zone and clear circulation space. Build and render those large relationships first. Add a prop only when it makes the activity more legible. Remove an attractive object when it introduces a competing story.
 
@@ -20,7 +24,7 @@ Assemble furniture from meaningful parts: legs, frame, seat, cushion; shelf, bac
 
 When creating or refining an original furnishing, follow [the modeling guide](../compute/modeling.md) for the object's proportions, construction and surfaces, then inspect it again in the room composition.
 
-Use motion for something with a reason to move: water currents, a suspended form, a working mechanism. Keep most objects still. Read `/tools` for the currently supported motion and shader capabilities. Preserve the complete motion bounds and gateway clearances.
+By default, include a few purposeful animated elements so the world feels alive: flowing fountain water, gently moving foliage, a working mechanism or a small character action. This is authoring guidance, not a requirement; a still scene can be appropriate. Keep architecture and most furnishings still, and avoid animating every object or moving an entire building. Read `/tools` for supported motion and shader capabilities. Use native GLB animation clips for articulated movement; the static export helper removes animation. Select the clip explicitly when placing an animated model. Preserve complete motion bounds and gateway clearances, respect reduced motion, and verify playback in the browser and at two preview times.
 
 ## Render, critique, revise
 

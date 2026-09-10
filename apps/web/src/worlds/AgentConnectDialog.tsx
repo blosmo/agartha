@@ -11,10 +11,11 @@ export function AgentConnectDialog({ open, onClose, origin, plotId, projectId }:
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const promptField = useRef<HTMLTextAreaElement>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const prompt = projectId ? playgroundAgentPrompt(origin, projectId) : CLOUD_MODE ? cloudAgentPrompt(origin, plotId) : agentOnboardingPrompt(origin, plotId);
   useEffect(() => {
-    if (open) { setCopyState('idle'); dialog.current?.showModal(); }
+    if (open) { setCopyState('idle'); setShowPrompt(false); dialog.current?.showModal(); }
     else dialog.current?.close();
   }, [open]);
 
@@ -30,24 +31,26 @@ export function AgentConnectDialog({ open, onClose, origin, plotId, projectId }:
       await navigator.clipboard.writeText(prompt);
       setCopyState('copied');
     } catch {
+      setShowPrompt(true);
       setCopyState('failed');
     }
   }
 
   return <dialog ref={dialog} className="world-dialog agent-connect-dialog" aria-labelledby="agent-connect-title" onCancel={onClose} onClose={onClose}>
     <button className="dialog-close" onClick={onClose} aria-label="Close agent instructions"><X size={20}/></button>
-    <span className="world-eyebrow">INVITE A COLLABORATOR</span>
     <h2 id="agent-connect-title">Invite an agent</h2>
-    <p>{projectId ? 'Invite your agent to join this project and contribute under its own name.' : 'Copy this prompt into your agent to explore, collaborate, or build a room.'}</p>
-    {CLOUD_MODE && <BlenderModelingOffer compact/>}
+    <p>{projectId ? 'Paste the invite into your agent to join this project.' : 'Paste the invite into your agent to start building.'}</p>
+    <details className="invite-details" open={showPrompt} onToggle={event => setShowPrompt(event.currentTarget.open)}><summary>View instructions</summary>
     <label className="agent-prompt-label" htmlFor="agent-prompt">Your agent’s instructions</label>
     <textarea id="agent-prompt" className={CLOUD_MODE ? "agent-prompt agent-prompt-short" : "agent-prompt"} ref={promptField} readOnly value={prompt} spellCheck={false} onFocus={event => event.currentTarget.select()}/>
+    </details>
     <button className="copy-agent-prompt" onClick={() => void copyPrompt()}>
       {copyState === 'copied' ? <Check size={17}/> : <Copy size={17}/>}
-      {copyState === 'copied' ? 'Copied — paste into your agent' : 'Copy agent prompt'}
+      {copyState === 'copied' ? 'Copied' : 'Copy invite'}
     </button>
-    <p className="agent-copy-status" role="status">{copyState === 'failed' ? 'Clipboard unavailable. The prompt is selected above; copy it manually.' : copyState === 'copied' ? 'Prompt copied. Paste it into your agent.' : 'Paste into your agent to get started.'}</p>
-    {CLOUD_MODE && <a className="agent-instructions-link" href="/skill.md" target="_blank" rel="noreferrer">Read the agent instructions ↗</a>}
-    {!CLOUD_MODE && <p className="connection-note">Use an agent with terminal or HTTP tools on this computer. Cloud agents cannot reach this local world.</p>}
+    <p className="agent-copy-status" role="status">{copyState === 'failed' ? 'Clipboard unavailable. The prompt is selected above; copy it manually.' : copyState === 'copied' ? 'Prompt copied. Paste it into your agent.' : ''}</p>
+    {CLOUD_MODE && <a className="agent-instructions-link" href="/skill.md" target="_blank" rel="noreferrer">Agent guide ↗</a>}
+    {!CLOUD_MODE && <p className="connection-note">Local world · use an agent on this computer.</p>}
+    {CLOUD_MODE && <BlenderModelingOffer compact/>}
   </dialog>;
 }

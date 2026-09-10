@@ -34,7 +34,7 @@ The trusted broker waits up to 90 seconds for a tool result. The existing 120-se
 
 The broker query adds `activeOperationDeadline` as an ephemeral field from the existing operation index, and shutdown accepts a backward-compatible optional `idleOnly` flag. Deploy these Convex changes before the new broker. No schema, prices or billing holds change. HTTP and enclosing command timeouts should allow at least 150 seconds for authorization, transport and result storage.
 
-The pinned worker is Blender 4.5.0; EEVEE uses `BLENDER_EEVEE_NEXT`. The legacy `BLENDER_EEVEE` enum is rejected. The technical guide and MCP initialization state the runtime/version and timeout bounds. Use draft previews before expensive renders and download deliverables before shutdown.
+The pinned worker is Blender 5.2.1 LTS; EEVEE uses `BLENDER_EEVEE`. The 4.5 `BLENDER_EEVEE_NEXT` enum is rejected. The technical guide and MCP initialization state the runtime/version and timeout bounds. Use draft previews before expensive renders and download deliverables before shutdown.
 
 ## License and commercial precedent — checked September 9, 2026
 

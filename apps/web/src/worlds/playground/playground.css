@@ -5,7 +5,7 @@
   --playground-accent: #e4d3a6;
   width: 440px;
   padding: 20px;
-  max-height: calc(100dvh - var(--ws-header-offset) - 18px);
+  max-height: calc(100dvh - var(--ws-header-offset) - var(--ws-controls-offset));
 }
 .playground-panel .room-panel-heading {
   margin-bottom: 4px;
@@ -108,7 +108,7 @@
 .playground-toolbar {
   justify-content: space-between;
 }
-.playground-toolbar span,
+.playground-toolbar > span,
 .playground-meta {
   font-size: 12px;
   color: var(--ws-muted);
@@ -291,19 +291,6 @@
     transform: none;
   }
 }
-@media (max-width: 850px) and (min-width: 481px) {
-  .world-header {
-    gap: 5px;
-  }
-  .world-header > button {
-    padding: 0 7px;
-    font-size: 12px;
-  }
-  .world-header .world-brand {
-    font-size: 21px;
-    padding: 7px 9px;
-  }
-}
 @media (max-width: 760px) {
   .playground-panel {
     width: auto;
@@ -313,22 +300,22 @@
   }
 }
 @media (max-width: 480px) {
-  .world-header {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-  .world-header .world-brand {
-    grid-column: 1 / 6;
-  }
-  .world-header .world-connect {
-    grid-column: 6;
-  }
-  .world-header > button {
-    font-size: 11px;
-  }
   .playground-tabs button {
     padding: 6px;
   }
   .playground-panel {
-    max-height: calc(100dvh - var(--ws-header-offset) - 12px);
+    max-height: calc(100dvh - var(--ws-header-offset) - var(--ws-controls-offset));
   }
 }
+
+/* Match the surrounding menus; reserve large previews for real artwork. */
+.world-space .playground-panel .room-panel-heading h2 { font: 500 18px/1.4 'Geist Variable',ui-sans-serif,system-ui,sans-serif; }
+.playground-panel .playground-card-title { font: 500 15px/1.4 'Geist Variable',ui-sans-serif,system-ui,sans-serif; margin-bottom: 4px; }
+.playground-panel .playground-card { padding: 0; }
+.playground-ideas { gap: 10px; }
+.playground-card .playground-art-empty { height: 64px; aspect-ratio: auto; background: #ffffff04; color: var(--ws-muted); }
+.playground-card-copy { padding: 12px 14px; }
+.playground-panel .group.text-background { color: #24332d; --foreground: #e4d3a6; --background: #192524; }
+.playground-panel .group svg { display: inline-block; vertical-align: middle; }
+.playground-panel .playground-tabs { margin-bottom: 8px; padding-bottom: 8px; }
+.playground-panel > details { margin-top: 8px; padding-top: 0; }

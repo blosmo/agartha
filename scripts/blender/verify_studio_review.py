@@ -1,4 +1,4 @@
-"""Verify inspection framing and complete camera/settings restoration in Blender 4.5."""
+"""Verify inspection framing and complete camera/settings restoration in Blender 5.2."""
 from pathlib import Path
 import sys
 import tempfile
@@ -22,11 +22,12 @@ scene=bpy.context.scene;scene.camera=source
 scene.render.engine='CYCLES';scene.cycles.samples=7;scene.cycles.time_limit=2.2;scene.cycles.adaptive_threshold=.12
 scene.render.resolution_x=321;scene.render.resolution_y=234;scene.render.pixel_aspect_x=2;scene.render.pixel_aspect_y=1
 scene.render.use_border=True;scene.render.use_crop_to_border=True;scene.render.filepath='unchanged.png';scene.render.threads_mode='FIXED';scene.render.threads=3
-scene.render.image_settings.file_format='JPEG'
+scene.render.image_settings.media_type='VIDEO'
+scene.render.image_settings.file_format='FFMPEG'
 render_keys=('engine','threads_mode','threads','filepath','resolution_x','resolution_y','resolution_percentage','pixel_aspect_x','pixel_aspect_y','use_border','use_crop_to_border')
 cycle_keys=('device','samples','time_limit','use_denoising','use_adaptive_sampling','adaptive_threshold','adaptive_min_samples','denoiser','denoising_input_passes','denoising_prefilter')
 
-def state():return ({key:getattr(scene.render,key) for key in render_keys},{key:getattr(scene.cycles,key) for key in cycle_keys},scene.render.image_settings.file_format,source.matrix_world.copy(),len(bpy.data.cameras))
+def state():return ({key:getattr(scene.render,key) for key in render_keys},{key:getattr(scene.cycles,key) for key in cycle_keys},scene.render.image_settings.media_type,scene.render.image_settings.file_format,source.matrix_world.copy(),len(bpy.data.cameras))
 checks=[]
 def verify_frame():
     bpy.context.view_layer.update()

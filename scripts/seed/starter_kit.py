@@ -1,4 +1,4 @@
-"""Exec-composable Blender 4.5 starter authoring toolkit.
+"""Exec-composable Blender 5.2 starter authoring toolkit.
 
 All public positions, sizes, vertices and Euler rotations use world (X,Y,Z),
 Y up. Blender mapping is (X,-Z,Y). Name reusable parts with a shared prefix.

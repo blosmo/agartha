@@ -26,12 +26,21 @@ model = bpy.data.collections.get('AGARTHA_MODEL')
 assert model, 'Put the deliverable meshes in collection AGARTHA_MODEL.'
 meshes = [o for o in model.all_objects if o.type == 'MESH']
 assert meshes, 'The scene has no model meshes.'
-assert sum(len(o.data.polygons) for o in meshes) <= 100000, 'Simplify the model before export.'
+depsgraph = bpy.context.evaluated_depsgraph_get()
+triangles = 0
+for obj in meshes:
+    evaluated = obj.evaluated_get(depsgraph).to_mesh()
+    try:
+        evaluated.calc_loop_triangles()
+        triangles += len(evaluated.loop_triangles)
+    finally:
+        obj.evaluated_get(depsgraph).to_mesh_clear()
+assert triangles <= 100000, 'Simplify the evaluated model before export.'
 bpy.ops.object.select_all(action='DESELECT')
 for obj in meshes:
     obj.select_set(True)
 bpy.context.view_layer.objects.active = meshes[0]
-bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_cameras=False, export_lights=False)
+bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_apply=True, export_cameras=False, export_lights=False)
 scene = bpy.context.scene
 scene.render.engine = 'CYCLES'
 scene.cycles.device = 'CPU'
