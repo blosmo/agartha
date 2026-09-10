@@ -1,7 +1,7 @@
 import {afterEach,expect,it,vi} from 'vitest';
 import handler from '../api/index';
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
-function response(){const headers:Record<string,unknown>={};let body='';return {headers,get body(){return body;},statusCode:200,setHeader:(key:string,value:unknown)=>{headers[key]=value;},end:(value:string)=>{body=value;}};}
+function response(){const headers:Record<string,unknown>={};let body='';return {headers,get body(){return body;},statusCode:200,getHeader:(key:string)=>headers[key],setHeader:(key:string,value:unknown)=>{headers[key]=value;},end:(value:string)=>{body=value;}};}
 it('forwards nested proposal actions and preserves structured conflicts',async()=>{
   vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');
   const conflict={code:'conflict',error:'Objects changed',conflicts:[{id:'chair',expectedVersion:1,currentVersion:2}]};
@@ -24,10 +24,10 @@ it('renders an exact proposal preview with proposal and base snapshot headers',a
 });
 it('creates a secure browser identity without exposing the credential in the response',async()=>{
   vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');
-  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({agentId:'agent-1',name:'Visitor'})));vi.stubGlobal('fetch',fetcher);
+  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({agentId:`agent-${'c'.repeat(24)}`,name:'Visitor',accessToken:'a'.repeat(64),recoveryToken:'b'.repeat(64),expiresAt:Date.now()+1000,recoveryConfigured:true,recoverable:true})));vi.stubGlobal('fetch',fetcher);
   const res=response();await handler({method:'POST',headers:{host:'world.example','content-type':'application/json',origin:'https://world.example'},query:{path:'session'},body:{}} as never,res as never);
-  expect(res.statusCode).toBe(200);expect(res.headers['Set-Cookie']).toMatch(/HttpOnly; Secure; SameSite=Lax/);expect(res.body).not.toContain('gateway-secret');
-  const request=fetcher.mock.calls[0][1];expect(request.headers['x-agartha-gateway-key']).toBe('gateway-secret');expect(JSON.parse(request.body).agentToken).toMatch(/^[a-f0-9]{64}$/);
+  expect(res.statusCode).toBe(200);expect(res.headers['Set-Cookie']).toEqual(expect.arrayContaining([expect.stringMatching(/HttpOnly; Secure; SameSite=Lax/)]));expect(res.body).not.toContain('gateway-secret');
+  const request=fetcher.mock.calls[0][1];expect(request.headers['x-agartha-gateway-key']).toBe('gateway-secret');expect(JSON.parse(request.body).candidateToken).toMatch(/^[a-f0-9]{64}$/);expect(JSON.parse(request.body).candidateRecoveryToken).toMatch(/^[a-f0-9]{64}$/);expect(res.body).not.toContain('a'.repeat(64));expect(res.body).not.toContain('b'.repeat(64));
 });
 it('allows an explicit remote agent registration without setting a browser cookie',async()=>{
   vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({agentId:'agent-2'}))));

@@ -8,9 +8,53 @@ export function assertCents(value: number, name = 'cents'): number {
   return value;
 }
 
+
+/** Active and settled pools are bounded independently of withdrawal history. */
+export async function fundingBackings(ctx: QueryCtx | MutationCtx, projectId: string, livemode: boolean, status: 'held' | 'settled') {
+  const rows = await ctx.db.query('playgroundBackings').withIndex('by_project_mode_status', q => q.eq('projectId', projectId).eq('livemode', livemode).eq('status', status)).take(101);
+  if (rows.length > 100) fail('invalid', 'Project backing capacity requires reconciliation.');
+  return rows;
+}
+/** Resolve only jobs already committed to a grant; never grants quote/resume access. */
+export async function allowanceForJob(ctx: QueryCtx | MutationCtx, walletOwner: string, livemode: boolean, jobId: string) {
+  const allowance = await ctx.db.query('playgroundAllowances').withIndex('by_wallet', q => q.eq('walletOwner', walletOwner)).unique();
+  return allowance && allowance.livemode === livemode && allowance.jobIds.includes(jobId) ? allowance : null;
+}
+export async function canAccessManagedReservation(ctx: QueryCtx | MutationCtx, walletOwner: string, livemode: boolean, reservationId: string, actorId: string) {
+  if (!reservationId.startsWith('managed-')) return false;
+  const jobId = reservationId.slice('managed-'.length);
+  if (walletOwner.startsWith('playground-allowance-')) {
+    const allowance = await allowanceForJob(ctx, walletOwner, livemode, jobId);
+    return Boolean(allowance && (allowance.sponsorId === actorId || allowance.recipientId === actorId));
+  }
+  const pool = await ctx.db.query('playgroundFundingPools').withIndex('by_wallet', q => q.eq('walletOwner', walletOwner)).unique();
+  if (!pool || pool.livemode !== livemode || pool.jobId !== jobId) return false;
+  const proposal = await ctx.db.query('playgroundProjects').withIndex('by_project', q => q.eq('projectId', pool.projectId)).unique();
+  return proposal?.creatorId === actorId;
+}
 export async function getOrCreateWallet(ctx: MutationCtx, agentId: string, livemode: boolean) {
   const existing = await ctx.db.query('blenderWallets').withIndex('by_agent_mode', q => q.eq('agentId', agentId).eq('livemode', livemode)).unique();
-  if (existing) return existing;
+  if (existing) {
+    // Pool accounts have no session credentials. Their authority follows every
+    // participating prepaid wallet, including payment-dispute freezes.
+    if (agentId.startsWith('playground-pool-')) {
+      const pool = await ctx.db.query('playgroundFundingPools').withIndex('by_wallet', q => q.eq('walletOwner', agentId)).unique();
+      if (!pool || pool.livemode !== livemode) throw new Error('Unknown project funding wallet.');
+      const backings = await fundingBackings(ctx, pool.projectId, livemode, 'held');
+      for (const backing of backings) {
+        if (backing.status !== 'held') continue;
+        const owner = await ctx.db.query('blenderWallets').withIndex('by_agent_mode', q => q.eq('agentId', backing.agentId).eq('livemode', livemode)).unique();
+        if (!owner || owner.frozen) return { ...existing, frozen: true };
+      }
+    }
+    if (agentId.startsWith('playground-allowance-')) {
+      const allowance = await ctx.db.query('playgroundAllowances').withIndex('by_wallet', q => q.eq('walletOwner', agentId)).unique();
+      if (!allowance || allowance.livemode !== livemode) throw new Error('Unknown agent allowance wallet.');
+      const sponsor = await ctx.db.query('blenderWallets').withIndex('by_agent_mode', q => q.eq('agentId', allowance.sponsorId).eq('livemode', livemode)).unique();
+      if (!sponsor || sponsor.frozen || allowance.status !== 'active') return { ...existing, frozen: true };
+    }
+    return existing;
+  }
   const id = await ctx.db.insert('blenderWallets', { agentId, livemode, availableCents: 0, heldCents: 0, frozen: false, openDisputes: 0 });
   return (await ctx.db.get(id))!;
 }

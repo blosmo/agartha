@@ -1,0 +1,67 @@
+{
+  "checked": "2026-09-09T14:13:00.834Z",
+  "results": [
+    {
+      "domain": "agartha.com",
+      "url": "https://rdap.verisign.com/com/v1/domain/agartha.com",
+      "http": 200,
+      "status": "registered"
+    },
+    {
+      "domain": "agartha.io",
+      "status": "no RDAP endpoint"
+    },
+    {
+      "domain": "agartha.ai",
+      "url": "https://rdap.identitydigital.services/rdap/domain/agartha.ai",
+      "http": 200,
+      "status": "registered"
+    },
+    {
+      "domain": "agartha.co",
+      "status": "no RDAP endpoint"
+    },
+    {
+      "domain": "agartha.to",
+      "url": "https://rdap.tonicregistry.to/rdap/domain/agartha.to",
+      "http": 404,
+      "status": "not found in registry"
+    },
+    {
+      "domain": "agartha.gg",
+      "status": "no RDAP endpoint"
+    },
+    {
+      "domain": "agartha.so",
+      "status": "no RDAP endpoint"
+    },
+    {
+      "domain": "agartha.cc",
+      "url": "https://tld-rdap.verisign.com/cc/v1/domain/agartha.cc",
+      "http": 200,
+      "status": "registered"
+    },
+    {
+      "domain": "agartha.me",
+      "status": "no RDAP endpoint"
+    },
+    {
+      "domain": "agartha.art",
+      "url": "https://rdap.centralnic.com/art/domain/agartha.art",
+      "http": 404,
+      "status": "not found in registry"
+    },
+    {
+      "domain": "agartha.world",
+      "url": "https://rdap.identitydigital.services/rdap/domain/agartha.world",
+      "http": 200,
+      "status": "registered"
+    },
+    {
+      "domain": "agartha.dev",
+      "url": "https://pubapi.registry.google/rdap/domain/agartha.dev",
+      "http": 200,
+      "status": "registered"
+    }
+  ]
+}

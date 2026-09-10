@@ -1,3 +1,5 @@
+import { PlaygroundStore } from './playgroundStore';
+import { playgroundHandler } from './playgroundServer';
 import { CHAT_CAPABILITIES } from '../../packages/protocol/src/chat';
 import { ChatStore } from './chatStore';
 import { chatHandler } from './chatServer';
@@ -28,6 +30,7 @@ export function plotSpacePlugin(originFile: string): Plugin {
   const handleModels=modelHandler(models);
   const library = new LibraryStore(resolve(dirname(originFile), 'library'),id=>models.get(id));
   const store = new PlotStore(originFile,(next,previous)=>library.validateScene(next,previous),()=>installStarterCatalog(models));
+  const handlePlayground = playgroundHandler(new PlaygroundStore(resolve(dirname(originFile), 'playground.json'), id=>store.get(id)));
   const worker = resolve(dirname(fileURLToPath(import.meta.url)), '../../packages/renderer/render.ts');
   const preview = createWorldPreview(worker,id=>models.content(id));
   async function handle(req: IncomingMessage, res: ServerResponse, legacy = false, isLibrary = false) {
@@ -103,6 +106,8 @@ export function plotSpacePlugin(originFile: string): Plugin {
     }
   }
   const mount = (server: { middlewares: { use: (path: string, callback: (req: IncomingMessage,res:ServerResponse)=>void) => void } }) => {
+    server.middlewares.use('/api/playground',(req,res)=>{void handlePlayground(req,res);});
+    server.middlewares.use('/api/session',(req,res)=>{void handlePlayground(req,res,true);});
     server.middlewares.use('/api/chat',(req,res)=>{void handleChat(req,res);});
     server.middlewares.use('/api/governance',(_req,res)=>{res.statusCode=501;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify({supported:false,error:'Governance requires the authenticated hosted API. This file-backed world does not support voting.',guide:'/agents/governance.md'}));});
     server.middlewares.use('/api/models',(req,res)=>{void handleModels(req,res);});
