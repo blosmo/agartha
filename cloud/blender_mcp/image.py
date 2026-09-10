@@ -47,7 +47,7 @@ def build_image():
         "python -m pip install --no-cache-dir 'mcp==1.26.0'; "
         f"blender_site=$(find /opt/blender-{BLENDER_VERSION}-linux-x64/{BLENDER_SERIES}/python/lib -maxdepth 2 -type d -name site-packages -print -quit); "
         "test -n \"$blender_site\"; "
-        "python -m pip install --no-cache-dir --target \"$blender_site\" requests==2.32.4; "
+        "python -m pip install --no-cache-dir --upgrade --target \"$blender_site\" requests==2.32.4; "
         "addon=$(find /opt/blender-mcp -name addon.py -type f -print -quit); "
         "test -n \"$addon\"; "
         "if [ \"$addon\" != /opt/blender-mcp/addon.py ]; then install -m 0644 \"$addon\" /opt/blender-mcp/addon.py; fi"
