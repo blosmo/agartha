@@ -13,7 +13,7 @@ export async function managedJobs(req: BillingRequest, res: ServerResponse, path
     if (!managedEnabled(token, req)) throw new BillingHttpError(503, 'Managed modeling is not available.');
     const body = await jsonBody(req);
     if (body.referenceMode === 'generate' && !referencesEnabled(token)) throw new BillingHttpError(503, 'Reference-guided modeling is not available yet.');
-    const row = await ledger<Record<string, any>>('createManagedJob', { token, jobId: body.jobId, requestId: body.requestId, brief: body.brief, ...(body.referenceMode === undefined ? {} : { referenceMode: body.referenceMode }), budgetCents: body.budgetCents, livemode });
+    const row = await ledger<Record<string, any>>('createManagedJob', { token, jobId: body.jobId, requestId: body.requestId, brief: body.brief, ...(body.referenceMode === undefined ? {} : { referenceMode: body.referenceMode }), ...(body.shareMaterials === undefined ? {} : {shareMaterials:body.shareMaterials}), budgetCents: body.budgetCents, livemode });
     jsonResponse(res, links(row), 201);
     return;
   }

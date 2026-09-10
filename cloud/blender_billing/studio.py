@@ -55,6 +55,18 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     status, progress = 'failed', 'The reference-guided job could not complete.'
     history = 'Inspect the persistent scene, then build a strong blockout matching the reference. Work through Blender tools and use rendered evidence to guide each stage.'
     reference_cost = 0
+    sharing_enabled = row.get('shareMaterials') is True
+    history += ' Material publication is '+('enabled' if sharing_enabled else 'disabled')+' for this job.'
+    from .material_exchange import MaterialExchange
+    exchange = None
+    prepared_material = None
+    material_preview = None
+    published_materials = 0
+
+    def shared_materials():
+        nonlocal exchange
+        if exchange is None: exchange = MaterialExchange(inference_url, broker.ledger.base, token)
+        return exchange
 
     def current() -> dict[str, Any]:
         value = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
@@ -142,11 +154,13 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                 status, progress = 'partial', 'Stopped refining to preserve delivery time.'
                 break
             heartbeat('Reviewing references and deciding the next Blender action.')
-            step = inference(f'{executor}-studio-{turn}', 'modeling', history=history.encode()[-15000:].decode(errors='ignore'), images=references + rendered)
+            visible_model_views = [image for image in rendered if not material_preview or image['label'] != material_preview['label']]
+            step = inference(f'{executor}-studio-{turn}', 'modeling', history=history.encode()[-15000:].decode(errors='ignore'), images=references + visible_model_views + ([material_preview] if material_preview else []))
+            if material_preview and prepared_material: prepared_material['reviewed'] = True
             if scene_matches:
-                reviewed_views.update(image['label'].removeprefix('render-') for image in rendered)
+                reviewed_views.update(image['label'].removeprefix('render-') for image in visible_model_views)
             action = step.get('action')
-            if action not in {'inspect_scene', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish'}: raise ValueError('Unknown Blender action.')
+            if action not in {'inspect_scene', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
             event = {'turn': turn, 'action': action, 'candidateRevision': revision, 'summary': str(step.get('summary', ''))[:1000], 'critique': str(step.get('critique', ''))[:2000], 'inspectedViews': sorted(reviewed_views), 'time': int(time.time())}
             events.append(event)
             operation = f'{executor}-tool-{turn}'
@@ -156,6 +170,14 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     status, progress = 'completed', event['summary'] or 'Accepted model delivered.'
                     event['result'] = 'Finished with an accepted, inspected model.'
                     trace(); break
+                if action == 'search_materials':
+                    parameters = json.loads(step.get('code', '{}'))
+                    result = shared_materials().search(parameters.get('q',''),parameters.get('cursor'))
+                    compact = {'entries':[{'id':entry['id'],'name':entry['name'].encode()[:100].decode(errors='ignore'),'tileSize':entry['tileSize'],'description':entry['description'].encode()[:80].decode(errors='ignore')} for entry in result['entries']], 'cursor':result.get('cursor')}
+                    event['result'] = json.dumps(compact,ensure_ascii=False)
+                    trace()
+                    history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}.\n'+json.dumps(events[-3:],ensure_ascii=False)
+                    continue
                 if not running:
                     heartbeat('Starting the private Blender workspace.')
                     broker.start(token, reservation); running = True; monitor(reservation)
@@ -166,10 +188,22 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     if action == 'inspect_object': arguments['object_name'] = step['objectName']
                     result = mcp(name, arguments, operation)
                     event['result'] = json.dumps(result)[:5000]
-                elif action == 'edit':
-                    code = step.get('code')
+                elif action in {'edit','load_material'}:
+                    if action == 'load_material':
+                        parameters = json.loads(step['code'])
+                        entry, payload = shared_materials().load(parameters['id'])
+                        name = broker.upload_material(token,reservation,payload,operation+'-upload')
+                        mapping = {key:parameters[key] for key in ['projection','center','direction'] if key in parameters}
+                        mapping['tile_size'] = parameters.get('tileSize',entry['tileSize'])
+                        code = "import bpy,sys,json,hashlib\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.material_authoring import import_material\n"
+                        code += "target=bpy.data.objects.get("+repr(step['objectName'])+")\nassert target and target.type=='MESH' and target.name in bpy.data.collections['AGARTHA_MODEL'].all_objects, 'Choose a deliverable mesh.'\n"
+                        code += "path='/workspace/artifacts/"+name+"'\nassert hashlib.sha256(open(path,'rb').read()).hexdigest()=="+repr(entry['modelId'].removeprefix('model-'))+"\n"
+                        code += "surface=import_material(path,target,**json.loads("+repr(json.dumps(mapping))+"))\nsurface['agarthaSharedMaterialId']="+repr(entry['id'])
+                    else:
+                        code = step.get('code')
                     if not isinstance(code, str) or not code.strip() or len(code.encode()) > 32000: raise ValueError('Invalid edit code.')
                     scene_matches = accepted_current = False
+                    prepared_material = material_preview = None
                     rendered = []; reviewed_views.clear()
                     event['codeSha256'] = hashlib.sha256(code.encode()).hexdigest()
                     result = execute(code + '\n' + EXPORT, operation)
@@ -189,12 +223,36 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     files.accept(job_id); accepted_revision = revision; accepted_current = True
                     broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor)
                     event['result'] = 'Accepted the current visually inspected checkpoint.'
+                elif action == 'prepare_material':
+                    if not accepted_current or not scene_matches: raise ValueError('Accept and inspect the model before contributing a material.')
+                    if published_materials >= 3: raise ValueError('At most three material contributions per job.')
+                    prepared_material = material_preview = None
+                    metadata = json.loads(step['code'])
+                    resolution = metadata.pop('resolution',1024)
+                    code = "import bpy,sys,shutil\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.material_authoring import export_material_bundle\n"
+                    code += "target=bpy.data.objects.get("+repr(step['objectName'])+")\nassert target and target.type=='MESH' and target.name in bpy.data.collections['AGARTHA_MODEL'].all_objects and len(target.data.materials)==1, 'Choose a deliverable mesh with one material.'\n"
+                    code += "paths=export_material_bundle(target.data.materials[0],'/workspace/artifacts/material-stage',name="+repr(metadata['name'])+",recipe="+repr(metadata['recipe'])+",tile_size="+repr(metadata['tileSize'])+",resolution="+repr(resolution)+")\n"
+                    code += "for key,name in [('glb','shared_material.glb'),('source','shared_source.blend'),('preview','shared_preview.png')]: shutil.copyfile(paths[key],'/workspace/artifacts/'+name)"
+                    execute(code,operation)
+                    material_files = {key:broker.download(token,reservation,name,2_000_000 if key=='preview' else 16_000_000) for key,name in [('glb','shared_material.glb'),('source','shared_source.blend'),('preview','shared_preview.png')]}
+                    prepared_material = {'files':material_files,'metadata':metadata,'reviewed':False,'publication':{}}
+                    material_preview = {'label':'render-detail','image':image_data(material_files['preview'])}
+                    event['result'] = 'Prepared a private material-only bundle. render-detail now shows the material sphere and repeating tile, not a model detail. Inspect seams, grain scale, roughness and normal strength before publish_material.'
+                elif action == 'publish_material':
+                    if not sharing_enabled: raise ValueError('Material publication was not enabled for this job.')
+                    if not accepted_current or not prepared_material or not prepared_material['reviewed'] or not event['critique'].strip():
+                        raise ValueError('Prepare a material, inspect its swatch in a later turn, and provide a visual critique before publishing.')
+                    result = shared_materials().publish(prepared_material['files'],prepared_material['metadata'],event['critique'],prepared_material['publication'])
+                    published_materials += 1
+                    prepared_material = material_preview = None
+                    event['result'] = 'Published reusable material: '+json.dumps({key:result[key] for key in ['id','name','files','author']})
                 elif action == 'restore':
                     if accepted_revision is None: raise ValueError('There is no accepted checkpoint to restore.')
                     accepted_bytes = files.read_accepted(job_id, 'model.blend')
                     worker_bytes = broker.download(token, reservation, 'accepted.blend', FILE_LIMIT)
                     if hashlib.sha256(accepted_bytes).digest() != hashlib.sha256(worker_bytes).digest(): raise ValueError('The worker checkpoint changed after acceptance.')
                     scene_matches = accepted_current = False
+                    prepared_material = material_preview = None
                     execute("import bpy\nbpy.ops.wm.open_mainfile(filepath='/workspace/artifacts/accepted.blend', load_ui=False)\n" + EXPORT, operation)
                     files.restore_accepted(job_id); revision = accepted_revision
                     scene_matches = accepted_current = True; reviewed_views.clear()
@@ -203,10 +261,10 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['result'] = 'Restored the accepted scene and rendered it for comparison.'
             except ValueError as error:
                 event['error'] = str(error)[:2500]
-                if action == 'edit': rendered = []; reviewed_views.clear()
+                if action in {'edit','load_material'}: rendered = []; reviewed_views.clear()
             trace()
             recent = [{key: value for key, value in item.items() if key != 'time'} for item in events[-6:]]
-            history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}.\n' + json.dumps(recent)
+            history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}.\n' + json.dumps(recent,ensure_ascii=False)
         else:
             status, progress = 'partial' if saved else 'failed', 'Action limit reached; preserved available files.'
     except InterruptedError:
@@ -215,6 +273,9 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         events.append({'action': 'error', 'type': type(error).__name__, 'message': str(error)[:1500]})
         status, progress = 'partial' if saved else 'failed', 'Stopped because budget, availability, or execution limits prevented another safe step.'
     finally:
+        if exchange is not None:
+            try: exchange.close()
+            except Exception: pass  # Client cleanup must not skip compute shutdown.
         delivered_inspected = accepted_current
         try:
             if saved and accepted_revision is not None and not accepted_current:

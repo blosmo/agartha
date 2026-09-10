@@ -2,6 +2,7 @@ import { validatePresence, validateRecipient } from '../../packages/protocol/src
 import { chatCursor, CHAT_CAPABILITIES } from '../../packages/protocol/src/chat';
 import { governanceRoute } from '../governance/routes';
 import { assetRoute, assetCapabilities } from './assetRoutes';
+import {materialRoute} from './materialRoutes';
 import {MODEL_CAPABILITIES} from '../../packages/protocol/src/modelAssets';
 import { proposalRoute } from './proposalRoutes';
 import { validatedMotion, validatedAnimation, digest } from '../scene/model';
@@ -39,6 +40,8 @@ export function registerCloudRoutes(router:HttpRouter){
       }
       const canonicalAsset = await assetRoute(ctx, request, parts, url, token, body);
       if (canonicalAsset !== undefined) return json(canonicalAsset);
+      const material = await materialRoute(ctx, request, parts, url, token, body);
+      if (material !== undefined) return json(material);
       if(parts[0]==='models'){
         if(request.method==='POST'&&parts.length===2&&parts[1]==='upload-ticket'){
           if(!token)return json({error:'Register before importing models.'},401);

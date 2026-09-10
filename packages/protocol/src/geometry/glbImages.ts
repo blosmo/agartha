@@ -1,4 +1,4 @@
-import {GLB_LIMITS,GlbReader,gltfRecord} from './glb';
+import {GLB_LIMITS,GlbReader,gltfRecord} from './glb.js';
 function dimensions(bytes:Uint8Array,mime:string):[number,number]{
  const data=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
  if(mime==='image/png'){

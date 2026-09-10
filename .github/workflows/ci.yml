@@ -46,6 +46,11 @@ jobs:
           version="$(python3 -c 'from cloud.blender_mcp.config import BLENDER_VERSION; print(BLENDER_VERSION)')"
           timeout 120s "$RUNNER_TEMP/blender-quality/blender-${version}-linux-x64/blender" --background --factory-startup --python-exit-code 1 \
             --python scripts/blender/verify_material_library.py -- "$RUNNER_TEMP/material-library-results"
+      - name: Verify procedural material authoring and reuse
+        run: |
+          version="$(python3 -c 'from cloud.blender_mcp.config import BLENDER_VERSION; print(BLENDER_VERSION)')"
+          timeout 180s "$RUNNER_TEMP/blender-quality/blender-${version}-linux-x64/blender" --background --factory-startup --threads 2 --python-exit-code 1 \
+            --python scripts/blender/verify_material_authoring.py -- "$RUNNER_TEMP/material-authoring-results"
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20

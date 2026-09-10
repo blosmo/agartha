@@ -3,7 +3,7 @@ import { v } from "convex/values";
 export const managedStatus = v.union(v.literal("queued"), v.literal("running"), v.literal("completed"), v.literal("partial"), v.literal("failed"), v.literal("cancelled"));
 export const managedJobTables = {
   managedJobs: defineTable({
-    jobId: v.string(), requestId: v.string(), agentId: v.string(), livemode: v.boolean(), brief: v.string(), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), referenceReady: v.optional(v.boolean()), chargedReferenceCents: v.optional(v.number()), budgetCents: v.number(), reservationId: v.string(),
+    jobId: v.string(), requestId: v.string(), agentId: v.string(), livemode: v.boolean(), brief: v.string(), shareMaterials: v.optional(v.boolean()), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), referenceReady: v.optional(v.boolean()), chargedReferenceCents: v.optional(v.number()), budgetCents: v.number(), reservationId: v.string(),
     status: managedStatus, cancelled: v.boolean(), progress: v.string(), executorId: v.optional(v.string()),
     reservedAiCents: v.number(), chargedAiCents: v.number(), pendingAiCents: v.number(), releasedAiCents: v.number(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()), videoReady: v.optional(v.boolean()),
     createdAt: v.number(), updatedAt: v.number(), deadlineAt: v.number(), finishedAt: v.optional(v.number()),

@@ -52,6 +52,17 @@ describe('Flare references', () => {
 });
 
 describe('reference-guided Blender actions', () => {
+  it('validates material operations and requires portable authorship metadata',()=>{
+    const action={action:'search_materials',code:JSON.stringify({q:'wood',injected:'discard'}),objectName:'',views:[],summary:'Search',critique:''};
+    expect(JSON.parse(parseStudioAction(action).code)).toEqual({q:'wood'});
+    expect(()=>parseStudioAction({...action,code:'import os'})).toThrow('material parameters');
+    expect(()=>parseStudioAction({...action,action:'load_material',objectName:'Wall',code:JSON.stringify({id:'https://private.invalid'})})).toThrow();
+    const metadata={name:'Oak',description:'Weathered boards',tags:['wood'],license:'CC0-1.0',attribution:'',recipe:'Native Noise and Brick nodes',tileSize:2,resolution:512};
+    expect(JSON.parse(parseStudioAction({...action,action:'prepare_material',objectName:'Wall',code:JSON.stringify(metadata)}).code)).toEqual(metadata);
+    expect(()=>parseStudioAction({...action,action:'prepare_material',objectName:'Wall',code:JSON.stringify({...metadata,resolution:'512'})})).toThrow();
+    expect(()=>parseStudioAction({...action,action:'prepare_material',objectName:'Wall',code:JSON.stringify({...metadata,license:'private'})})).toThrow();
+    expect(()=>parseStudioAction({...action,action:'publish_material',code:'{}'})).toThrow('arguments');
+  });
   it('labels design targets separately from high-detail render evidence', () => {
     const request = studioRequest({ brief: input.brief, history: 'Inspect candidate one', remainingCents: 835, images: [{ label: 'reference-front', image: 'data:image/jpeg;base64,AA==' }, { label: 'render-front', image: 'data:image/jpeg;base64,AA==' }] });
     expect(request.body.tools[0].function.name).toBe('blender_action');

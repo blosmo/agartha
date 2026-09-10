@@ -1,5 +1,5 @@
-import {GLB_LIMITS,GlbReader,gltfArray,gltfRecord,gltfIndex,gltfInteger} from './glb';
-import {glbImages} from './glbImages';
+import {GLB_LIMITS,GlbReader,gltfArray,gltfRecord,gltfIndex,gltfInteger} from './glb.js';
+import {glbImages} from './glbImages.js';
 export type GlbInspection={bytes:number;texturePixels:number;vertices:number;triangles:number;draws:number;nodes:number;materials:number;images:ReturnType<typeof glbImages>;skins:number;morphTargets:number;animations:Array<{name:string;duration:number;channels:number}>};
 function vector(value:unknown,length:number,label:string,fallback:number[]):number[]{if(value===undefined)return fallback;if(!Array.isArray(value)||value.length!==length||!value.every(n=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=1e6))throw new Error(`Invalid ${label}.`);return value;}
 /** Inspect before storage/loading. Never fetch resource URLs or execute extension code. */

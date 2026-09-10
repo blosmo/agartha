@@ -1,5 +1,5 @@
-import {validatePngPreview} from './pngValidation';
-import {MODEL_ID} from './modelAssets';
+import {validatePngPreview} from './pngValidation.js';
+import {MODEL_ID} from './modelAssets.js';
 export const BUNDLE_ID=/^bundle-[a-f0-9]{64}$/;
 export const ASSET_LIMITS={source:16_000_000,preview:2_000_000,agentBytes:128_000_000,agentCount:64,tickets:2,ticketMs:300_000,graceMs:300_000} as const;
 export type ArtifactRole='source'|'preview';

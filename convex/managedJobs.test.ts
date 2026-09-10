@@ -25,6 +25,14 @@ const create = { token, jobId: "job", requestId: "request", brief: "Build a chai
 const inference = { jobId: "job", executorId: "worker", operationId: "op", maxCostCents: 50, payloadFingerprint: "hash" };
 async function running() { const result = await setup(); await result.t.mutation(api.createManagedJob, create); await result.t.mutation(api.claimManagedJob, { jobId: "job", executorId: "worker" }); return result; }
 describe("managed modeling ledger", () => {
+  it('binds material-publication permission to job creation and defaults to private work',async()=>{
+    const {t}=await setup();
+    const row=await t.mutation(api.createManagedJob,{...create,referenceMode:'generate',budgetCents:500});
+    expect(row.shareMaterials).toBe(false);
+    await expect(t.mutation(api.createManagedJob,{...create,referenceMode:'generate',budgetCents:500,shareMaterials:true})).rejects.toThrow('different payload');
+    const other=await setup();
+    expect((await other.t.mutation(api.createManagedJob,{...create,referenceMode:'generate',budgetCents:500,shareMaterials:true})).shareMaterials).toBe(true);
+  });
   it("grants verification credit once and only in the configured test wallet", async () => {
     const { t } = await setup();
     const fund = anyApi.cloud.managedVerification.fund;

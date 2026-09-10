@@ -32,6 +32,23 @@ class BrokerTests(unittest.TestCase):
         self.provider.ensure_worker.assert_not_called()
         self.assertFalse(any(operation == 'claimLaunch' for operation, _ in self.events))
 
+    def test_material_upload_is_owned_fenced_and_idempotent(self):
+        name=self.broker.upload_material('token','r1',b'glTF-material','material-upload')
+        self.assertTrue(name.startswith('shared-material-'))
+        self.assertEqual(self.broker.upload_material('token','r1',b'glTF-material','material-upload'),name)
+        self.provider.write_material.assert_called_once()
+        self.assertEqual(self.grants['material-upload']['state'],'completed')
+        self.assertEqual(self.grants['material-upload']['actualResponseBytes'],0)
+        self.row['stopRequested']=True
+        with self.assertRaises(BrokerConflict):self.broker.upload_material('token','r1',b'glTF','after-stop')
+        self.assertEqual(self.provider.write_material.call_count,1)
+
+    def test_failed_material_transfer_does_not_leave_an_active_operation(self):
+        self.provider.write_material.side_effect=RuntimeError('transfer failed')
+        with self.assertRaises(RuntimeError):self.broker.upload_material('token','r1',b'glTF','failed-material')
+        self.assertEqual(self.grants['failed-material']['state'],'failed')
+        with self.assertRaises(ValueError):self.broker.upload_material('token','r1',b'not-a-glb','invalid-material')
+
     def call_ledger(self, operation: str, **args):
         self.events.append((operation, args))
         if operation in {"getReservation", "getReservationForBroker"}:

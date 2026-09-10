@@ -48,17 +48,18 @@ async function sanitized(ctx: QueryCtx | MutationCtx, row: Job) {
   return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? (row.referenceMode === "generate" ? 165 : 65), computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
 }
 export const createManagedJob = internalMutation({
-  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean() },
+  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), shareMaterials: v.optional(v.boolean()), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean() },
   handler: async (ctx, args) => {
     identifier(args.jobId, "jobId", 80); identifier(args.requestId, "requestId");
     if (!args.brief.trim() || new TextEncoder().encode(args.brief).length > 4000) throw new Error("Brief must contain 1 to 4000 UTF-8 bytes.");
     assertCents(args.budgetCents, "budgetCents");
     if (args.budgetCents < 100 || args.budgetCents > 2000) throw new Error("Budget must be 100 to 2000 cents.");
-    const referenceMode = args.referenceMode ?? "none";
+    const referenceMode = args.referenceMode ?? "none", shareMaterials = args.shareMaterials ?? false;
+    if (shareMaterials && referenceMode !== "generate") throw new Error("Material contributions require reference-guided modeling.");
     if (referenceMode === "generate" && args.budgetCents < 500) throw new Error("Reference-guided jobs require a budget of at least 500 cents.");
     const actor = await requireBillingOwner(ctx, args.token);
     const prior = await ctx.db.query("managedJobs").withIndex("by_owner_request", q => q.eq("agentId", actor.agentId).eq("livemode", args.livemode).eq("requestId", args.requestId)).unique();
-    if (prior) { if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || (prior.referenceMode ?? "none") !== referenceMode) throw new Error("Job request reused with different payload."); return sanitized(ctx, prior); }
+    if (prior) { if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || (prior.referenceMode ?? "none") !== referenceMode || (prior.shareMaterials ?? false) !== shareMaterials) throw new Error("Job request reused with different payload."); return sanitized(ctx, prior); }
     if (await ctx.db.query("managedJobs").withIndex("by_job", q => q.eq("jobId", args.jobId)).unique()) throw new Error("Job ID already exists.");
     const reservationId = `managed-${args.jobId}`;
     const quote = await createQuoteInTransaction(ctx, { token: args.token, quoteId: reservationId, requestId: reservationId, minutes: referenceMode === "generate" ? 30 : 10, livemode: args.livemode });
@@ -70,7 +71,7 @@ export const createManagedJob = internalMutation({
     if (wallet.frozen || wallet.availableCents < ai) throw new Error("Insufficient available Blender credits.");
     await ctx.db.patch(wallet._id, { availableCents: wallet.availableCents - ai, heldCents: wallet.heldCents + ai });
     const now = Date.now();
-    const id = await ctx.db.insert("managedJobs", { jobId: args.jobId, requestId: args.requestId, agentId: actor.agentId, livemode: args.livemode, brief: args.brief, referenceMode, chargedReferenceCents: 0, budgetCents: args.budgetCents, reservationId, status: "queued", cancelled: false, progress: "Queued", reservedAiCents: ai, chargedAiCents: 0, pendingAiCents: 0, releasedAiCents: 0, visuallyInspected: false, createdAt: now, updatedAt: now, deadlineAt: now + (referenceMode === "generate" ? 45 : 20) * 60_000 });
+    const id = await ctx.db.insert("managedJobs", { jobId: args.jobId, requestId: args.requestId, agentId: actor.agentId, livemode: args.livemode, brief: args.brief, referenceMode, shareMaterials, chargedReferenceCents: 0, budgetCents: args.budgetCents, reservationId, status: "queued", cancelled: false, progress: "Queued", reservedAiCents: ai, chargedAiCents: 0, pendingAiCents: 0, releasedAiCents: 0, visuallyInspected: false, createdAt: now, updatedAt: now, deadlineAt: now + (referenceMode === "generate" ? 45 : 20) * 60_000 });
     const row = (await ctx.db.get(id))!;
     await entry(ctx, row, "reserve", "reserve", -ai);
     return sanitized(ctx, row);
