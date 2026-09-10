@@ -2,7 +2,7 @@ import { internalMutation, internalQuery } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { BLENDER_BILLING, quoteBlenderSession, settleBlenderSession, worstCaseBlenderCostNanoUsd } from "../../packages/protocol/src/blenderBilling";
-import { assertCents, getOrCreateWallet, requireBillingOwner, session } from "./common";
+import { assertCents, canAccessManagedReservation, getOrCreateWallet, requireBillingOwner, session } from "./common";
 import { digest } from "../scene/model";
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -19,7 +19,7 @@ async function validateResumeProject(ctx: MutationCtx, agentId: string, livemode
   if ((project.expiresAt !== 0 && project.expiresAt <= Date.now()) || project.purgedAt !== undefined) throw new Error("Project retention has expired.");
 }
 
-function assertActivated(agentId: string, livemode: boolean) {
+export function assertActivated(agentId: string, livemode: boolean) {
   if (process.env.BLENDER_BILLING_ACTIVE !== "true") throw new Error("Paid Blender billing is not activated.");
   if (livemode) {
     return;
@@ -60,8 +60,9 @@ async function releaseFailureBudget(ctx: MutationCtx, reservationId: string, gen
   if (!event || event.released) return;
   await ctx.db.patch(event._id, { released: true, state: "released" });
 }
-export async function createQuoteInTransaction(ctx: MutationCtx, args: { token: string; quoteId: string; minutes: number; livemode: boolean; requestId: string; projectId?: string }) {
-    const actor = await requireBillingOwner(ctx, args.token); assertActivated(actor.agentId, args.livemode); identifier(args.quoteId, "quoteId"); identifier(args.requestId, "requestId");
+export async function createQuoteInTransaction(ctx: MutationCtx, args: { token: string; quoteId: string; minutes: number; livemode: boolean; requestId: string; projectId?: string }, fundingActorId?: string) {
+    const authenticated = await requireBillingOwner(ctx, args.token);
+    const actor = fundingActorId ? { ...authenticated, agentId: fundingActorId } : authenticated; assertActivated(authenticated.agentId, args.livemode); identifier(args.quoteId, "quoteId"); identifier(args.requestId, "requestId");
     if (args.projectId !== undefined) identifier(args.projectId, "projectId");
     if (args.projectId !== undefined) await validateResumeProject(ctx, actor.agentId, args.livemode, args.projectId);
     const existing = await ctx.db.query("blenderSessionQuotes").withIndex("by_owner_request", q => q.eq("agentId", actor.agentId).eq("livemode", args.livemode).eq("requestId", args.requestId)).unique();
@@ -75,15 +76,16 @@ export async function createQuoteInTransaction(ctx: MutationCtx, args: { token: 
 
 export const createQuote = internalMutation({
   args: { token: v.string(), quoteId: v.string(), minutes: v.number(), livemode: v.boolean(), requestId: v.string(), projectId: v.optional(v.string()) },
-  handler: createQuoteInTransaction,
+  handler: (ctx, args) => createQuoteInTransaction(ctx, args),
 });
 
-export async function reserveSessionInTransaction(ctx: MutationCtx, args: { token: string; quoteId: string; reservationId: string; requestId: string }) {
-    const actor = await requireBillingOwner(ctx, args.token); identifier(args.reservationId, "reservationId"); identifier(args.requestId, "requestId");
+export async function reserveSessionInTransaction(ctx: MutationCtx, args: { token: string; quoteId: string; reservationId: string; requestId: string }, fundingActorId?: string) {
+    const authenticated = await requireBillingOwner(ctx, args.token);
+    const actor = fundingActorId ? { ...authenticated, agentId: fundingActorId } : authenticated; identifier(args.reservationId, "reservationId"); identifier(args.requestId, "requestId");
     const quote = await ctx.db.query("blenderSessionQuotes").withIndex("by_quote", q => q.eq("quoteId", args.quoteId)).unique();
     if (!quote || quote.agentId !== actor.agentId) throw new Error("Quote not found.");
     if (quote.projectId !== undefined) await validateResumeProject(ctx, actor.agentId, quote.livemode, quote.projectId);
-    assertActivated(actor.agentId, quote.livemode);
+    assertActivated(authenticated.agentId, quote.livemode);
     const sameId = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique();
     if (sameId && (sameId.agentId !== actor.agentId || sameId.livemode !== quote.livemode || sameId.quoteId !== args.quoteId || sameId.requestId !== args.requestId)) throw new Error("Reservation ID is already bound to another owner or payload.");
     const prior = await ctx.db.query("blenderSessionReservations").withIndex("by_owner_request", q => q.eq("agentId", actor.agentId).eq("livemode", quote.livemode).eq("requestId", args.requestId)).unique();
@@ -106,12 +108,14 @@ export async function reserveSessionInTransaction(ctx: MutationCtx, args: { toke
 
 export const reserveSession = internalMutation({
   args: { token: v.string(), quoteId: v.string(), reservationId: v.string(), requestId: v.string() },
-  handler: reserveSessionInTransaction,
+  handler: (ctx, args) => reserveSessionInTransaction(ctx, args),
 });
 
 export const getReservation = internalQuery({
   args: { token: v.string(), reservationId: v.string() },
-  handler: async (ctx, args) => { const actor = await requireBillingOwner(ctx, args.token); const row = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique(); if (!row || row.agentId !== actor.agentId) throw new Error("Reservation not found."); return row; },
+  handler: async (ctx, args) => { const actor = await requireBillingOwner(ctx, args.token); const row = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique(); if (!row) throw new Error("Reservation not found.");
+    if (row.agentId !== actor.agentId && !await canAccessManagedReservation(ctx, row.agentId, row.livemode, row.reservationId, actor.agentId)) throw new Error("Reservation not found.");
+    return row; },
 });
 
 export const getReservationForBroker = internalQuery({
@@ -221,7 +225,8 @@ export const requestStop = internalMutation({
   handler: async (ctx, args) => {
     const actor = await requireBillingOwner(ctx, args.token);
     const row = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", args.reservationId)).unique();
-    if (!row || row.agentId !== actor.agentId) throw new Error("Reservation not found.");
+    if (!row) throw new Error("Reservation not found.");
+    if (row.agentId !== actor.agentId && !await canAccessManagedReservation(ctx, row.agentId, row.livemode, row.reservationId, actor.agentId)) throw new Error("Reservation not found.");
     if (row.status === "reserved") {
       await moveHeldToAvailable(ctx, row.agentId, row.livemode, row.reservationId, row.reservedCents);
       await ctx.db.patch(row._id, { status: "failed", releasedCents: row.reservedCents, stopRequested: true });

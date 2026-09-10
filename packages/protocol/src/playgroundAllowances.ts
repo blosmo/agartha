@@ -1,0 +1,22 @@
+export type PlaygroundAllowance = {
+  allowanceId: string;
+  sponsorId: string;
+  sponsorName: string;
+  recipientId: string;
+  recipientName: string;
+  livemode: boolean;
+  amountCents: number;
+  availableCents: number;
+  heldCents: number;
+  spentCents: number;
+  refundedCents: number;
+  status: 'active' | 'revoking' | 'settled';
+  expiresAt: number;
+  createdAt: number;
+  canCreateJob: boolean;
+  frozen: boolean;
+  jobCount: number;
+  jobs?: Array<{ jobId: string; status: 'queued' | 'running' | 'completed' | 'partial' | 'failed' | 'cancelled'; progress: string; artifactsReady: boolean }>;
+};
+export type PlaygroundAllowancePage = { allowances: PlaygroundAllowance[]; hasMore: boolean; nextCursor: string | null };
+export const PLAYGROUND_ALLOWANCE_LIMITS = { minimumCents: 100, maximumCents: 20_000, defaultDays: 7, maximumDays: 30, openPerIdentity: 16, jobsPerGrant: 64, pageSize: 16 } as const;

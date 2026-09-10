@@ -15,7 +15,7 @@
     "agents": "node --import tsx scripts/agents/run_scripted_agents.ts",
     "build": "npm --workspace packages/protocol run build && npm --workspace packages/cli run build && npm --workspace apps/web run build && npm run build:scripts && npm run build:scene",
     "build:scripts": "tsc --noEmit -p tsconfig.scripts.json",
-    "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts && npm run test:billing && npm run test:convex && npm run test:renderer && npm run test:release",
+    "test": "npm --workspace packages/protocol run test && npm --workspace packages/cli run test && npm --workspace apps/web run test && npm run test:scripts && npm run test:billing && npm run test:playground && npm run test:convex && npm run test:renderer && npm run test:release",
     "test:scripts": "vitest run --dir scripts --maxWorkers=1",
     "test:convex": "vitest run --dir convex",
     "test:rust": "cargo test --workspace",
@@ -29,7 +29,8 @@
     "check:release": "node scripts/check-release.mjs",
     "test:release": "node --test tests/release/check-release.test.mjs",
     "test:billing": "vitest run --dir packages/billing",
-    "materials:blender": "node --import tsx scripts/build-blender-material-library.ts"
+    "materials:blender": "node --import tsx scripts/build-blender-material-library.ts",
+    "test:playground": "vitest run --dir packages/playground"
   },
   "engines": {
     "node": ">=22.12.0"

@@ -2,7 +2,7 @@ import { BlenderModelingOffer } from './BlenderModelingOffer';
 import { useAgentPresence } from './useAgentPresence';
 import { useAgentChat } from './useAgentChat';
 import { AgentChatPanel } from './AgentChatPanel';
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { ArrowUpRight, GridFour, Plus, X } from '@phosphor-icons/react';
 import { WorldViewport } from './WorldViewport';
 import { AgentConnectDialog } from './AgentConnectDialog';
@@ -10,15 +10,19 @@ import { usePlotWorld } from './usePlotWorld';
 import { AgentActivityPanel } from './AgentActivityPanel';
 import { useAgentActivity } from './useAgentActivity';
 import './worldSpace.css';
+import './playground/playground.css';
 import { usePanelFocus } from './usePanelFocus';
 import {GovernancePanel} from './governance/GovernancePanel';
 import {CLOUD_MODE} from './cloudMode';
 import { RoomCoordinates, RoomObjects } from './RoomInspection';
+const PlaygroundPanel = lazy(() => import('./playground/PlaygroundPanel'));
 
 export function WorldSpace() {
   const { address, id, world, neighborhood, connected, connectionError, navigate, prefetch } = usePlotWorld();
   const [showConnect,setShowConnect]=useState(false),[showRooms,setShowRooms]=useState(false),[showDetails,setShowDetails]=useState(false);
-  const [panel, setPanel] = useState<'watch' | 'rules' | 'chat' | undefined>();
+  const [panel, setPanel] = useState<'watch' | 'rules' | 'chat' | 'playground' | undefined>();
+  const [connectProject, setConnectProject] = useState<string>();
+  function inviteAgent(projectId?: string) { setConnectProject(projectId); setShowConnect(true); }
   const [focusRequest,setFocusRequest]=useState<{id:string;serial:number}>();
   function focusActivity(nextId: string) {
     if (nextId !== id) navigate(nextId);
@@ -38,19 +42,21 @@ export function WorldSpace() {
     <header className="world-header">
       <a className="world-brand" href="/" aria-label="Agartha home"><span aria-hidden="true" className="brand-symbol">△</span> agartha</a>
       <button aria-expanded={showRooms} aria-controls="room-browser" onClick={()=>{setShowRooms(v=>!v);setPanel(undefined);setShowDetails(false);}}><GridFour size={16}/> Rooms</button>
+      <button aria-expanded={panel==='playground'} aria-controls="playground-panel" onClick={()=>{setPanel(panel==='playground'?undefined:'playground');setShowRooms(false);setShowDetails(false);}}>Playground</button>
       <button aria-controls="watch-panel" aria-expanded={panel==='watch'} onClick={()=>{setPanel(panel==='watch'?undefined:'watch');setShowRooms(false);setShowDetails(false);}}>Watch</button>
       <button aria-expanded={panel==='chat'} aria-controls="agent-chat" onClick={()=>{setPanel(panel==='chat'?undefined:'chat');setShowRooms(false);setShowDetails(false);}}>Chat</button>
       <button aria-expanded={panel==='rules'} aria-controls="governance-panel" onClick={()=>{setPanel(panel==='rules'?undefined:'rules');setShowRooms(false);setShowDetails(false);}}>Rules</button>
       <button aria-expanded={showDetails} aria-controls="room-details" onClick={()=>{setShowDetails(v=>!v);setShowRooms(false);setPanel(undefined);}}>Inspect</button>
-      <button aria-label="Invite agent" className="world-connect" onClick={()=>setShowConnect(true)}><Plus size={16}/><span>Invite agent</span></button>
+      <button aria-label="Invite agent" className="world-connect" onClick={()=>inviteAgent()}><Plus size={16}/><span>Invite agent</span></button>
     </header>
     <section id="world-stage" tabIndex={-1} className="world-stage" aria-label="Connected agent rooms">
       <WorldViewport agents={presence.agents} messages={chat.messages} now={now} onEnterRoom={()=>{setPanel(undefined);setShowRooms(false);setShowDetails(false);activity.setFollowing(undefined);navigate(id);}} plots={neighborhood?.plots??[]} empty={neighborhood?.empty??[]} activePlotId={id} highlights={activity.highlights} animateSurfaces onSelect={()=>{}} onVisit={nextId=>select(nextId,true)} onExplore={explore} onPrefetch={prefetch} focusRequest={focusRequest}/>
       <div className="agent-observer-status" role="status"><span className={presence.status === 'live' ? 'is-live' : ''}/>{presence.status === 'live' ? `${presence.agents.filter(a => a.expiresAt > now && a.plotId === id).length} agents here` : presence.status === 'connecting' ? 'Connecting to agents…' : 'Reconnecting to agents…'}{presence.truncated && ' · Showing latest 500'}</div>
     </section>
     {panel==='watch'&&<AgentActivityPanel connectionError={connectionError} events={activity.events} connected={connected} following={activity.following} onFollow={activity.setFollowing} onVisit={focusActivity} onClose={()=>setPanel(undefined)}/>}
-    {panel==='chat'&&<AgentChatPanel chat={chat} onClose={()=>setPanel(undefined)} onInvite={()=>setShowConnect(true)}/>}
+    {panel==='chat'&&<AgentChatPanel chat={chat} onClose={()=>setPanel(undefined)} onInvite={()=>inviteAgent()}/>}
     {panel==='rules'&&<GovernancePanel roomId={id} cloud={CLOUD_MODE} onClose={()=>setPanel(undefined)}/>}
+    {panel==='playground'&&<Suspense fallback={<WorldPanel id="playground-panel" className="room-browser" aria-label="Playground" onClose={()=>setPanel(undefined)}><p role="status">Opening playground…</p><button onClick={()=>setPanel(undefined)}>Close playground</button></WorldPanel>}><PlaygroundPanel roomId={id} onVisit={nextId=>select(nextId,true)} onInvite={inviteAgent} onClose={()=>setPanel(undefined)}/></Suspense>}
     {showRooms&&<WorldPanel onClose={()=>setShowRooms(false)} id="room-browser" className="room-browser" aria-label="Browse rooms">
       <div className="room-panel-heading"><h2>Nearby rooms</h2><button aria-label="Close room browser" onClick={()=>setShowRooms(false)}><X size={18}/></button></div>
       <RoomCoordinates key={id} address={address} onVisit={nextId=>select(nextId,true)}/>
@@ -71,7 +77,7 @@ export function WorldSpace() {
     </WorldPanel>}
     {connectionError&&<p className="world-error" role="alert">{connectionError} Check your connection. Retrying every 5 seconds.</p>}
     <div className="sr-only" role="status">{connectionError ? `Connection failed: ${connectionError}` : !connected ? `Opening room ${id}…` : world ? `${world.name}, room ${id}, ${world.objects.length} loaded objects.` : `Empty room ${id}.`}</div>
-    <AgentConnectDialog open={showConnect} onClose={()=>setShowConnect(false)} origin={window.location.origin} plotId={id}/>
+    <AgentConnectDialog open={showConnect} onClose={()=>setShowConnect(false)} origin={window.location.origin} plotId={id} projectId={connectProject}/>
   </main>;
 }
 

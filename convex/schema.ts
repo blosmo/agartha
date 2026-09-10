@@ -1,3 +1,6 @@
+import { playgroundAllowanceTables } from "./cloud/playgroundAllowanceSchema";
+import { playgroundTables } from "./cloud/playgroundSchema";
+import { playgroundFundingTables } from "./cloud/playgroundFundingSchema";
 import { managedJobTables } from "./cloud/managedJobSchema";
 import { starterTables } from './cloud/starterSchema';
 import { assetTables } from './cloud/assetSchema';
@@ -30,6 +33,9 @@ const objectSample = v.object({
 });
 
 export default defineSchema({
+  ...playgroundTables,
+  ...playgroundAllowanceTables,
+  ...playgroundFundingTables,
   ...managedJobTables,
   ...sceneTables,
   ...starterTables,

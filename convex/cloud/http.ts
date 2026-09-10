@@ -1,3 +1,4 @@
+import { playgroundRoute } from './playgroundRoutes';
 import { validatePresence, validateRecipient } from '../../packages/protocol/src/agentPresence';
 import { chatCursor, CHAT_CAPABILITIES } from '../../packages/protocol/src/chat';
 import { governanceRoute } from '../governance/routes';
@@ -21,6 +22,7 @@ export function registerCloudRoutes(router:HttpRouter){
       const url=new URL(request.url),parts=url.pathname.slice('/cloud/'.length).split('/').filter(Boolean),token=request.headers.get('authorization')?.replace(/^Bearer /,'');
       let body:Record<string,any>={};
       if(request.method==='POST'){const raw=await request.text();if(raw.length>(parts[0]==='library'?4_000_000:65536))return json({error:'Request too large'},413);try{body=JSON.parse(raw);if(!body||typeof body!=='object'||Array.isArray(body))throw new Error();}catch{return json({error:'Invalid JSON'},400);}}
+      if(parts[0]==='session'&&parts[1]==='browser'&&parts.length===2&&request.method==='POST')return json(await ctx.runMutation(anyApi.cloud.browserIdentity.ensure,{...body,ipHash:request.headers.get('x-agartha-client')??'unknown'}));
       if(parts[0]==='session'&&parts.length===1&&request.method==='POST')return json(await ctx.runMutation(auth.register,{token:body.agentToken,name:body.name,...(body.recoveryToken?{recoveryToken:body.recoveryToken}:{}),ipHash:request.headers.get('x-agartha-client')??'unknown'}));
       if(parts[0]==='session'&&parts.length===2&&request.method==='POST'&&['renew','rotate'].includes(parts[1]))return json(await ctx.runMutation(auth.maintain,{operation:parts[1],token,agentId:body.agentId,recoveryToken:body.recoveryToken,newToken:body.newToken,newRecoveryToken:body.newRecoveryToken}));
       if(parts[0]==='chat' && parts[1]==='presence' && parts.length===2){
@@ -38,6 +40,8 @@ export function registerCloudRoutes(router:HttpRouter){
         try{validateRecipient(body.recipientId);}catch(error){return json({error:(error as Error).message},400);}
         return json(await ctx.runMutation(anyApi.cloud.chat.send,{token,requestId:body.requestId,text:body.text,...(body.recipientId!==undefined?{recipientId:body.recipientId}:{})}));
       }
+      const playground = await playgroundRoute(ctx, request, parts, url, token, body);
+      if (playground !== undefined) return json(playground);
       const canonicalAsset = await assetRoute(ctx, request, parts, url, token, body);
       if (canonicalAsset !== undefined) return json(canonicalAsset);
       const material = await materialRoute(ctx, request, parts, url, token, body);
@@ -124,7 +128,7 @@ export function registerCloudRoutes(router:HttpRouter){
       return json(await ctx.runQuery(read.plot,{id,token}));
     }catch(error){
       const data=error instanceof ConvexError?error.data:null;
-      if(data&&typeof data==='object'&&!Array.isArray(data)&&'code'in data){const status:Record<string,number>={unauthorized:401,forbidden:403,not_found:404,conflict:409,invalid:400,expired:400,quota:429,rate_limited:429};return json({error:'message'in data?String(data.message):String(data.code),code:data.code,...('conflicts'in data?{conflicts:data.conflicts}:{}),...('currentRevision'in data?{currentRevision:data.currentRevision}:{})},status[String(data.code)]??400,'retryAfter'in data?Number(data.retryAfter):undefined);}
+      if(data&&typeof data==='object'&&!Array.isArray(data)&&'code'in data){const status:Record<string,number>={unauthorized:401,forbidden:403,not_found:404,conflict:409,invalid:400,expired:400,quota:429,rate_limited:429,unavailable:503};return json({error:'message'in data?String(data.message):String(data.code),code:data.code,...('conflicts'in data?{conflicts:data.conflicts}:{}),...('currentRevision'in data?{currentRevision:data.currentRevision}:{})},status[String(data.code)]??400,'retryAfter'in data?Number(data.retryAfter):undefined);}
       if(error instanceof Error&&/ArgumentValidationError|plot address|plot coordinates/.test(error.message))return json({error:'Invalid request arguments'},400);
       console.error('Cloud request failed',error instanceof Error?error.message:'unknown');return json({error:'Cloud service unavailable'},500);
     }
