@@ -90,8 +90,9 @@ for projection in ('PERSP', 'ORTHO'):
     camera.location = cube.location + Vector((0, -1.2, 0.3))
     camera.rotation_euler = (cube.location - camera.location).to_track_quat('-Z', 'Y').to_euler()
     scene = bpy.context.scene
-    scene.render.engine = 'BLENDER_EEVEE_NEXT'
-    scene.render.image_settings.file_format = 'JPEG'
+    scene.render.engine = 'BLENDER_EEVEE'
+    scene.render.image_settings.media_type = 'VIDEO' if projection == 'ORTHO' else 'IMAGE'
+    scene.render.image_settings.file_format = 'FFMPEG' if projection == 'ORTHO' else 'JPEG'
     scene.render.resolution_x, scene.render.resolution_y = 640, 360
     scene.render.pixel_aspect_x, scene.render.pixel_aspect_y = 2, 1
     scene.render.use_border = True
@@ -118,6 +119,7 @@ for projection in ('PERSP', 'ORTHO'):
     assert all(getattr(scene.render, key) == value for key, value in state['render'].items())
     assert all(getattr(scene.cycles, key) == value for key, value in state['cycles'].items())
     assert scene.render.image_settings.file_format == state['format']
+    assert scene.render.image_settings.media_type == state['media_type']
     assert scene.camera == camera
     assert before == (camera.data.ortho_scale, camera.data.shift_x, camera.data.shift_y, camera.data.dof.use_dof)
     cube.modifiers.remove(modifier)

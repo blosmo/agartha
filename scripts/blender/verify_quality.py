@@ -25,8 +25,10 @@ def fixture(kit):
     # Full factory reloads invalidate native references retained by the importer.
     kit['reset_scene']('Quality benchmark')
     scene=bpy.context.scene
-    scene.render.engine='BLENDER_EEVEE_NEXT'
+    scene.render.engine='BLENDER_EEVEE'
     scene.render.filepath='/tmp/original-render-path'
+    scene.render.image_settings.media_type='VIDEO'
+    scene.render.image_settings.file_format='FFMPEG'
     scene.render.resolution_x=777
     scene.cycles.samples=23
     scene.cycles.use_adaptive_sampling=False
@@ -92,6 +94,7 @@ def snapshot():
             'worldColor':list(scene.world.color) if scene.world else None,
             'render':{key:getattr(scene.render,key) for key in ('engine','filepath','resolution_x','resolution_y','resolution_percentage','threads','threads_mode','film_transparent')},
             'format':scene.render.image_settings.file_format,
+            'mediaType':scene.render.image_settings.media_type,
             'cycles':{key:getattr(scene.cycles,key) for key in ('samples','use_denoising','denoiser','device','use_adaptive_sampling','adaptive_threshold','adaptive_min_samples','time_limit')},
             'selected':sorted(o.name for o in bpy.context.selected_objects),
             'active':bpy.context.view_layer.objects.active.name if bpy.context.view_layer.objects.active else None}
@@ -141,7 +144,8 @@ def surface_normals(objects):
         if obj.type not in {'MESH','CURVE'}:
             continue
         evaluated=obj.evaluated_get(deps)
-        mesh=evaluated.to_mesh()
+        # Inspect an owned snapshot without clearing the evaluated object’s mesh.
+        mesh=bpy.data.meshes.new_from_object(evaluated,preserve_all_data_layers=True,depsgraph=deps)
         try:
             matrix=evaluated.matrix_world
             try:
@@ -160,7 +164,7 @@ def surface_normals(objects):
                 direction=(normal_matrix @ normal.vector).normalized() if normal_matrix is not None else flat_normals[index]
                 result.setdefault(key,[]).append(direction)
         finally:
-            evaluated.to_mesh_clear()
+            bpy.data.meshes.remove(mesh)
     return result
 
 
@@ -175,7 +179,8 @@ def surface_inputs(objects):
     for obj in objects:
         if obj.type not in {'MESH','CURVE'}:continue
         evaluated=obj.evaluated_get(deps)
-        mesh=evaluated.to_mesh()
+        # Inspect an owned snapshot without clearing the evaluated object’s mesh.
+        mesh=bpy.data.meshes.new_from_object(evaluated,preserve_all_data_layers=True,depsgraph=deps)
         try:
             uv=next((layer for layer in mesh.uv_layers if layer.active_render),None)
             for polygon in mesh.polygons:
@@ -188,7 +193,7 @@ def surface_inputs(objects):
                     if uv is not None and name=='Ceramic':
                         uvs.setdefault(key,[]).append(tuple(uv.data[index].uv))
         finally:
-            evaluated.to_mesh_clear()
+            bpy.data.meshes.remove(mesh)
     return uvs,materials
 
 

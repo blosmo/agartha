@@ -22,20 +22,24 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends libgl1 libxi6 libxfixes3 libxkbcommon0 libxrender1
           version="$(python3 -c 'from cloud.blender_mcp.config import BLENDER_VERSION; print(BLENDER_VERSION)')"
+          series="${version%.*}"
           archive="blender-${version}-linux-x64.tar.xz"
           runtime="$RUNNER_TEMP/blender-quality"
           mkdir -p "$runtime"
-          curl --fail --silent --show-error --location --retry 3 --max-time 180 "https://download.blender.org/release/Blender4.5/$archive" -o "$runtime/$archive"
-          curl --fail --silent --show-error --location --retry 3 --max-time 60 "https://download.blender.org/release/Blender4.5/blender-${version}.sha256" -o "$runtime/SHA256SUMS"
+          curl --fail --silent --show-error --location --retry 3 --max-time 180 "https://download.blender.org/release/Blender${series}/$archive" -o "$runtime/$archive"
+          curl --fail --silent --show-error --location --retry 3 --max-time 60 "https://download.blender.org/release/Blender${series}/blender-${version}.sha256" -o "$runtime/SHA256SUMS"
           (cd "$runtime" && grep -F "  $archive" SHA256SUMS | sha256sum --check -)
           tar -xJf "$runtime/$archive" -C "$runtime"
-          timeout 240s "$runtime/blender-${version}-linux-x64/blender" --background --factory-startup --python-exit-code 1 \
-            --python scripts/blender/verify_quality.py -- --kit scripts/seed/starter_kit.py \
-            --output "$RUNNER_TEMP/blender-quality-results" --assert-quality --renders || {
-              result=$?
-              if [ -f /tmp/blender.crash.txt ]; then cat /tmp/blender.crash.txt; fi
-              exit "$result"
-            }
+          # Fresh processes exercise shutdown as well as export and rendering.
+          for attempt in 1 2 3; do
+            timeout 240s "$runtime/blender-${version}-linux-x64/blender" --background --factory-startup --threads 2 --python-exit-code 1 \
+              --python scripts/blender/verify_quality.py -- --kit scripts/seed/starter_kit.py \
+              --output "$RUNNER_TEMP/blender-quality-results-$attempt" --assert-quality --renders || {
+                result=$?
+                if [ -f /tmp/blender.crash.txt ]; then cat /tmp/blender.crash.txt; fi
+                exit "$result"
+              }
+          done
       - name: Verify managed model export excludes the studio
         run: |
           version="$(python3 -c 'from cloud.blender_mcp.config import BLENDER_VERSION; print(BLENDER_VERSION)')"
