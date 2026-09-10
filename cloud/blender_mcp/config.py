@@ -50,3 +50,5 @@ def artifact_name(value: str, suffix: str) -> str:
     if suffix not in {'.blend', '.glb', '.png'}:
         raise ValueError('Unsupported artifact format.')
     return value + suffix
+
+ESSENTIALS_GUIDANCE = "Use Blender's bundled Essentials assets when they fit the brief or save work. Discover their installed path with bpy.utils.system_resource('DATAFILES', path='assets') and inspect relevant .blend files with bpy.data.libraries.load(..., assets_only=True). Reuse suitable geometry, hair, shading or compositing node assets and brushes rather than rebuilding them; do not force an asset into an unsuitable task. Append only discovered assets with link=False, preserve editability, and inspect the final export. Bundled Essentials files are permitted local assets and need no network access."

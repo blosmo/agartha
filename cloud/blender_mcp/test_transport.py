@@ -13,7 +13,7 @@ from .config import CORE_TOOLS
 
 class TransportTests(unittest.IsolatedAsyncioTestCase):
     async def test_remote_host_can_initialize(self):
-        mcp = FastMCP("transport-test")
+        mcp = FastMCP("transport-test", instructions="Existing upstream guidance.")
 
         async def fixture() -> str:
             return "fixture"
@@ -44,3 +44,5 @@ class TransportTests(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertEqual(response.status_code, 200)
                     self.assertIn('"serverInfo"', response.text)
+                    self.assertIn('Existing upstream guidance.', response.text)
+                    self.assertIn('bundled Essentials', response.text)

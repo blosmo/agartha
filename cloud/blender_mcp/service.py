@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import (
-    ARTIFACT_DIRECTORY, CORE_TOOLS, MAX_ARTIFACTS, MAX_BLEND_BYTES, MAX_GLB_BYTES,
+    ESSENTIALS_GUIDANCE, ARTIFACT_DIRECTORY, CORE_TOOLS, MAX_ARTIFACTS, MAX_BLEND_BYTES, MAX_GLB_BYTES,
     MAX_PNG_BYTES, MAX_RENDER_SAMPLES, MAX_RENDER_SIZE, MAX_SCRIPT_BYTES, PROJECT_FILE, artifact_name,
 )
 
@@ -236,6 +236,7 @@ def create_app(*, workspace: Path | None = None, require_token: bool = False,
     from mcp.server.transport_security import TransportSecuritySettings
 
     mcp = load_upstream()
+    mcp._mcp_server.instructions = (mcp.instructions or "") + "\n" + ESSENTIALS_GUIDANCE
     mcp.settings.transport_security = TransportSecuritySettings(
         enable_dns_rebinding_protection=strict_transport,
         allowed_hosts=(

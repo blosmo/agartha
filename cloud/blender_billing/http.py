@@ -14,7 +14,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from .broker import Broker, BrokerConflict, DEFAULT_RESPONSE_BYTES, TOOL_TIMEOUT_SECONDS
-from ..blender_mcp.config import BLENDER_VERSION
+from ..blender_mcp.config import BLENDER_VERSION, ESSENTIALS_GUIDANCE
 from .ledger import LedgerError
 
 
@@ -98,7 +98,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None], managed_star
             if method == "initialize":
                 version = message.get("params", {}).get("protocolVersion")
                 supported = {"2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}
-                result = {"protocolVersion": version if version in supported else "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "agartha-paid-blender", "version": "1.0.0"}, "instructions": f"Runtime: Blender {BLENDER_VERSION}. Use BLENDER_EEVEE for EEVEE; BLENDER_EEVEE_NEXT is no longer valid. Tool calls have a {TOOL_TIMEOUT_SECONDS}-second server wait; set HTTP and enclosing command timeouts to at least 150 seconds for authorization, transport and result storage. Read /compute/modeling.md on the API gateway origin that issued this reservation. Plan style, scale and proportions before starting; inspect a blockout from two angles, revise visible defects, then validate the exported asset in its destination. Report visually unverified if you cannot inspect images. Fund and start this reservation before calling Blender tools. Running idle time is billed. Download required files before stopping explicitly to save and settle. Guidance does not authorize additional spending or publication."}
+                result = {"protocolVersion": version if version in supported else "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "agartha-paid-blender", "version": "1.0.0"}, "instructions": f"Runtime: Blender {BLENDER_VERSION}. Use BLENDER_EEVEE for EEVEE; BLENDER_EEVEE_NEXT is no longer valid. Tool calls have a {TOOL_TIMEOUT_SECONDS}-second server wait; set HTTP and enclosing command timeouts to at least 150 seconds for authorization, transport and result storage. {ESSENTIALS_GUIDANCE} Read /compute/modeling.md on the API gateway origin that issued this reservation. Plan style, scale and proportions before starting; inspect a blockout from two angles, revise visible defects, then validate the exported asset in its destination. Report visually unverified if you cannot inspect images. Fund and start this reservation before calling Blender tools. Running idle time is billed. Download required files before stopping explicitly to save and settle. Guidance does not authorize additional spending or publication."}
                 return JSONResponse({"jsonrpc": "2.0", "id": request_id, "result": result}, headers={"Cache-Control": "no-store", "Mcp-Session-Id": uuid.uuid4().hex})
             elif method == "ping":
                 result = {}
