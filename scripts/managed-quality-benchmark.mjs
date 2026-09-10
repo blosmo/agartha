@@ -107,4 +107,5 @@ async function main() {
     await fs.unlink(resolved + '.lock');
   }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) main().catch(error => { console.error(error.message); process.exitCode = 1; });
+const entryPath = process.argv[1] && await fs.realpath(process.argv[1]).catch(() => undefined);
+if (entryPath && import.meta.url === pathToFileURL(entryPath).href) main().catch(error => { console.error(error.message); process.exitCode = 1; });

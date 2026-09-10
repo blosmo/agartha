@@ -56,3 +56,27 @@ describe('bounded managed comparison', () => {
     await expect(runBenchmark(h.options)).rejects.toThrow('16 MiB'); expect(h.written).toHaveLength(0);
   });
 });
+
+it('runs its CLI through a symlinked path instead of silently exiting', async () => {
+  const fs = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const { spawnSync } = await import('node:child_process');
+  const directory = await fs.mkdtemp(join(tmpdir(), 'managed-benchmark-cli-'));
+  try {
+    const link = join(directory, 'benchmark.mjs');
+    await fs.symlink(fileURLToPath(new URL('./managed-quality-benchmark.mjs', import.meta.url)), link);
+    const result = spawnSync(process.execPath, [link], { encoding: 'utf8', timeout: 10000 });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Pass a private manifest path');
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+it('can be imported by a stdin script without running the CLI', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const moduleUrl = new URL('./managed-quality-benchmark.mjs', import.meta.url).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-'], { input: `await import(${JSON.stringify(moduleUrl)}); console.log('imported');`, encoding: 'utf8', timeout: 10000 });
+  expect(result.status).toBe(0);
+  expect(result.stdout.trim()).toBe('imported');
+});
