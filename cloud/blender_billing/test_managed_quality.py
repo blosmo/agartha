@@ -103,10 +103,10 @@ class ManagedQualityTests(unittest.TestCase):
     def test_strategy_size_matches_gateway_compact_utf8_bound(self):
         def strategy(text):
             return {'subjectClass':'organic','styleUse':text,'geometryApproach':text,'proportions':[text],'stages':[text]*3,'acceptanceChecks':dict.fromkeys(['silhouette','proportions','construction','materials','presentation'],text)}
-        unicode_strategy=strategy('形'*150)
-        boundary_strategy=strategy('x'*526);boundary_strategy['styleUse']+='x'*8
-        self.assertEqual(len(json.dumps(unicode_strategy).encode()),10128)
-        for value,expected_bytes in [(unicode_strategy,5156),(boundary_strategy,6000)]:
+        unicode_strategy=strategy('形'*350)
+        boundary_strategy=strategy('x'*1072);boundary_strategy['styleUse']+='x'*2
+        self.assertEqual(len(json.dumps(unicode_strategy).encode()),23328)
+        for value,expected_bytes in [(unicode_strategy,11756),(boundary_strategy,12000)]:
             with self.subTest(expected_bytes=expected_bytes):
                 self.assertEqual(len(json.dumps(value,ensure_ascii=False,separators=(',',':')).encode('utf-8')),expected_bytes)
                 store,broker,requests,_,finish,_=self.run_quality([

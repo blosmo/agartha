@@ -67,6 +67,46 @@
   }
   el('references').addEventListener('change', () => { referenceTouched = true; referenceHelp(); });
   function savedJob() { localStorage.setItem(jobKey, JSON.stringify(job)); }
+  const quality = document.createElement('div');
+  quality.hidden = true; quality.setAttribute('aria-live', 'polite');
+  el('inspection').after(quality);
+  async function showReview(button) {
+    const jobId = job?.jobId;
+    button.disabled = true;
+    try {
+      const report = await api(`/api/blender/jobs/${encodeURIComponent(jobId)}/artifacts/review.json`);
+      if (job?.jobId !== jobId) return;
+      quality.replaceChildren(); quality.hidden = false;
+      const line = text => { const p = document.createElement('p'); p.textContent = text; quality.append(p); };
+      if (report.protocol === 3) {
+        const reviews = Array.isArray(report.reviews) ? report.reviews : [];
+        const reviewed = reviews.filter(review => review?.status === 'reviewed' && review.verdict && typeof review.verdict === 'object');
+        const accepted = reviewed.find(review => review.candidateRevision === report.acceptedRevision && review.verdict.accepted === true);
+        line(accepted ? 'An accepted exported GLB passed independent review.' : 'No independently accepted exported GLB is recorded.');
+        const latest = reviewed.at(-1);
+        if (latest) {
+          line(`Reviewed exported candidate ${latest.candidateRevision}: ${latest.verdict.accepted === true ? 'accepted' : 'changes required'}.`);
+          if (latest.verdict.accepted === true) {
+            for (const [criterion, result] of Object.entries(latest.verdict.criteria || {})) if (result?.pass === true && typeof result.evidence === 'string') line(`${criterion}: ${result.evidence}`);
+          } else {
+            for (const defect of latest.verdict.defects || []) if (typeof defect?.description === 'string') line(`${defect.severity || 'defect'} · ${defect.criterion || 'review'}: ${defect.description}`);
+          }
+        } else if (reviews.length) line('The latest exported candidate review did not produce a usable verdict.');
+        line('This review covers the export-bound GLB rendered in an isolated neutral scene. Inspect the downloaded GLB in your intended viewer.');
+      } else {
+        const reviews = Array.isArray(report.quality?.reviews) ? report.quality.reviews : [];
+        const accepted = reviews.find(review => review.candidateRevision === report.acceptedRevision);
+        line(accepted?.verdict === 'ready' ? 'An accepted checkpoint passed independent review of its Blender views.' : 'No independently accepted checkpoint is recorded.');
+        const latest = reviews.at(-1);
+        if (latest) {
+          line(`Reviewed candidate ${latest.candidateRevision}: ${latest.score}/10. ${latest.summary}`);
+          for (const correction of latest.corrections || []) line(`${correction.evidence} Next: ${correction.change}`);
+        }
+        if (report.quality?.stopReason) line(report.quality.stopReason);
+        line('This review covers Blender renders. Inspect the downloaded GLB in your intended viewer.');
+      }
+    } catch (err) { if (job?.jobId === jobId) error(err); } finally { button.disabled = false; }
+  }
   async function download(name, button) {
     button.disabled = true;
     try {
@@ -93,6 +133,10 @@
       const value = typeof artifact === 'string' ? artifact : artifact.name || artifact.url || '';
       const name = value.split('/').pop()?.split('?')[0];
       if (!['model.glb', 'model.blend', 'preview.png', 'turnaround.mp4', 'reference.jpg', 'review.json'].includes(name)) continue;
+      if (name === 'review.json') {
+        const review = document.createElement('button'); review.type = 'button'; review.textContent = 'View quality review';
+        review.addEventListener('click', () => showReview(review)); el('artifacts').append(review);
+      }
       const button = document.createElement('button'); button.type = 'button'; button.textContent = name === 'turnaround.mp4' ? 'Download 360° video' : name === 'reference.jpg' ? 'Download design reference' : name === 'review.json' ? 'Download review history' : `Download ${name}`; button.addEventListener('click', () => download(name, button)); el('artifacts').append(button);
     }
     return done;
@@ -151,7 +195,7 @@
     el('cancel').disabled = true;
     try { await identity(); await api(`/api/blender/jobs/${encodeURIComponent(job.jobId)}/cancel`, {}); await poll(); } catch (err) { error(err); } finally { el('cancel').disabled = false; }
   });
-  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; referenceTouched = false; el('references').checked = capabilities?.defaultReferenceMode === 'generate'; el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('submit').disabled = capabilities?.enabled !== true; });
+  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; referenceTouched = false; el('references').checked = capabilities?.defaultReferenceMode === 'generate'; quality.hidden = true; quality.replaceChildren(); el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('submit').disabled = capabilities?.enabled !== true; });
   el('check').addEventListener('click', check);
   el('connect').addEventListener('click', async () => { try { await identity(); await balance(); } catch (err) { error(err); } });
   let funding = false;

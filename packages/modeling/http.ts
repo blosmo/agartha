@@ -42,9 +42,11 @@ export async function managedInference(req: BillingRequest, res: ServerResponse)
     const reference = await generateReference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, remainingCents }, ledger, credential);
     jsonResponse(res, reference); return;
   }
-  if (body.kind !== undefined && body.kind !== 'modeling' && !(body.protocol === 3 && ['strategy', 'review'].includes(body.kind))) throw new BillingHttpError(400, 'Unknown modeling operation.');
+  const v3Quality = body.protocol === 3 && ['strategy', 'review'].includes(body.kind);
+  const legacyReview = body.protocol === 2 && body.kind === 'critique';
+  if (body.kind !== undefined && body.kind !== 'modeling' && !v3Quality && !legacyReview) throw new BillingHttpError(400, 'Unknown modeling operation.');
   let step;
-  try { step = await runInference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, history: body.history, ...(body.image === undefined ? {} : { image: body.image }), ...([2, 3].includes(body.protocol) ? { protocol: body.protocol, images: body.images } : {}), ...(body.protocol === 3 ? { kind: body.kind ?? 'modeling', strategy: body.strategy, candidateRevision: body.candidateRevision, glbSha256: body.glbSha256 } : {}), remainingCents }, ledger, credential); }
+  try { step = await runInference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, history: body.history, ...(body.image === undefined ? {} : { image: body.image }), ...([2, 3].includes(body.protocol) ? { protocol: body.protocol, images: body.images } : {}), ...(body.protocol === 3 ? { kind: body.kind ?? 'modeling', strategy: body.strategy, candidateRevision: body.candidateRevision, glbSha256: body.glbSha256 } : legacyReview ? { kind: 'critique' } : {}), remainingCents }, ledger, credential); }
   catch (error) {
     if (body.protocol === 3 && (body.kind ?? 'modeling') === 'modeling' && error instanceof BillingHttpError && error.status === 409 && error.message === 'Remaining budget is reserved for delivery.') {
       jsonResponse(res, { error: error.message, code: 'quality_review_reserved' }, 409); return;
