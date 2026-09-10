@@ -1,6 +1,6 @@
-import {BUNDLE_ID} from './canonicalAssets';
-import {GlbReader,gltfArray,gltfRecord} from './geometry/glb';
-import {inspectGlb} from './geometry/inspectGlb';
+import {BUNDLE_ID} from './canonicalAssets.js';
+import {GlbReader,gltfArray,gltfRecord} from './geometry/glb.js';
+import {inspectGlb} from './geometry/inspectGlb.js';
 
 export const SHARED_MATERIAL_ID=/^material-[a-f0-9]{64}$/;
 export const MATERIAL_LICENSES=['CC0-1.0','CC-BY-4.0'] as const;
