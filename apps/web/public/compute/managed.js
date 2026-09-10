@@ -8,7 +8,7 @@
   const jobKey = 'agartha-compute-job';
   const purchaseKey = 'agartha-compute-purchase';
   const terminal = new Set(['completed', 'partial', 'failed', 'cancelled']);
-  let token, job, capabilities, busy = false, timer;
+  let token, job, capabilities, busy = false, timer, referenceTouched = false;
   function error(err) { el('error').textContent = err.message || 'Request failed. Retry the same job to recover its status.'; }
   async function api(path, body, authenticated = true) {
     const response = await fetch(path, { method: body === undefined ? 'GET' : 'POST', headers: { ...(authenticated ? { Authorization: `Bearer ${token}` } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), cache: 'no-store', signal: AbortSignal.timeout(30000) });
@@ -55,7 +55,7 @@
       capabilities = data.managed;
       el('reference-option').hidden = capabilities?.references?.enabled !== true;
       el('references').disabled = Boolean(job) || capabilities?.references?.enabled !== true;
-      if (!job) el('references').checked = capabilities?.defaultReferenceMode === 'generate';
+      if (!job && !referenceTouched) el('references').checked = capabilities?.defaultReferenceMode === 'generate';
       referenceHelp();
       el('availability').textContent = capabilities?.enabled === true ? 'Ready to create.' : 'Creation is unavailable. Select Use your agent to continue.';
       el('submit').disabled = capabilities?.enabled !== true || Boolean(job) || busy;
@@ -65,7 +65,7 @@
   function referenceHelp() {
     el('budget-help').textContent = capabilities?.references?.enabled === true && el('references').checked ? '$5–$20 for references, Astra and Blender. Pay for usage; keep unused credits.' : '$1–$20 for Astra and Blender. Pay for usage; keep unused credits.';
   }
-  el('references').addEventListener('change', referenceHelp);
+  el('references').addEventListener('change', () => { referenceTouched = true; referenceHelp(); });
   function savedJob() { localStorage.setItem(jobKey, JSON.stringify(job)); }
   async function download(name, button) {
     button.disabled = true;
@@ -84,7 +84,9 @@
     el('progress').textContent = `${data.status || 'Request saved'}${typeof data.progress === 'string' ? ` — ${data.progress}` : ''}${done && typeof data.reason === 'string' && data.reason !== data.progress ? ` — ${data.reason}` : ''}`;
     const charged = (data.chargedAiCents || 0) + (data.computeChargedCents || 0);
     el('cost').textContent = `${money(charged)} charged of ${money(job.budgetCents)} cap. ${money(data.pendingAiCents || 0)} AI usage pending reconciliation.${data.computeStatus ? ` Compute: ${data.computeStatus}.` : ''}`;
-    el('inspection').textContent = data.visuallyInspected === true ? 'Independent visual review accepted this checkpoint. Review the downloaded model for your intended use.' : 'Independent visual acceptance has not been confirmed.';
+    el('inspection').textContent = data.visuallyInspected === true
+      ? data.workflowVersion === 3 ? 'Independent visual review accepted this checkpoint. Review the downloaded model for your intended use.' : 'Astra inspected a preview. Review the downloaded model for your intended use.'
+      : data.workflowVersion === 3 ? 'Independent visual acceptance has not been confirmed.' : 'Visual inspection has not been confirmed.';
     el('cancel').hidden = done; el('new').hidden = !done; el('retry').hidden = done;
     el('artifacts').replaceChildren();
     for (const artifact of data.artifacts || []) {
@@ -149,7 +151,7 @@
     el('cancel').disabled = true;
     try { await identity(); await api(`/api/blender/jobs/${encodeURIComponent(job.jobId)}/cancel`, {}); await poll(); } catch (err) { error(err); } finally { el('cancel').disabled = false; }
   });
-  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('submit').disabled = capabilities?.enabled !== true; });
+  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; referenceTouched = false; el('references').checked = capabilities?.defaultReferenceMode === 'generate'; el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('submit').disabled = capabilities?.enabled !== true; });
   el('check').addEventListener('click', check);
   el('connect').addEventListener('click', async () => { try { await identity(); await balance(); } catch (err) { error(err); } });
   let funding = false;

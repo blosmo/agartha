@@ -39,8 +39,17 @@ describe("managed modeling ledger", () => {
     expect((await t.run(ctx => ctx.db.query("blenderSessionReservations").first()))?.reservedMinutes).toBe(30);
     vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_VERSION", "");
     vi.stubEnv("AGARTHA_REFERENCE_MODELING_ENABLED", "");
-    expect(await t.mutation(api.createManagedJob, request)).toEqual(row);
+    expect(await t.mutation(api.createManagedJob, { ...request, admissionEnabled: false, referenceAdmissionEnabled: false })).toEqual(row);
     await expect(t.mutation(api.createManagedJob, { ...request, referenceMode: "none" })).rejects.toThrow("different payload");
+  });
+
+  it("rejects disabled new admissions before reserving any funds", async () => {
+    const disabled = await setup();
+    await expect(disabled.t.mutation(api.createManagedJob, { ...create, admissionEnabled: false })).rejects.toThrow("not available");
+    await expect(disabled.t.mutation(api.createManagedJob, { ...create, budgetCents: 500, referenceMode: "generate", admissionEnabled: true, referenceAdmissionEnabled: false })).rejects.toThrow("Reference-guided");
+    expect(await disabled.t.run(ctx => ctx.db.query("managedJobs").collect())).toEqual([]);
+    expect(await disabled.t.run(ctx => ctx.db.query("blenderSessionQuotes").collect())).toEqual([]);
+    expect(await disabled.t.query(anyApi.cloud.purchases.balance, { token, livemode: false })).toMatchObject({ availableCents: 500, heldCents: 0 });
   });
 
   it("honors explicit none and keeps v3 reference defaults within the approved cap", async () => {

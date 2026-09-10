@@ -50,7 +50,7 @@ async function sanitized(ctx: QueryCtx | MutationCtx, row: Job) {
   const longReservation = row.referenceMode === "generate" || row.workflowVersion === 3 && row.budgetCents >= 500;
   return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? (longReservation ? 165 : 65), computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
 }
-export async function createManagedJobInTransaction(ctx: MutationCtx, args: { token: string; jobId: string; requestId: string; brief: string; shareMaterials?: boolean; shareComponents?: { license: "CC0-1.0" | "CC-BY-4.0" | "MIT"; attribution: string }; referenceMode?: "generate" | "none"; budgetCents: number; livemode: boolean }, fundingActorId?: string) {
+export async function createManagedJobInTransaction(ctx: MutationCtx, args: { token: string; jobId: string; requestId: string; brief: string; shareMaterials?: boolean; shareComponents?: { license: "CC0-1.0" | "CC-BY-4.0" | "MIT"; attribution: string }; referenceMode?: "generate" | "none"; budgetCents: number; livemode: boolean; admissionEnabled?: boolean; referenceAdmissionEnabled?: boolean }, fundingActorId?: string) {
     identifier(args.jobId, "jobId", 80); identifier(args.requestId, "requestId");
     if (!args.brief.trim() || new TextEncoder().encode(args.brief).length > 4000) throw new Error("Brief must contain 1 to 4000 UTF-8 bytes.");
     assertCents(args.budgetCents, "budgetCents");
@@ -65,8 +65,10 @@ export async function createManagedJobInTransaction(ctx: MutationCtx, args: { to
       if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || referenceMismatch || (prior.shareMaterials ?? false) !== shareMaterials || JSON.stringify(prior.shareComponents??null)!==JSON.stringify(shareComponents??null)) throw new Error("Job request reused with different payload.");
       return sanitized(ctx, prior);
     }
+    if (args.admissionEnabled === false) throw new Error("Managed modeling is not available.");
     const workflowVersion = process.env.AGARTHA_MANAGED_WORKFLOW_VERSION === "3" || process.env.AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID === authenticated.agentId ? 3 as const : undefined;
     const referenceMode = args.referenceMode ?? (workflowVersion === 3 && args.budgetCents >= 500 && process.env.AGARTHA_REFERENCE_MODELING_ENABLED === "true" ? "generate" : "none");
+    if (referenceMode === "generate" && args.referenceAdmissionEnabled === false) throw new Error("Reference-guided modeling is not available yet.");
     if(shareComponents&&(referenceMode!=="generate"||shareComponents.attribution.length>500||shareComponents.license!=="CC0-1.0"&&!shareComponents.attribution))throw new Error("Component sharing requires reference-guided modeling and bounded license attribution.");
     if (shareMaterials && referenceMode !== "generate") throw new Error("Material contributions require reference-guided modeling.");
     if (referenceMode === "generate" && args.budgetCents < 500) throw new Error("Reference-guided jobs require a budget of at least 500 cents.");
@@ -89,7 +91,7 @@ export async function createManagedJobInTransaction(ctx: MutationCtx, args: { to
 
 }
 export const createManagedJob = internalMutation({
-  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), shareMaterials: v.optional(v.boolean()), shareComponents: v.optional(componentSharing), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean() },
+  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), shareMaterials: v.optional(v.boolean()), shareComponents: v.optional(componentSharing), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean(), admissionEnabled: v.optional(v.boolean()), referenceAdmissionEnabled: v.optional(v.boolean()) },
   handler: (ctx, args) => createManagedJobInTransaction(ctx, args),
 });
 
