@@ -56,7 +56,7 @@ def _image(name, resolution, *, data):
 
 
 def _pack(image):
-    image.pack()
+    if image.packed_file is None: image.pack()
     return image
 
 
@@ -75,7 +75,7 @@ def _prepare_source(material):
             for prop in node.bl_rna.properties:
                 if prop.type == 'POINTER' and isinstance(getattr(node, prop.identifier, None), bpy.types.Object):
                     raise ValueError('Remove scene-object references from the reusable material source.')
-            if node.type == 'TEX_IMAGE' and node.image: node.image.pack()
+            if node.type == 'TEX_IMAGE' and node.image and node.image.packed_file is None: node.image.pack()
             if node.type == 'GROUP' and node.node_tree: inspect(node.node_tree)
     inspect(material)
     inspect(material.node_tree)
@@ -272,7 +272,7 @@ def import_material(path, obj, *, tile_size=2.0, projection='surface', center=No
             raise ValueError('A shared material swatch must contain one material.')
         surface = next(iter(materials))
         for node in surface.node_tree.nodes:
-            if node.type == 'TEX_IMAGE' and node.image: node.image.pack()
+            if node.type == 'TEX_IMAGE' and node.image and node.image.packed_file is None: node.image.pack()
         surface.use_fake_user = True
         surface['agarthaSwatchSha256'] = fingerprint
     return assign_material(obj, surface, tile_size=tile_size, projection=projection, center=center, direction=direction)

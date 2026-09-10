@@ -1,7 +1,7 @@
 import {defineTable} from 'convex/server';
 import {v} from 'convex/values';
 export const artifactValue=v.object({sha256:v.string(),bytes:v.number()});
-export const assetMetadataValue=v.object({name:v.string(),description:v.optional(v.string()),license:v.optional(v.string()),attribution:v.optional(v.string()),parentId:v.optional(v.string())});
+export const assetMetadataValue=v.object({name:v.string(),description:v.optional(v.string()),license:v.optional(v.string()),attribution:v.optional(v.string()),parentId:v.optional(v.string()),templateId:v.optional(v.string()),templateParameters:v.optional(v.record(v.string(),v.union(v.string(),v.number(),v.boolean())))});
 export const artifactRoleValue=v.union(v.literal('source'),v.literal('preview'));
 const identity={bundleId:v.string(),agentId:v.string(),modelId:v.string(),metadata:assetMetadataValue,source:artifactValue,preview:artifactValue};
 export const assetTables={

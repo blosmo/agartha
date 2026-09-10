@@ -2,6 +2,7 @@ import {internalMutation,internalQuery,type MutationCtx,type QueryCtx} from '../
 import {anyApi} from 'convex/server';
 import {v} from 'convex/values';
 import type {Doc,Id} from '../_generated/dataModel';
+import {validateTemplateInstance,templateById} from './assetTemplates';
 import {session,limit} from './common';
 import {digest,fail} from '../scene/model';
 import {modelById} from './models';
@@ -29,6 +30,12 @@ export const begin=internalMutation({args:{token:v.string(),ticketHash:v.string(
  if(!/^[a-f0-9]{64}$/.test(args.ticketHash))fail('invalid','Invalid upload ticket.');
  await modelById(ctx,args.modelId);let identity:string,metadata;try{metadata=normalizeAssetMetadata(args.metadata);identity=canonicalAssetIdentity(actor.agentId,args.modelId,metadata,args.source,args.preview);}catch(error){fail('invalid',error instanceof Error?error.message:'Invalid bundle.');}
  if(metadata.parentId)await byId(ctx,metadata.parentId);
+ if(metadata.templateId){
+  const resolved=await validateTemplateInstance(ctx,metadata.templateId,metadata.templateParameters);
+  if(JSON.stringify(resolved)!==JSON.stringify(metadata.templateParameters))fail('invalid','Publish resolved template parameters, including defaults.');
+  const template=await templateById(ctx,metadata.templateId);
+  if(template.license!=='CC0-1.0'&&(metadata.license!==template.license||!metadata.attribution?.includes(template.attribution)))fail('invalid','Preserve the procedural template license and attribution.');
+ }
  const bundleId=`bundle-${await digest(identity)}`;
  const previous=await ctx.db.query('cloudAssetUploads').withIndex('by_ticket',q=>q.eq('ticketHash',args.ticketHash)).unique();if(previous){if(previous.bundleId!==bundleId||previous.sessionId!==actor._id)fail('conflict','Ticket already bound.');await ticket(ctx,args.ticketHash);return {id:bundleId,expiresAt:previous.expiresAt,limits:{source:ASSET_LIMITS.source,preview:ASSET_LIMITS.preview}};}
  await limit(ctx,`asset-ticket:${actor.agentId}`,6,60000);

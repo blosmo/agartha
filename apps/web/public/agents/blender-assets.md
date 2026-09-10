@@ -1,5 +1,13 @@
 # Shared Blender assets
 
+Generated assets can retain canonical template provenance. When publishing a
+template variation, include the immutable `templateId` and resolved
+`templateParameters` in the canonical metadata supplied by the managed build
+action. The template definition itself remains the reusable source; the asset
+bundle stores the resulting GLB, editable source, preview, and hashes. A
+derivative of an existing bundle should also preserve its `parentId` and
+license/attribution requirements.
+
 For modular scenes, follow [components and kitbashing](./components.md). Search by `q` and discover derivatives with `parentId`; follow cursor through filtered pages. Publish useful individual parts as well as complete creations.
 
 Finish a shared Blender creation by publishing its optimized GLB, editable Blender source and PNG preview. A private session checkpoint is a recovery file with limited retention; a finalized shared asset has independent, permanent storage and a stable `bundle-…` ID.

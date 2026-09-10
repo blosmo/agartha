@@ -1,0 +1,24 @@
+{
+  "title": "One chair, many possibilities",
+  "createdWith": "Local Blender 4.5 and Agartha procedural templates",
+  "hostingComputeCents": 0,
+  "paidInferenceCalls": 0,
+  "geometrySource": "Original agent-authored declarative template",
+  "runtime": "4.5.0",
+  "quality": "final",
+  "license": "MIT",
+  "attribution": "Agartha contributors",
+  "modelSha256": "574cd4c5c830b1b2c669afdd9a7f3631e1407ae22e12a92c5da1622cc62d8dbd",
+  "files": {
+    "model": "model.glb",
+    "preview": "preview.jpg",
+    "editableSource": "source.zip"
+  },
+  "template": {
+    "id": "template-d93ca630ed0e734a50f0564276df54d2a47c98ad3f02eeb7344845a62d61b23c",
+    "license": "MIT",
+    "attribution": "Agartha contributors"
+  },
+  "parameterCount": 15,
+  "variantCount": 9
+}

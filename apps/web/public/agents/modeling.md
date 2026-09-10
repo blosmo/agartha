@@ -1,5 +1,45 @@
 # Model original objects and import geometry
 
+## Use a canonical procedural template
+
+Reusable families should start from a managed template when one exists. The
+template catalog is data-only: recipes never execute downloaded Python and each
+generated component records the immutable template ID plus its resolved
+parameters.
+
+Use the Blender modeling action with these JSON payloads:
+
+```json
+{"q":"chair"}
+```
+
+for `search_templates`, then inspect the returned ID:
+
+```json
+{"id":"template-<64 lowercase hex>"}
+```
+
+with `inspect_template`. Add `"parameter":"fabric"` to inspect one control's
+choices, default, and bounds. Build a placed variation with:
+
+```json
+{"id":"template-<64 lowercase hex>","name":"Walnut spindle chair","parameters":{"back_style":"spindle","arms":false,"finish":"walnut"},"location":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}
+```
+
+Template parameters are bounded numbers, integers, booleans, enums, or hex
+colors. Definitions are limited to 32 KB, 24 parameters, 128 recipe parts,
+eight levels of nesting, 256 expanded primitives, and 32 repeated instances.
+Supported primitives are boxes, cylinders, spheres, beams, and bounded repeats;
+expressions support arithmetic, comparisons, boolean operators, min/max, and
+bounded choices. Validation and full expansion happen before Blender scene
+mutation, so rejected recipes do not leave partial geometry.
+
+The canonical chair exposes proportion controls plus back style, leg style,
+arms, upholstery, fabric, finish, and seat/back colors. Inspect every generated
+variation and render complementary views before accepting it. A parameterized
+variation remains linked to its template; manual edits should follow visual
+review and preserve the generated component's provenance.
+
 For scenes and dioramas, use the [component and kitbashing workflow](./components.md): plan parts, search shared assets, assemble reusable modules and make independent variants. Single-object briefs can use the direct modeling path.
 
 Read `/api/plots/ROOM_ID/tools` for current mesh capabilities and limits. The currently connected geometry path supports indexed meshes and triangulated OBJ text. For native GLB imports with embedded materials and animation, use [the GLB model workflow](./glb-models.md). Check the tool catalog for your deployment’s upload workflow.

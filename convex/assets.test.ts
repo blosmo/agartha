@@ -62,6 +62,17 @@ it('rejects unknown models and parents and releases expired quota reservations',
  await send(t,a.uploadToken,'source');vi.setSystemTime(Date.now()+300001);expect((await send(t,b.uploadToken,'preview')).status).toBe(401);
  await begin(t,{metadata:{name:'Third'}});expect(await t.run(ctx=>ctx.db.system.query('_storage').collect())).toHaveLength(1);
 });
+it('validates published procedural template instances and license before reserving a ticket',async()=>{
+ const t=await setup();
+ const templateDefinition={version:1,name:'Canonical chair',description:'A repeatable chair',parameters:{arms:{type:'boolean',default:true},width:{type:'number',min:.4,max:1.2,default:.6}},materials:{wood:{color:'#8a6545',roughness:.5,metallic:0}},parts:[{kind:'box',name:'Seat',position:[0,0,.45],size:[{param:'width'},.6,.08],material:'wood'}]};
+ const published=await t.mutation(anyApi.cloud.assetTemplates.publish,{token,definition:templateDefinition,license:'MIT',attribution:'Template author',review:'Inspected generated chair with two widths.'});
+ const metadata={name:'Procedural chair',license:'MIT',attribution:'Template author',templateId:published.id,templateParameters:{arms:true,width:.6}};
+ expect((await begin(t,{metadata})).id).toMatch(/^bundle-/);
+ await expect(begin(t,{metadata:{...metadata,templateParameters:{arms:true}}})).rejects.toThrow('resolved');
+ await expect(begin(t,{metadata:{...metadata,license:'CC0-1.0',attribution:''}})).rejects.toThrow('Preserve');
+ await expect(begin(t,{metadata:{...metadata,templateId:`template-${'f'.repeat(64)}`}})).rejects.toThrow('not published');
+ expect((await t.run(ctx=>ctx.db.query('cloudAssetUploads').collect())).length).toBe(1);
+});
 it.each(['revoked','rotated','expired'])('rejects %s credentials after begin',async mode=>{
  const t=await setup(),upload=await begin(t);await t.run(async ctx=>{const actor=await ctx.db.query('cloudSessions').withIndex('by_agent',q=>q.eq('agentId','author')).unique();await ctx.db.patch(actor!._id,mode==='revoked'?{revoked:true}:mode==='rotated'?{tokenHash:'f'.repeat(64)}:{expiresAt:Date.now()-1});});expect((await send(t,upload.uploadToken,'source')).status).toBe(401);
 });
@@ -69,7 +80,7 @@ it('enforces retained plus pending byte and count quotas independently of the sh
  const t=await setup(),published=await finish(t,await begin(t));
  await t.run(async ctx=>{const row=(await ctx.db.query('cloudAssets').first())!;const {_id,_creationTime,...data}=row;await ctx.db.patch(_id,{source:{...row.source,bytes:127_999_950}});});
  await expect(begin(t,{metadata:{name:'Different source bundle'}})).rejects.toThrow('quota');
- await t.run(async ctx=>{const row=(await ctx.db.query('cloudAssets').first())!;const {_id,_creationTime,...data}=row;await ctx.db.patch(_id,{source:{...row.source,bytes:source.length}});for(let i=1;i<64;i++)await ctx.db.insert('cloudAssets',{...data,source:{...row.source,bytes:source.length},bundleId:`bundle-${i.toString(16).padStart(64,'0')}`});});
+ await t.run(async ctx=>{const row=(await ctx.db.query('cloudAssets').first())!;const {_id,_creationTime,...data}=row;await ctx.db.patch(_id,{source:{...row.source,bytes:source.length}});for(let i=1;i<64;i++)await ctx.db.insert('cloudAssets',{...data,source:{...row.source,bytes:source.length},bundleId:'bundle-'+i.toString(16).padStart(64,'0')});});
  await expect(begin(t,{metadata:{name:'65th'}})).rejects.toThrow('quota');expect((await t.query(anyApi.cloud.assets.get,{id:published.id})).modelId).toBe(modelId);
 });
 it('sweeps store-before-stage crash orphans only after grace and preserves unrelated and referenced storage',async()=>{

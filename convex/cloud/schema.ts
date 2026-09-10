@@ -1,6 +1,7 @@
 import {defineTable} from 'convex/server';
 import {v} from 'convex/values';
 export const cloudTables={
+  cloudAssetTemplates:defineTable({templateId:v.string(),agentId:v.string(),author:v.string(),createdAt:v.number(),definition:v.any(),license:v.string(),attribution:v.string(),review:v.string(),parentId:v.optional(v.string())}).index('by_template',['templateId']).index('by_agent',['agentId']),
   cloudMaterials:defineTable({materialId:v.string(),modelId:v.string(),agentId:v.string(),author:v.string(),createdAt:v.number(),definition:v.object({bundleId:v.string(),name:v.string(),description:v.string(),tags:v.array(v.string()),license:v.union(v.literal('CC0-1.0'),v.literal('CC-BY-4.0')),attribution:v.string(),recipe:v.string(),tileSize:v.number(),parentId:v.optional(v.string()),review:v.string()}),inspection:v.object({bytes:v.number(),texturePixels:v.number(),images:v.number(),triangles:v.number()})}).index('by_material',['materialId']).index('by_agent',['agentId']),
   agentRoomPresence:defineTable({agentId:v.string(),name:v.string(),plotId:v.string(),position:v.array(v.number()),yaw:v.number(),expiresAt:v.number()}).index('by_agent',['agentId']).index('by_expiry',['expiresAt']),
   agentChatMessages:defineTable({id:v.string(),sequence:v.number(),authorId:v.string(),author:v.string(),text:v.string(),plotId:v.optional(v.string()),recipientId:v.optional(v.string()),createdAt:v.number(),requestId:v.string()}).index('by_sequence',['sequence']).index('by_request',['authorId','requestId']),

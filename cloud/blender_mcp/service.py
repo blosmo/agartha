@@ -127,7 +127,7 @@ def filter_tools(mcp: Any) -> None:
             tools.pop(name)
 
 
-def wrap_execute_tool(mcp: Any, activity: Activity) -> None:
+def wrap_execute_tool(mcp: Any, activity: Activity, project_file: Path = Path(PROJECT_FILE)) -> None:
     """Bound and autosave direct MCP dispatches while preserving the schema."""
     manager = getattr(mcp, "_tool_manager", None)
     tool = manager.get_tool("execute_blender_code") if manager is not None else None
@@ -147,7 +147,7 @@ def wrap_execute_tool(mcp: Any, activity: Activity) -> None:
             output = await result if inspect.isawaitable(result) else result
             if isinstance(output, str) and (output.startswith("Error executing code:") or output.startswith("Rejected by safe mode")):
                 raise RuntimeError(output[:512])
-            save_code = "import bpy; bpy.ops.wm.save_as_mainfile(filepath='/workspace/project.blend')"
+            save_code = f"import bpy; bpy.ops.wm.save_as_mainfile(filepath={str(project_file)!r})"
             if isinstance(output, str) and output.startswith("Code executed successfully:") and code.strip() != save_code:
                 save_kwargs = {"code": save_code, "user_prompt": ""}
                 if "ctx" in kwargs: save_kwargs["ctx"] = kwargs["ctx"]
@@ -194,7 +194,7 @@ def register_helpers(mcp: Any, store: SessionStore, activity: Activity) -> None:
     async def save_project() -> dict[str, Any]:
         activity.touch()
         async with operation_lock:
-            require_code_success(await _call_upstream(mcp, "execute_blender_code", {"code": "import bpy; bpy.ops.wm.save_as_mainfile(filepath='/workspace/project.blend')"}))
+            require_code_success(await _call_upstream(mcp, "execute_blender_code", {"code": f"import bpy; bpy.ops.wm.save_as_mainfile(filepath={str(store.workspace / 'project.blend')!r})"}))
             return store.checkpoint()
 
     @mcp.tool()
@@ -230,34 +230,36 @@ def load_upstream() -> Any:
     return mcp
 
 
-def create_app() -> Any:
+def create_app(*, workspace: Path | None = None, require_token: bool = False,
+               strict_transport: bool = False) -> Any:
     """Return upstream's Streamable HTTP adapter and session state."""
     from mcp.server.transport_security import TransportSecuritySettings
 
     mcp = load_upstream()
-    # This is a remote service behind Modal's authenticated Connect Token proxy,
-    # with no public tunnel ports. Upstream's localhost-only Host filter rejects
-    # that proxy with HTTP 421; the proxy enforces authentication for every route.
     mcp.settings.transport_security = TransportSecuritySettings(
-        enable_dns_rebinding_protection=False,
+        enable_dns_rebinding_protection=strict_transport,
+        allowed_hosts=(
+            ["127.0.0.1", "127.0.0.1:*", "localhost", "localhost:*", "[::1]", "[::1]:*"]
+            if strict_transport else []
+        ),
     )
     filter_tools(mcp)
     manager = getattr(mcp, "_tool_manager", None)
     registered = set(getattr(manager, "_tools", {}))
     if not CORE_TOOLS.issubset(registered):
         raise RuntimeError("Pinned upstream core tool allowlist is incomplete.")
-    store = SessionStore()
+    store = SessionStore(workspace or Path(ARTIFACT_DIRECTORY).parent)
     activity = Activity(store.workspace / ".mcp-last-activity")
-    wrap_execute_tool(mcp, activity)
+    wrap_execute_tool(mcp, activity, store.workspace / "project.blend")
     wrap_tool_dispatch(mcp, activity)
     register_helpers(mcp, store, activity)
-    return SessionASGI(mcp.streamable_http_app(), activity, store), activity, store
+    return SessionASGI(mcp.streamable_http_app(), activity, store, require_token=require_token), activity, store
 
 
 class SessionASGI:
     """Small route wrapper that delegates MCP requests to upstream's ASGI app."""
-    def __init__(self, upstream: Any, activity: Activity, store: SessionStore) -> None:
-        self.upstream, self.activity, self.store = upstream, activity, store
+    def __init__(self, upstream: Any, activity: Activity, store: SessionStore, *, require_token: bool = False) -> None:
+        self.upstream, self.activity, self.store, self.require_token = upstream, activity, store, require_token
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope.get("type") != "http":
@@ -265,7 +267,7 @@ class SessionASGI:
         path = scope.get("path", "")
         headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
         expected = os.environ.get("MCP_CONNECT_TOKEN")
-        if expected and headers.get("authorization") != f"Bearer {expected}":
+        if (self.require_token or expected) and headers.get("authorization") != f"Bearer {expected}":
             await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"text/plain")]})
             await send({"type": "http.response.body", "body": b"Unauthorized"})
             return

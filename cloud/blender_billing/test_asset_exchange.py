@@ -28,6 +28,35 @@ class AssetExchangeTests(unittest.TestCase):
 if __name__=='__main__': unittest.main()
 
 class ComponentPublicationTests(unittest.TestCase):
+    def test_unknown_template_rejected_before_any_upload_request(self):
+        seen=[]
+        def handler(request):
+            seen.append(request)
+            if request.url.path.endswith('/templates/'+'template-'+'a'*64): return httpx.Response(404)
+            return httpx.Response(500)
+        exchange=AssetExchange('https://app.example','https://test.convex.site','secret',httpx.Client(transport=httpx.MockTransport(handler)))
+        self.addCleanup(exchange.close)
+        files={'glb':b'glTF-bytes','source':b'BLENDER-bytes','preview':b'\x89PNG\r\n\x1a\nbytes'}
+        metadata={'name':'Chair','license':'MIT','attribution':'Author','templateId':'template-'+'a'*64,'templateParameters':{}}
+        with self.assertRaises(ValueError): exchange.publish(files,metadata,'Reviewed',{})
+        self.assertFalse(any(r.url.path.endswith('/upload-ticket') or r.url.path.endswith('/model-upload') for r in seen))
+
+    def test_template_parameters_and_license_are_checked_before_upload(self):
+        import json
+        template='template-'+'a'*64; seen=[]
+        definition={'version':1,'name':'Chair','description':'','parameters':{'arms':{'type':'boolean','default':True},'width':{'type':'number','default':2,'min':1,'max':3}},'materials':{'wood':{'color':'#ffffff','roughness':.5,'metallic':0}},'parts':[{'kind':'box','name':'seat','position':[0,0,0],'size':[1,1,1],'material':'wood'}]}
+        def handler(request):
+            seen.append(request)
+            if request.url.path.endswith('/templates/'+template): return httpx.Response(200,json={'id':template,'definition':definition,'license':'MIT','attribution':'Original author'})
+            return httpx.Response(500)
+        exchange=AssetExchange('https://app.example','https://test.convex.site','secret',httpx.Client(transport=httpx.MockTransport(handler)))
+        self.addCleanup(exchange.close)
+        files={'glb':b'glTF-bytes','source':b'BLENDER-bytes','preview':b'\x89PNG\r\n\x1a\nbytes'}
+        base={'name':'Chair','license':'CC0-1.0','attribution':'','templateId':template,'templateParameters':{'arms':True,'width':2}}
+        with self.assertRaisesRegex(ValueError,'license'): exchange.publish(files,base,'Reviewed',{})
+        with self.assertRaisesRegex(ValueError,'resolved'): exchange.publish(files,{**base,'license':'MIT','attribution':'Original author','templateParameters':{'arms':True}},'Reviewed',{})
+        self.assertFalse(any(r.url.path.endswith('/upload-ticket') or r.url.path.endswith('/model-upload') for r in seen))
+
     def test_parent_license_is_checked_and_preserved_on_bundle_ticket(self):
         import json
         parent='bundle-'+'a'*64

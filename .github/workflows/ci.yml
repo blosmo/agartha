@@ -52,6 +52,7 @@ jobs:
           timeout 180s "$RUNNER_TEMP/blender-quality/blender-${version}-linux-x64/blender" --background --factory-startup --threads 2 --python-exit-code 1 \
             --python scripts/blender/verify_material_authoring.py -- "$RUNNER_TEMP/material-authoring-results"
           timeout 120s "$RUNNER_TEMP/blender-quality/blender-${version}-linux-x64/blender" --background --factory-startup --disable-autoexec --threads 2 --python-exit-code 1 --python scripts/blender/verify_components.py
+          timeout 180s "$RUNNER_TEMP/blender-quality/blender-${version}-linux-x64/blender" --background --factory-startup --disable-autoexec --threads 2 --python-exit-code 1 --python scripts/blender/verify_asset_templates.py
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -71,7 +72,7 @@ jobs:
           python3 -m venv .venv
           .venv/bin/python -m pip install -r cloud/blender_mcp/requirements-client.txt
           .venv/bin/python -m unittest discover -s cloud/blender_billing -t . -p 'test_*.py'
-          .venv/bin/python -m unittest cloud.blender_mcp.test_app cloud.blender_mcp.test_runtime cloud.blender_mcp.test_transport
+          .venv/bin/python -m unittest cloud.blender_mcp.test_app cloud.blender_mcp.test_runtime cloud.blender_mcp.test_transport cloud.blender_mcp.test_local cloud.blender_mcp.test_asset_templates
       - run: npm run build
       - name: Test Rust workspace
         run: |

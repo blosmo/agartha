@@ -19,8 +19,8 @@ from bpy.app.handlers import persistent
 
 PROJECT = {project!r}
 READY = {ready!r}
-ADDON_MODULE = os.environ.get("BLENDER_MCP_ADDON_MODULE", "addon")
 ADDON_PATH = os.environ.get("BLENDER_MCP_ADDON", "/opt/blender-mcp/addon.py")
+ADDON_MODULE = os.environ.get("BLENDER_MCP_ADDON_MODULE", pathlib.Path(ADDON_PATH).stem)
 if pathlib.Path(ADDON_PATH).is_file():
     sys.path.insert(0, str(pathlib.Path(ADDON_PATH).parent))
 
@@ -68,6 +68,17 @@ def _ready():
 
 if not bpy.app.timers.is_registered(_ready):
     bpy.app.timers.register(_ready, first_interval=0.25, persistent=True)
+
+# Blender exits after evaluating a background --python-expr.  In batch mode,
+# keep its main thread alive and drain the add-on queue directly; this preserves
+# the add-on's requirement that bpy commands run on Blender's main thread.
+if os.environ.get("BLENDER_MCP_BATCH_MODE") == "1":
+    server = getattr(bpy.types, "blendermcp_server", None)
+    if server is not None and server.running:
+        pathlib.Path(READY).write_text("ready\\n", encoding="utf-8")
+        while server.running:
+            server._drain_command_queue()
+            import time; time.sleep(0.05)
 '''
 
 

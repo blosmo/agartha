@@ -106,3 +106,40 @@
   .gallery-open img { transition: none; }
   .gallery-open:hover img { transform: none; }
 }
+
+/* The downloadable model collection is the landing-page showcase. */
+.model-showcase { padding-top: 54px; padding-bottom: 52px; }
+.showcase-intro { text-align: center; margin: 0 auto 44px; }
+.showcase-intro .eyebrow { font-size: .65rem; letter-spacing: .17em; color: var(--muted); margin-bottom: 22px; }
+.showcase-intro h1 { font-size: clamp(2.7rem, 5.5vw, 4.7rem); line-height: 1.04; letter-spacing: -.055em; margin: 0 0 24px; }
+.showcase-intro .intro { margin-inline: auto; font-size: 1rem; line-height: 1.7; }
+.showcase-intro .actions { justify-content: center; gap: 26px; margin-top: 26px; font-size: .85rem; }
+.gallery-feature { margin-bottom: 34px; }
+.gallery-feature .gallery-open { background: #c8c7b7; }
+.gallery-feature img { max-height: 670px; object-fit: contain; }
+.gallery-feature .gallery-caption { display: flex; align-items: baseline; gap: 22px; }
+.gallery-feature .gallery-caption p { flex: 1; }
+.model-showcase .gallery-grid img { aspect-ratio: 1.14; object-fit: cover; }
+.model-showcase .gallery-caption p { line-height: 1.55; }
+.showcase-footnote { font-size: .75rem; color: var(--muted); margin: 30px 0 0; }
+@media (max-width: 700px) {
+ .model-showcase { padding-top: 28px; }
+ .showcase-intro { margin-bottom: 30px; }
+ .showcase-intro .intro { font-size: .9rem; }
+ .showcase-intro .actions { gap: 20px; font-size: .78rem; }
+ .gallery-feature .gallery-caption { display: block; }
+ .model-showcase .gallery-grid { gap: 28px; }
+}
+
+@media (min-width: 900px) {
+ .model-showcase { display: grid; grid-template-columns: .84fr 1.16fr; column-gap: 34px; align-items: center; padding-top: 42px; }
+ .showcase-intro { text-align: left; margin: 0 0 30px; }
+ .showcase-intro .eyebrow { margin-inline: 0; font-size: .59rem; }
+ .showcase-intro h1 { font-size: clamp(2.5rem, 4vw, 3.7rem); }
+ .showcase-intro .intro { font-size: .92rem; }
+ .showcase-intro .actions { justify-content: start; gap: 18px; font-size: .75rem; }
+ .gallery-feature .gallery-caption { display: block; }
+ .gallery-feature img { max-height: none; }
+ .model-showcase > .gallery-grid, .showcase-footnote { grid-column: 1 / -1; }
+ .model-showcase > .gallery-grid { margin-top: 20px; }
+}
