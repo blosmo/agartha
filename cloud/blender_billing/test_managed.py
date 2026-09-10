@@ -114,3 +114,43 @@ class ManagedTests(unittest.TestCase):
         self.video_mock.assert_not_called()
         finish = [call.kwargs for call in broker.ledger.call.call_args_list if call.args[0] == 'finishManagedJob'][0]
         self.assertEqual(finish['status'], 'partial'); self.assertFalse(finish['videoReady'])
+
+class ManagedDownloadTests(unittest.TestCase):
+    def test_broker_reserves_actual_size_before_read_and_denies_bad_authorization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files = ManagedFiles(Path(directory), StorageCoordinator(), lambda: None)
+            files.save('one', {'model.glb': b'glTF', 'model.blend': b'BLENDER', 'preview.png': b'png'})
+            authorize = Mock(return_value={'bytes': 4})
+            self.assertEqual(files.read('one', 'model.glb', authorize), b'glTF')
+            authorize.assert_called_once_with(4)
+            with self.assertRaises(ValueError): files.read('one', 'model.glb', Mock(return_value={'bytes':3}))
+            denied = Mock(side_effect=LedgerError(403))
+            with self.assertRaises(LedgerError): files.read('one', 'model.glb', denied)
+            with self.assertRaises(ValueError): files.read('one', '../model.glb', authorize)
+
+    def test_http_download_requires_broker_quota_authorization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files = ManagedFiles(Path(directory), StorageCoordinator(), lambda: None)
+            files.save('one', {'model.glb': b'glTF', 'model.blend': b'BLENDER', 'preview.png': b'png'})
+            broker = Mock()
+            broker.ledger.call.side_effect = lambda action, **kwargs: {'bytes': kwargs['bytes']} if action == 'authorizeManagedDownload' else {'status':'completed'}
+            client = TestClient(create_http_app(broker, Mock(), managed_files=files))
+            result = client.get('/jobs/one/artifacts/model.glb', headers={'Authorization':'Bearer ' + 'a' * 64})
+            self.assertEqual(result.status_code, 200)
+            broker.ledger.call.assert_any_call('authorizeManagedDownload', token='a' * 64, jobId='one', bytes=4)
+
+    def test_oversize_and_growth_never_return_unreserved_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files = ManagedFiles(Path(directory), StorageCoordinator(), lambda: None)
+            files.save('one', {'model.glb': b'glTF', 'model.blend': b'BLENDER', 'preview.png': b'png'})
+            metadata = json.loads((files.directory('one') / 'current.json').read_text())
+            path = files.directory('one') / metadata['revision'] / 'model.glb'
+            authorize = Mock(return_value={'bytes':4})
+            with path.open('wb') as artifact: artifact.truncate(16 * 1024 * 1024 + 1)
+            with self.assertRaises(ValueError): files.read('one', 'model.glb', authorize)
+            authorize.assert_not_called()
+            path.write_bytes(b'glTF')
+            def grow(size):
+                path.write_bytes(b'glTFextra')
+                return {'bytes':size}
+            with self.assertRaises(ValueError): files.read('one', 'model.glb', grow)

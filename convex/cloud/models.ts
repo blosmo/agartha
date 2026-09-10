@@ -26,13 +26,13 @@ export const begin=internalMutation({args:{token:v.string(),ticketHash:v.string(
  if(!/^[a-f0-9]{64}$/.test(args.ticketHash))fail('invalid','Invalid upload ticket.');
  await limit(ctx,`model-ticket:${actor.agentId}`,3,60000);
  if((actor.modelCount??0)>=64||(actor.modelBytes??0)>=128_000_000)fail('quota','Agent model storage quota reached.');
- const expiresAt=Date.now()+300000,id=await ctx.db.insert('cloudModelUploads',{ticketHash:args.ticketHash,sessionId:actor._id,metadata:{...m,name:m.name.trim()},expiresAt});
+ const expiresAt=Date.now()+300000,id=await ctx.db.insert('cloudModelUploads',{ticketHash:args.ticketHash,sessionId:actor._id,credentialHash:actor.tokenHash,metadata:{...m,name:m.name.trim()},expiresAt});
  await ctx.scheduler.runAfter(600000,anyApi.cloud.models.expire,{id});
  return {expiresAt,maxBytes:16000000};
 }});
 async function ticket(ctx:QueryCtx|MutationCtx,hash:string){
  const upload=await ctx.db.query('cloudModelUploads').withIndex('by_ticket',q=>q.eq('ticketHash',hash)).unique();if(!upload||upload.expiresAt<Date.now())fail('unauthorized','Upload ticket expired or invalid.');
- const actor=await ctx.db.get(upload.sessionId);if(!actor||actor.revoked||actor.expiresAt<=Date.now())fail('unauthorized','Agent session expired or revoked.');return {upload,actor};
+ const actor=await ctx.db.get(upload.sessionId);if(!actor||actor.revoked||actor.expiresAt<=Date.now()||!upload.credentialHash||actor.tokenHash!==upload.credentialHash)fail('unauthorized','Agent session expired or revoked.');return {upload,actor};
 }
 export const authorizeUpload=internalMutation({args:{ticketHash:v.string()},handler:async(ctx,args)=>{const {upload,actor}=await ticket(ctx,args.ticketHash);await limit(ctx,`model-upload:${actor.agentId}`,6,60000);return {expiresAt:upload.expiresAt};}});
 export const commit=internalMutation({args:{ticketHash:v.string(),storageId:v.id('_storage'),modelId:v.string(),inspection:v.any()},handler:async(ctx,args)=>{

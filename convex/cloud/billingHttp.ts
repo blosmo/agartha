@@ -18,7 +18,7 @@ const projectBrokerMutations = new Set(['ensureProjectForReservation', 'reserveA
 const managedOwnerQueries = new Set(['getManagedJob']);
 const managedOwnerMutations = new Set(['createManagedJob', 'requestManagedCancel']);
 const managedBrokerQueries = new Set(['getManagedJobForBroker', 'listActiveManagedJobs']);
-const managedBrokerMutations = new Set(['claimManagedJob', 'heartbeatManagedJob', 'recordManagedCheckpoint', 'recordManagedVideo', 'recordManagedReference', 'recordManagedAcceptance', 'finishManagedJob', 'recoverManagedJob']);
+const managedBrokerMutations = new Set(['authorizeManagedDownload', 'claimManagedJob', 'heartbeatManagedJob', 'recordManagedCheckpoint', 'recordManagedVideo', 'recordManagedReference', 'recordManagedAcceptance', 'finishManagedJob', 'recoverManagedJob']);
 const managedPaymentMutations = new Set(['claimManagedInference', 'completeManagedInference']);
 
 function json(value: unknown, status = 200) {

@@ -1,4 +1,4 @@
-import { assertLegacyEnabled } from './legacyGate';
+import { assertLegacyEnabled, legacyProductionPolicy } from './legacyGate';
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { CollaborationEnvelope } from "@agartha/protocol/collaboration";
@@ -14,7 +14,7 @@ export const context = query({
     assertLegacyEnabled();
     const worldId = args.worldId ?? "origin";
     const now = Date.now();
-    const auth = await authenticateRead(ctx, { worldId, agentId: args.agentId, token: args.token, production: args.production ?? false }, now);
+    const auth = await authenticateRead(ctx, { worldId, agentId: args.agentId, token: args.token, production: legacyProductionPolicy() }, now);
     if (!auth.ok) throw new Error(auth.reason);
     const agent = await agentFor(ctx, worldId, args.agentId);
     if (agent === null) throw new Error("permission_denied");
@@ -30,7 +30,7 @@ export const handle = mutation({
     if (!parsed.ok) return parsed.response;
     const envelope = parsed.envelope;
     const now = Date.now();
-    const auth = await authenticateReadOrWrite(ctx, envelope, args.token, args.production ?? false, now);
+    const auth = await authenticateReadOrWrite(ctx, envelope, args.token, legacyProductionPolicy(), now);
     if (!auth.ok) {
       return {
         ok: false,
@@ -177,7 +177,7 @@ async function authenticateRead(ctx: any, args: any, now: number) {
     agentId: args.agentId,
     scope: args.scope ?? "agent:read",
     now,
-    production: args.production,
+    production: legacyProductionPolicy(),
   });
 }
 

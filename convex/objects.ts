@@ -1,4 +1,4 @@
-import { assertLegacyEnabled } from './legacyGate';
+import { assertLegacyEnabled, legacyProductionPolicy } from './legacyGate';
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -62,7 +62,7 @@ export const save = mutation({
       agentId: args.agentId,
       scope: "agent:write",
       now,
-      production: args.production ?? false,
+      production: legacyProductionPolicy(),
     });
     if (!auth.ok) throw new Error(auth.reason);
 

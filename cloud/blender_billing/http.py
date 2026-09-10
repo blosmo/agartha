@@ -142,7 +142,7 @@ def create_http_app(broker: Broker, monitor: Callable[[str], None], managed_star
                 if managed_files is None:
                     raise ClientRequestError('Managed artifacts unavailable.')
                 name = request.path_params['name']
-                payload = await run_in_threadpool(managed_files.read, job_id, name)
+                payload = await run_in_threadpool(managed_files.read, job_id, name, lambda size: broker.ledger.call('authorizeManagedDownload', token=credential, jobId=job_id, bytes=size))
                 media = 'video/mp4' if name.endswith('.mp4') else 'image/jpeg' if name.endswith('.jpg') else 'application/json' if name.endswith('.json') else 'image/png' if name.endswith('.png') else 'model/gltf-binary' if name.endswith('.glb') else 'application/octet-stream'
                 return Response(payload, media_type=media, headers={'Cache-Control': 'no-store', 'Content-Disposition': f'attachment; filename="{name}"'})
             if managed_start is None:

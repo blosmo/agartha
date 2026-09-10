@@ -236,3 +236,31 @@ it("can reserve the first paid session for a newly created project", async () =>
   await expect(t.mutation(anyApi.cloud.blenderSessions.createQuote, args)).resolves.toMatchObject({ projectId: "fresh" });
   await expect(t.mutation(anyApi.cloud.blenderSessions.reserveSession, { token, quoteId: "q-fresh", reservationId: "r-fresh", requestId: "r-fresh" })).resolves.toMatchObject({ projectId: "fresh", status: "reserved", reservedCents: 40 });
 });
+it.each(['launch','startup','operation'])('blocks funding frozen before %s', async stage => {
+ const {t,actor}=await setup();
+ await t.mutation(anyApi.cloud.blenderSessions.createQuote,{token,quoteId:'freeze',minutes:5,livemode:false,requestId:'freeze'});
+ await t.mutation(anyApi.cloud.blenderSessions.reserveSession,{token,quoteId:'freeze',reservationId:'freeze',requestId:'freeze'});
+ const launch={reservationId:'freeze',launchGeneration:1,operationId:'freeze-launch'};
+ if(stage!=='launch')await t.mutation(anyApi.cloud.blenderSessions.claimLaunch,launch);
+ if(stage==='operation')await t.mutation(anyApi.cloud.blenderSessions.markSessionReady,{reservationId:'freeze',launchGeneration:1,readyAt:Date.now()});
+ await t.run(async ctx=>{const wallet=await ctx.db.query('blenderWallets').withIndex('by_agent_mode',q=>q.eq('agentId',actor.agentId).eq('livemode',false)).unique();await ctx.db.patch(wallet!._id,{frozen:true});});
+ const call=stage==='launch'?t.mutation(anyApi.cloud.blenderSessions.claimLaunch,launch):stage==='startup'?t.mutation(anyApi.cloud.blenderSessions.claimStartup,{reservationId:'freeze',launchGeneration:1,executorId:'worker'}):t.mutation(anyApi.cloud.blenderSessions.authorizeOperation,{reservationId:'freeze',launchGeneration:1,operationId:'operation',payloadFingerprint:'x',responseBytes:100});
+ await expect(call).rejects.toThrow('frozen');
+ await expect(t.mutation(anyApi.cloud.blenderSessions.requestStop,{token,reservationId:'freeze'})).resolves.toMatchObject({stopRequested:true});
+});
+it.each(['pool','allowance'])('inherits %s sponsor freezes at compute boundaries',async kind=>{
+ const {t,actor}=await setup();
+ await t.mutation(anyApi.cloud.blenderSessions.createQuote,{token,quoteId:'sponsored',minutes:5,livemode:false,requestId:'sponsored'});
+ await t.mutation(anyApi.cloud.blenderSessions.reserveSession,{token,quoteId:'sponsored',reservationId:'sponsored',requestId:'sponsored'});
+ await t.run(async ctx=>{
+  const owner=`playground-${kind}-test`, row=await ctx.db.query('blenderSessionReservations').first();
+  await ctx.db.patch(row!._id,{agentId:owner});
+  await ctx.db.insert('blenderWallets',{agentId:owner,livemode:false,availableCents:100,heldCents:100,frozen:false,openDisputes:0});
+  if(kind==='pool'){
+   await ctx.db.insert('playgroundFundingPools',{projectId:'project',livemode:false,walletOwner:owner,targetCents:100,feeCents:0,backedCents:100,status:'building',chargedCents:0,refundedCents:0});
+   await ctx.db.insert('playgroundBackings',{backingId:'backing',projectId:'project',livemode:false,agentId:actor.agentId,contributorName:'Sponsor',amountCents:100,refundedCents:0,chargedCents:0,status:'held',createdAt:Date.now()});
+  }else await ctx.db.insert('playgroundAllowances',{allowanceId:'allowance',walletOwner:owner,sponsorId:actor.agentId,sponsorName:'Sponsor',recipientId:'recipient',recipientName:'Recipient',livemode:false,amountCents:100,refundedCents:0,status:'active',expiresAt:Date.now()+60000,createdAt:Date.now(),jobIds:[]});
+  const wallet=await ctx.db.query('blenderWallets').withIndex('by_agent_mode',q=>q.eq('agentId',actor.agentId).eq('livemode',false)).unique();await ctx.db.patch(wallet!._id,{frozen:true});
+ });
+ await expect(t.mutation(anyApi.cloud.blenderSessions.claimLaunch,{reservationId:'sponsored',launchGeneration:1,operationId:'launch'})).rejects.toThrow('frozen');
+});

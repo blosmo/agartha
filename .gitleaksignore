@@ -1,0 +1,8 @@
+# Reviewed historical test idempotency keys and assertions; no real credentials.
+# Keep exceptions scoped to exact findings, never entire test files or rules.
+fb327fc4355a3142774b40b81265698ddc6a8744:scripts/blenderPayments.test.ts:generic-api-key:97
+fb327fc4355a3142774b40b81265698ddc6a8744:scripts/blenderPayments.test.ts:generic-api-key:98
+7bdeb65ebf21b026db9f08f5cdddd49c2ec6b5b7:scripts/blenderPayments.test.ts:generic-api-key:63
+7bdeb65ebf21b026db9f08f5cdddd49c2ec6b5b7:cloud/blender_billing/verify_local.py:generic-api-key:101
+ab19adc829b9d6dbf4b560df597c1c2b8de59531:cloud/blender_billing/verify_local.py:generic-api-key:101
+ab19adc829b9d6dbf4b560df597c1c2b8de59531:scripts/blenderPayments.test.ts:generic-api-key:63

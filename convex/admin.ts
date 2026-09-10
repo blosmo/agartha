@@ -1,4 +1,4 @@
-import { assertLegacyEnabled } from './legacyGate';
+import { assertLegacyEnabled, legacyProductionPolicy } from './legacyGate';
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -14,7 +14,7 @@ export const refillEnergy = mutation({
   },
   handler: async (ctx, args) => {
     assertLegacyEnabled();
-    if (!args.adminEnabled) throw new Error("admin refill disabled");
+    if (process.env.AGARTHA_CONVEX_ADMIN_ENABLED !== "true") throw new Error("admin refill disabled");
     const now = Date.now();
     const records = await ctx.db
       .query("serviceTokens")
@@ -24,7 +24,7 @@ export const refillEnergy = mutation({
       worldId: "origin",
       scope: "admin:energy",
       now,
-      production: args.production ?? false,
+      production: legacyProductionPolicy(),
     });
     if (!auth.ok) throw new Error(auth.reason);
 

@@ -50,3 +50,9 @@ it('rejects a hosted model batch atomically when its aggregate draw cost exceeds
  const placed=await t.fetch('/cloud/plots/the-commons',{method:'POST',headers:headers(),body:JSON.stringify({requestId:'over-budget',issuedAt:Date.now(),message:'Test aggregate draw budget',objects})});expect(placed.status).toBe(429);
  expect(await t.run(ctx=>ctx.db.query('sceneObjects').collect())).toEqual(before);
 });
+it.each(['rotated', 'legacy'])('rejects %s ticket credentials before storing bytes', async mode => {
+ const t=await setup(),upload=await ticket(t);
+ await t.run(async ctx=>{if(mode==='rotated'){const actor=await ctx.db.query('cloudSessions').first();await ctx.db.patch(actor!._id,{tokenHash:'new-credential-hash'});}else{const row=await ctx.db.query('cloudModelUploads').first();await ctx.db.patch(row!._id,{credentialHash:undefined});}});
+ const response=await t.fetch('/model-upload',{method:'POST',headers:{'Content-Type':'model/gltf-binary',Authorization:`Bearer ${upload.uploadToken}`},body:glbFixture()});
+ expect(response.status).toBe(401);expect(await t.run(ctx=>ctx.db.query('cloudModels').collect())).toHaveLength(0);expect(await t.run(ctx=>ctx.db.system.query('_storage').collect())).toHaveLength(0);
+});
