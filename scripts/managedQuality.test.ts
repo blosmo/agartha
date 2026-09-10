@@ -44,6 +44,18 @@ describe('independent managed quality', () => {
     expect(modeler.body.max_completion_tokens).toBe(12000);
     expect(modeler.maxCostCents + REVIEW_RESERVE_CENTS).toBeLessThanOrEqual(remaining);
   });
+  it('shares the broker compact UTF-8 strategy boundary for Unicode and exact-limit ASCII', () => {
+    const strategyWithText = (text: string) => ({ subjectClass: 'organic', styleUse: text, geometryApproach: text, proportions: [text], stages: [text, text, text], acceptanceChecks: Object.fromEntries(QUALITY_CRITERIA.map(key => [key, text])) });
+    const unicodeStrategy = strategyWithText('形'.repeat(150));
+    const boundaryStrategy = strategyWithText('x'.repeat(526)); boundaryStrategy.styleUse += 'x'.repeat(8);
+    expect(Buffer.byteLength(JSON.stringify(unicodeStrategy), 'utf8')).toBe(5156);
+    expect(Buffer.byteLength(JSON.stringify(boundaryStrategy), 'utf8')).toBe(6000);
+    expect(parseStrategy(unicodeStrategy)).toEqual(unicodeStrategy);
+    expect(parseStrategy(boundaryStrategy)).toEqual(boundaryStrategy);
+    boundaryStrategy.styleUse += 'x';
+    expect(Buffer.byteLength(JSON.stringify(boundaryStrategy), 'utf8')).toBe(6001);
+    expect(() => parseStrategy(boundaryStrategy)).toThrow('limit');
+  });
   it('derives acceptance from all evidence and no major defects, ignoring no output fields', () => {
     expect(parseQualityReview(verdict()).accepted).toBe(true);
     const rejected = verdict(); rejected.criteria.proportions.pass = false;

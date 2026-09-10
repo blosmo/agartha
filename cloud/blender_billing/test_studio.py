@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 from PIL import Image
+import httpx
 
 from .managed import ManagedFiles, preview_image
 from .studio import run_studio, reference_views, REFERENCE_MODEL
@@ -32,7 +33,7 @@ class StudioTests(unittest.TestCase):
             store.save_reference('job', raster(), REFERENCE_MODEL)
             self.assertEqual(len(reference_views(raster())), 4)
 
-    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None, workflow_version=None, reference_mode='generate', quality_verdicts=None, cancel_after=None, final_mutation=False, mutate_after_review=False):
+    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None, workflow_version=None, reference_mode='generate', quality_verdicts=None, cancel_after=None, final_mutation=False, mutate_after_review=False, strategy_response=None):
         directory=tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         store=ManagedFiles(Path(directory.name),StorageCoordinator(),lambda:None)
         files=Mock(wraps=store)
@@ -87,19 +88,23 @@ class StudioTests(unittest.TestCase):
             if kind=='reference': value={'model':REFERENCE_MODEL,'image':'data:image/jpeg;base64,'+base64.b64encode(raster()).decode(),'chargeCents':8}
             elif kind=='strategy':
                 evidence='Visible coherent geometry with appropriate silhouette and structural proportions.'
-                value={'strategy':{'subjectClass':'architecture','styleUse':evidence,'geometryApproach':evidence,'proportions':[evidence],'stages':[evidence]*3,'acceptanceChecks':dict.fromkeys(['silhouette','proportions','construction','materials','presentation'],evidence)}}
+                value={'strategy':strategy_response if strategy_response is not None else {'subjectClass':'architecture','styleUse':evidence,'geometryApproach':evidence,'proportions':[evidence],'stages':[evidence]*3,'acceptanceChecks':dict.fromkeys(['silhouette','proportions','construction','materials','presentation'],evidence)}}
             elif kind=='review':
                 if not verdicts: raise RuntimeError('review budget exhausted')
                 value=verdicts.pop(0)
                 if isinstance(value,Exception): raise value
-                value={'candidateRevision':request['candidateRevision'],'glbSha256':request['glbSha256'],**value}
+                if not isinstance(value, bytes):
+                    value={'candidateRevision':request['candidateRevision'],'glbSha256':request['glbSha256'],**value}
             else:
                 if not outputs:raise RuntimeError('budget exhausted')
                 value=outputs.pop(0)
                 if isinstance(value,Exception): raise value
             if kind==cancel_after: row['cancelRequested']=True
             if kind=='review' and mutate_after_review: state['model']=b'BLENDER-B'
-            response=Mock();response.status_code=409 if value.get('code')=='quality_review_reserved' else 200;response.iter_bytes.return_value=[json.dumps(value).encode()]
+            if isinstance(value, bytes):
+                response=httpx.Response(200,content=value,request=httpx.Request(method,url))
+            else:
+                response=Mock();response.status_code=409 if value.get('code')=='quality_review_reserved' else 200;response.iter_bytes.return_value=[json.dumps(value).encode()]
             context=Mock();context.__enter__=Mock(return_value=response);context.__exit__=Mock(return_value=False)
             return context
         client=Mock();client.__enter__=Mock(return_value=client);client.__exit__=Mock(return_value=False);client.stream.side_effect=stream

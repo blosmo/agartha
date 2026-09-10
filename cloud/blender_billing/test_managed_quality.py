@@ -74,6 +74,52 @@ class ManagedQualityTests(unittest.TestCase):
             self.assertEqual(json.loads(store.read('job','review.json'))['reviews'][0]['status'],'attempted')
             self.assertEqual(finish['status'],'partial');self.assertFalse(finish['visuallyInspected']);broker.stop.assert_called_once()
 
+    def test_malformed_or_oversized_successful_critic_http_body_stops_inference(self):
+        bodies={'malformed':b'{"accepted":','oversized':b'{'+b' '*100_000+b'}','invalid_utf8':b'\xff','non_object':b'[]'}
+        for label,body in bodies.items():
+            with self.subTest(body=label):
+                store,broker,requests,_,finish,_=self.run_quality([
+                    action('edit','REVISION_A'),action('accept'),action('edit','REVISION_B'),action('accept'),
+                ],quality_verdicts=[body,verdict()])
+                self.assertEqual([request['kind'] for request in requests],['strategy','modeling','modeling','review'])
+                self.assertEqual(finish['status'],'partial');self.assertFalse(finish['visuallyInspected'])
+                trace=json.loads(store.read('job','review.json'))
+                self.assertEqual(trace['reviews'][0]['status'],'attempted')
+                self.assertEqual(next(event['type'] for event in trace['actions'] if event['action']=='error'),'InferenceProtocolError')
+                broker.stop.assert_called_once()
+
+    def test_unusable_structured_critic_verdict_stops_inference(self):
+        invalid_unicode=verdict();invalid_unicode['criteria']['materials']['evidence']='x'*30+'\ud800'
+        for result in [dict(accepted=True),verdict(candidateRevision=50),verdict(criteria={}),invalid_unicode,verdict(defects=[{'severity':['major'],'criterion':'materials','description':'A visibly missing portable material requires correction.'}])]:
+            with self.subTest(result=result):
+                store,_,requests,_,finish,_=self.run_quality([
+                    action('edit','REVISION_A'),action('accept'),action('edit','REVISION_B'),action('accept'),
+                ],quality_verdicts=[result,verdict()])
+                self.assertEqual(requests[-1]['kind'],'review')
+                self.assertEqual(sum(request['kind']=='review' for request in requests),1)
+                self.assertFalse(finish['visuallyInspected'])
+                self.assertEqual(json.loads(store.read('job','review.json'))['reviews'][0]['status'],'attempted')
+
+    def test_strategy_size_matches_gateway_compact_utf8_bound(self):
+        def strategy(text):
+            return {'subjectClass':'organic','styleUse':text,'geometryApproach':text,'proportions':[text],'stages':[text]*3,'acceptanceChecks':dict.fromkeys(['silhouette','proportions','construction','materials','presentation'],text)}
+        unicode_strategy=strategy('形'*150)
+        boundary_strategy=strategy('x'*526);boundary_strategy['styleUse']+='x'*8
+        self.assertEqual(len(json.dumps(unicode_strategy).encode()),10128)
+        for value,expected_bytes in [(unicode_strategy,5156),(boundary_strategy,6000)]:
+            with self.subTest(expected_bytes=expected_bytes):
+                self.assertEqual(len(json.dumps(value,ensure_ascii=False,separators=(',',':')).encode('utf-8')),expected_bytes)
+                store,broker,requests,_,finish,_=self.run_quality([
+                    action('edit','REVISION_A'),action('accept'),action('finish'),
+                ],quality_verdicts=[verdict()],strategy_response=value)
+                self.assertEqual(finish['status'],'completed');broker.start.assert_called_once()
+                self.assertEqual(next(request['strategy'] for request in requests if request['kind']=='review'),value)
+                self.assertEqual(json.loads(store.read('job','review.json'))['strategy'],value)
+        boundary_strategy['styleUse']+='x'
+        _,broker,requests,_,finish,_=self.run_quality([action('edit','REVISION_A')],strategy_response=boundary_strategy)
+        self.assertEqual(finish['status'],'failed');broker.start.assert_not_called()
+        self.assertEqual([request['kind'] for request in requests],['strategy'])
+
     def test_cancellation_after_review_or_strategy_stops_before_acceptance(self):
         for kind in ['strategy','review']:
             store,broker,requests,_,finish,_=self.run_quality([action('edit','REVISION_A'),action('accept')],quality_verdicts=[verdict()],cancel_after=kind)

@@ -70,24 +70,36 @@ bpy.ops.render.render(write_still=True)
 """
 
 
-def quality_approved(review: Any, digest: str, revision: int | None = None) -> bool:
-    """Validate the broker's durable verdict, never a modeler acceptance claim."""
+def quality_review_valid(review: Any, digest: str, revision: int | None = None) -> bool:
+    """Validate a bound critic decision, including a known rejection."""
     if not isinstance(review, dict) or review.get('glbSha256') != digest or not re.fullmatch('[a-f0-9]{64}', digest): return False
     if type(review.get('candidateRevision')) is not int or review['candidateRevision'] < 1: return False
     if revision is not None and review['candidateRevision'] != revision: return False
+    def valid_evidence(value: Any) -> bool:
+        if not isinstance(value, str) or len(value.strip()) < 30: return False
+        try: return len(value.encode('utf-8')) <= 800
+        except UnicodeEncodeError: return False
+
     keys = {'silhouette', 'proportions', 'construction', 'materials', 'presentation'}
     criteria = review.get('criteria')
     if not isinstance(criteria, dict) or set(criteria) != keys: return False
     for value in criteria.values():
-        if not isinstance(value, dict) or set(value) != {'pass', 'evidence'} or value['pass'] is not True: return False
-        if not isinstance(value['evidence'], str) or len(value['evidence'].strip()) < 30 or len(value['evidence'].encode()) > 800: return False
+        if not isinstance(value, dict) or set(value) != {'pass', 'evidence'} or type(value['pass']) is not bool: return False
+        if not valid_evidence(value['evidence']): return False
     defects = review.get('defects')
     if not isinstance(defects, list) or len(defects) > 12: return False
     for defect in defects:
         if not isinstance(defect, dict) or set(defect) != {'severity', 'criterion', 'description'}: return False
-        if defect['severity'] != 'minor' or defect['criterion'] not in keys: return False
-        if not isinstance(defect['description'], str) or len(defect['description'].strip()) < 30 or len(defect['description'].encode()) > 800: return False
-    return review.get('accepted') is True
+        if not isinstance(defect['severity'], str) or defect['severity'] not in {'blocker', 'major', 'minor'}: return False
+        if not isinstance(defect['criterion'], str) or defect['criterion'] not in keys: return False
+        if not valid_evidence(defect['description']): return False
+    accepted = all(value['pass'] for value in criteria.values()) and all(defect['severity'] == 'minor' for defect in defects)
+    return type(review.get('accepted')) is bool and review['accepted'] == accepted
+
+
+def quality_approved(review: Any, digest: str, revision: int | None = None) -> bool:
+    """Validate the broker's durable acceptance, never a modeler claim."""
+    return quality_review_valid(review, digest, revision) and review['accepted'] is True
 
 
 class ManagedFiles:

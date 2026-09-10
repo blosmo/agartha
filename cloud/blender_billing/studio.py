@@ -9,7 +9,7 @@ import time
 from typing import Any, Callable
 
 import httpx
-from .managed import BASE_NAMES, FILE_LIMIT, EXPORT_CODE, ManagedFiles, quality_approved
+from .managed import BASE_NAMES, FILE_LIMIT, EXPORT_CODE, ManagedFiles, quality_review_valid
 from .review import VIEWS, render_view_code
 from .export_review import render_export_view_code
 from .turnaround import DELIVERY_RESERVE_SECONDS, remaining_seconds, render_turnaround
@@ -23,6 +23,10 @@ FINAL_EXPORT = EXPORT.replace('scene.cycles.samples = 32', 'scene.cycles.samples
 
 # Render-only delivery cannot export or replace independently reviewed geometry.
 FINAL_RENDER = 'import bpy\n' + FINAL_EXPORT[FINAL_EXPORT.index('scene = bpy.context.scene'):].replace("bpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend', compress=False)", '')
+
+
+class InferenceProtocolError(RuntimeError):
+    """Unusable inference results stop execution rather than inviting candidate repair."""
 
 
 class ReviewBudgetReserved(RuntimeError):
@@ -128,12 +132,15 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     limit = 4_000_000 if kind == 'reference' else 100_000
                     for chunk in response.iter_bytes():
                         chunks.extend(chunk)
-                        if len(chunks) > limit: raise ValueError('Inference response exceeds its limit.')
+                        if len(chunks) > limit: raise InferenceProtocolError('Inference response exceeds its limit.')
+                    try:
+                        result = json.loads(chunks)
+                    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                        raise InferenceProtocolError('Inference response is not usable JSON.') from error
+                    if not isinstance(result, dict): raise InferenceProtocolError('Inference response must be an object.')
                     if quality and kind == 'modeling' and response.status_code == 409:
-                        error = json.loads(chunks)
-                        if error.get('code') == 'quality_review_reserved': raise ReviewBudgetReserved('Modeling allowance is reserved for final review.')
+                        if result.get('code') == 'quality_review_reserved': raise ReviewBudgetReserved('Modeling allowance is reserved for final review.')
                     response.raise_for_status()
-                    result = json.loads(chunks)
             current()
             return result
         finally:
@@ -182,8 +189,10 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         if hashlib.sha256(worker_glb).hexdigest() != digest: raise ValueError('Candidate changed during exported model inspection.')
         verdict = inference(f'{executor}-review-{revision}', 'review', strategy=strategy, candidateRevision=revision, glbSha256=digest, images=references + evidence)
         current()
+        if not quality_review_valid(verdict, digest, revision):
+            raise InferenceProtocolError('Critic returned an invalid or unbound quality verdict.')
         attempt.update({'status': 'reviewed', 'verdict': verdict}); trace()
-        if not quality_approved(verdict, digest, revision):
+        if not verdict['accepted']:
             details = {'defects': verdict.get('defects'), 'criteria': verdict.get('criteria')}
             raise ValueError('Independent review rejected this candidate. Repair these defects before another acceptance request: ' + json.dumps(details, ensure_ascii=False)[:10000])
         return verdict
@@ -218,7 +227,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             heartbeat('Planning geometry and independent acceptance checks.')
             planned = inference(executor + '-strategy', 'strategy', images=references)
             strategy = planned.get('strategy')
-            if not isinstance(strategy, dict) or len(json.dumps(strategy).encode()) > 6000: raise ValueError('Invalid service strategy.')
+            if not isinstance(strategy, dict) or len(json.dumps(strategy, ensure_ascii=False, separators=(',', ':')).encode('utf-8')) > 6000: raise ValueError('Invalid service strategy.')
             trace()
         for turn in range(MAX_ACTIONS):
             current()
