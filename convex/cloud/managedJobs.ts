@@ -1,7 +1,7 @@
 import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { v, ConvexError } from "convex/values";
-import { assertCents, getOrCreateWallet, requireBillingOwner } from "./common";
+import { assertCents, allowanceForJob, fundingBackings, getOrCreateWallet, requireBillingOwner } from "./common";
 import { createQuoteInTransaction, reserveSessionInTransaction } from "./blenderSessions";
 
 import {componentSharing} from "./managedJobSchema";
@@ -49,9 +49,7 @@ async function sanitized(ctx: QueryCtx | MutationCtx, row: Job) {
   const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", row.reservationId)).unique();
   return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? (row.referenceMode === "generate" ? 165 : 65), computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
 }
-export const createManagedJob = internalMutation({
-  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), shareMaterials: v.optional(v.boolean()), shareComponents: v.optional(componentSharing), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean() },
-  handler: async (ctx, args) => {
+export async function createManagedJobInTransaction(ctx: MutationCtx, args: { token: string; jobId: string; requestId: string; brief: string; shareMaterials?: boolean; shareComponents?: { license: "CC0-1.0" | "CC-BY-4.0" | "MIT"; attribution: string }; referenceMode?: "generate" | "none"; budgetCents: number; livemode: boolean }, fundingActorId?: string) {
     identifier(args.jobId, "jobId", 80); identifier(args.requestId, "requestId");
     if (!args.brief.trim() || new TextEncoder().encode(args.brief).length > 4000) throw new Error("Brief must contain 1 to 4000 UTF-8 bytes.");
     assertCents(args.budgetCents, "budgetCents");
@@ -61,14 +59,15 @@ export const createManagedJob = internalMutation({
     if(shareComponents&&(referenceMode!=="generate"||shareComponents.attribution.length>500||shareComponents.license!=="CC0-1.0"&&!shareComponents.attribution))throw new Error("Component sharing requires reference-guided modeling and bounded license attribution.");
     if (shareMaterials && referenceMode !== "generate") throw new Error("Material contributions require reference-guided modeling.");
     if (referenceMode === "generate" && args.budgetCents < 500) throw new Error("Reference-guided jobs require a budget of at least 500 cents.");
-    const actor = await requireBillingOwner(ctx, args.token);
+    const authenticated = await requireBillingOwner(ctx, args.token);
+    const actor = fundingActorId ? { ...authenticated, agentId: fundingActorId } : authenticated;
     const prior = await ctx.db.query("managedJobs").withIndex("by_owner_request", q => q.eq("agentId", actor.agentId).eq("livemode", args.livemode).eq("requestId", args.requestId)).unique();
     if (prior) { if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || (prior.referenceMode ?? "none") !== referenceMode || (prior.shareMaterials ?? false) !== shareMaterials || JSON.stringify(prior.shareComponents??null)!==JSON.stringify(shareComponents??null)) throw new Error("Job request reused with different payload."); return sanitized(ctx, prior); }
     if (await ctx.db.query("managedJobs").withIndex("by_job", q => q.eq("jobId", args.jobId)).unique()) throw new Error("Job ID already exists.");
     const reservationId = `managed-${args.jobId}`;
-    const quote = await createQuoteInTransaction(ctx, { token: args.token, quoteId: reservationId, requestId: reservationId, minutes: referenceMode === "generate" ? 30 : 10, livemode: args.livemode });
+    const quote = await createQuoteInTransaction(ctx, { token: args.token, quoteId: reservationId, requestId: reservationId, minutes: referenceMode === "generate" ? 30 : 10, livemode: args.livemode }, fundingActorId);
     if (quote.reserveCents !== (referenceMode === "generate" ? 165 : 65)) throw new Error("Managed compute pricing requires review.");
-    const reservation = await reserveSessionInTransaction(ctx, { token: args.token, quoteId: reservationId, reservationId, requestId: reservationId });
+    const reservation = await reserveSessionInTransaction(ctx, { token: args.token, quoteId: reservationId, reservationId, requestId: reservationId }, fundingActorId);
     await ctx.db.patch(reservation._id, { deferredStart: true });
     const ai = args.budgetCents - quote.reserveCents;
     const wallet = await getOrCreateWallet(ctx, actor.agentId, args.livemode);
@@ -79,10 +78,34 @@ export const createManagedJob = internalMutation({
     const row = (await ctx.db.get(id))!;
     await entry(ctx, row, "reserve", "reserve", -ai);
     return sanitized(ctx, row);
-  },
+
+}
+export const createManagedJob = internalMutation({
+  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), shareMaterials: v.optional(v.boolean()), shareComponents: v.optional(componentSharing), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean() },
+  handler: (ctx, args) => createManagedJobInTransaction(ctx, args),
 });
-export const getManagedJob = internalQuery({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => { const actor = await requireBillingOwner(ctx, args.token); const row = await job(ctx, args.jobId); if (row.agentId !== actor.agentId) throw new ConvexError({ code: "not_found", message: "Managed job not found." }); return sanitized(ctx, row); } });
-export const getManagedJobForBroker = internalQuery({ args: { jobId: v.string() }, handler: async (ctx, args) => job(ctx, args.jobId) });
+
+export const getManagedJob = internalQuery({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => { const actor = await requireBillingOwner(ctx, args.token); const row = await job(ctx, args.jobId); if (row.agentId !== actor.agentId) {
+  const allowance = await allowanceForJob(ctx, row.agentId, row.livemode, row.jobId);
+  if (allowance && (allowance.sponsorId === actor.agentId || allowance.recipientId === actor.agentId)) return sanitized(ctx, row);
+  const pool = await ctx.db.query('playgroundFundingPools').withIndex('by_wallet', q => q.eq('walletOwner', row.agentId)).unique();
+  const proposal = pool ? await ctx.db.query('playgroundProjects').withIndex('by_project', q => q.eq('projectId', pool.projectId)).unique() : null;
+  const backers = pool ? [...await fundingBackings(ctx, pool.projectId, row.livemode, 'held'), ...await fundingBackings(ctx, pool.projectId, row.livemode, 'settled')] : [];
+  if (!pool || pool.jobId !== row.jobId || (proposal?.creatorId !== actor.agentId && !(terminal(row) && backers.some(b => b.agentId === actor.agentId && b.status !== 'withdrawn')))) throw new ConvexError({ code: "not_found", message: "Managed job not found." });
+} return sanitized(ctx, row); } });
+export const getManagedJobForBroker = internalQuery({ args: { jobId: v.string() }, handler: async (ctx, args) => {
+  const row = await job(ctx, args.jobId);
+  if (row.agentId.startsWith('playground-allowance-')) {
+    const allowance = await allowanceForJob(ctx, row.agentId, row.livemode, row.jobId);
+    if (!allowance) throw new Error('Agent allowance authority is unavailable.');
+    return { ...row, initiatingAgentId: allowance.recipientId };
+  }
+  if (!row.agentId.startsWith('playground-pool-')) return row;
+  const pool = await ctx.db.query('playgroundFundingPools').withIndex('by_wallet', q => q.eq('walletOwner', row.agentId)).unique();
+  const proposal = pool ? await ctx.db.query('playgroundProjects').withIndex('by_project', q => q.eq('projectId', pool.projectId)).unique() : null;
+  if (!pool || pool.jobId !== row.jobId || !proposal) throw new Error('Project funding authority is unavailable.');
+  return { ...row, initiatingAgentId: proposal.creatorId };
+} });
 export const listActiveManagedJobs = internalQuery({ args: {}, handler: async ctx => {
   const rows = [...await ctx.db.query("managedJobs").withIndex("by_status", q => q.eq("status", "queued")).take(5), ...await ctx.db.query("managedJobs").withIndex("by_status", q => q.eq("status", "running")).take(5)];
   return rows.sort((a, b) => a.createdAt - b.createdAt).slice(0, 5);
@@ -94,11 +117,18 @@ export const claimManagedJob = internalMutation({ args: { jobId: v.string(), exe
   await ctx.db.patch(row._id, { status: "running", executorId: args.executorId, progress: "Starting", updatedAt: Date.now() });
   return { claimed: true, job: await job(ctx, args.jobId) };
 } });
-export const requestManagedCancel = internalMutation({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => {
-  const actor = await requireBillingOwner(ctx, args.token); const row = await job(ctx, args.jobId);
-  if (row.agentId !== actor.agentId) throw new ConvexError({ code: "not_found", message: "Managed job not found." });
+export async function cancelManagedJobInTransaction(ctx: MutationCtx, jobId: string, agentId: string) {
+  const row = await job(ctx, jobId);
+  if (row.agentId !== agentId) throw new ConvexError({ code: "not_found", message: "Managed job not found." });
   if (!terminal(row)) { await ctx.db.patch(row._id, { cancelled: true }); await finish(ctx, { ...row, cancelled: true }, "cancelled", "Cancelled", row.visuallyInspected); }
-  return sanitized(ctx, await job(ctx, args.jobId));
+  return sanitized(ctx, await job(ctx, jobId));
+}
+export const requestManagedCancel = internalMutation({ args: { token: v.string(), jobId: v.string() }, handler: async (ctx, args) => {
+  const actor = await requireBillingOwner(ctx, args.token);
+  const row = await job(ctx, args.jobId);
+  const allowance = await allowanceForJob(ctx, row.agentId, row.livemode, row.jobId);
+  const allowed = allowance && (allowance.sponsorId === actor.agentId || allowance.recipientId === actor.agentId);
+  return cancelManagedJobInTransaction(ctx, args.jobId, allowed ? row.agentId : actor.agentId);
 } });
 export const claimManagedInference = internalMutation({ args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), maxCostCents: v.number(), payloadFingerprint: v.string(), kind: v.optional(v.union(v.literal("modeling"), v.literal("reference"))) }, handler: async (ctx, args) => {
   identifier(args.operationId, "operationId"); identifier(args.payloadFingerprint, "payloadFingerprint"); assertCents(args.maxCostCents, "maxCostCents");

@@ -29,7 +29,7 @@ export async function managedInference(req: BillingRequest, res: ServerResponse)
   if (!body || typeof body !== 'object' || Buffer.byteLength(JSON.stringify(body)) > (body.protocol === 2 ? 3_000_000 : 450_000) || !/^[A-Za-z0-9_-]{1,80}$/.test(body.jobId) || !/^[A-Za-z0-9_-]{1,128}$/.test(body.executorId) || !/^[A-Za-z0-9_-]{1,128}$/.test(body.operationId)) throw new BillingHttpError(400, 'Invalid inference request.');
   // Validates broker authority before the payment service may authorize any inference.
   const row = await brokerLedger<Record<string, any>>('getManagedJobForBroker', { jobId: body.jobId });
-  if (process.env.AGARTHA_MANAGED_MODELING_ENABLED !== 'true' && row.agentId !== process.env.AGARTHA_MANAGED_MODELING_OPERATOR_AGENT_ID) throw new BillingHttpError(503, 'Managed modeling is not available.');
+  if (process.env.AGARTHA_MANAGED_MODELING_ENABLED !== 'true' && (row.initiatingAgentId ?? row.agentId) !== process.env.AGARTHA_MANAGED_MODELING_OPERATOR_AGENT_ID) throw new BillingHttpError(503, 'Managed modeling is not available.');
   const credential = managedCredential(req);
   if (!credential) throw new BillingHttpError(503, 'Model access is not configured.');
   const remainingCents = row.reservedAiCents - row.chargedAiCents - row.pendingAiCents;
