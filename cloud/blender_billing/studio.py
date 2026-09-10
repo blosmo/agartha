@@ -15,6 +15,8 @@ from .turnaround import DELIVERY_RESERVE_SECONDS, remaining_seconds, render_turn
 
 REFERENCE_MODEL = 'openai/gpt-image-2.5-flare'
 MAX_ACTIONS = 24
+MAX_REVIEWS = 4
+INFERENCE_TIMEOUT_SECONDS = 240
 # Detailed glTF exports can log one line per mesh/material; history remains truncated below.
 TOOL_RESPONSE_BYTES = 1_000_000
 EXPORT = EXPORT_CODE
@@ -41,6 +43,21 @@ def reference_views(payload: bytes) -> list[dict[str, str]]:
     ]]
 
 
+def validate_review(value: Any) -> dict[str, Any]:
+    """Fail closed on an incompatible broker response before recording acceptance."""
+    if not isinstance(value, dict): raise RuntimeError('Invalid independent review.')
+    verdict, score, corrections = value.get('verdict'), value.get('score'), value.get('corrections')
+    if verdict not in {'ready', 'revise'} or type(score) is not int or not 0 <= score <= 10 or not isinstance(corrections, list) or len(corrections) > 3:
+        raise RuntimeError('Invalid independent review.')
+    if (verdict == 'ready' and (score < 8 or corrections)) or (verdict == 'revise' and not corrections):
+        raise RuntimeError('Invalid independent review.')
+    if not isinstance(value.get('summary'), str) or not value['summary'].strip(): raise RuntimeError('Invalid independent review.')
+    for item in corrections:
+        if not isinstance(item, dict) or any(not isinstance(item.get(key), str) or not item[key].strip() for key in ['area', 'issueId', 'evidence', 'change']):
+            raise RuntimeError('Invalid independent review.')
+    return value
+
+
 def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, executor: str,
                row: dict[str, Any], monitor: Callable[[str], None], inference_url: str, broker_key: str) -> None:
     reservation = row['reservationId']
@@ -48,6 +65,9 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     reference_saved = False
     accepted_revision: int | None = None
     revision = 0
+    candidate_count = 0
+    reviews: dict[int, dict[str, Any]] = {}
+    stop_reason: str | None = None
     reviewed_views: set[str] = set()
     rendered: list[dict[str, str]] = []
     references: list[dict[str, str]] = []
@@ -93,7 +113,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
 
     def trace() -> None:
         if reference_saved:
-            files.save_review(job_id, {'protocol': 2, 'jobId': job_id, 'referenceModel': REFERENCE_MODEL, 'referenceCostCents': reference_cost, 'model': 'openai/gpt-6-astra', 'acceptedRevision': accepted_revision, 'candidateRevision': revision, 'actions': events})
+            files.save_review(job_id, {'protocol': 2, 'jobId': job_id, 'referenceModel': REFERENCE_MODEL, 'referenceCostCents': reference_cost, 'model': 'openai/gpt-6-astra', 'acceptedRevision': accepted_revision, 'candidateRevision': revision, 'quality': {'reviewer': 'independent', 'scope': 'Blender renders', 'reviews': list(reviews.values()), 'stopReason': stop_reason}, 'actions': events})
 
     def inference(operation: str, kind: str, **payload: Any) -> dict[str, Any]:
         current()
@@ -108,7 +128,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         try:
             request = {'protocol': 2, 'kind': kind, 'jobId': job_id, 'executorId': executor, 'operationId': operation, **payload}
             # Single dispatch, with the same durable budget fence as text inference.
-            with httpx.Client(timeout=240, follow_redirects=False) as client:
+            with httpx.Client(timeout=INFERENCE_TIMEOUT_SECONDS, follow_redirects=False) as client:
                 with client.stream('POST', inference_url, json=request, headers={'x-agartha-broker-key': broker_key}) as response:
                     response.raise_for_status()
                     chunks = bytearray()
@@ -275,7 +295,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['codeSha256'] = hashlib.sha256(code.encode()).hexdigest()
                     result = execute(code + '\n' + EXPORT, operation)
                     candidate = exported(); files.save(job_id, candidate)
-                    revision += 1; saved = scene_matches = True
+                    candidate_count += 1; revision = candidate_count; saved = scene_matches = True
                     broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
                     # Every edit produces actual evidence; the next action can request more.
                     rendered = inspect(['hero', 'front', 'right'], '', operation + '-inspect')
@@ -286,10 +306,39 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['result'] = 'Rendered requested inspection views without changing the model or hero camera.'
                 elif action == 'accept':
                     if not scene_matches or len(reviewed_views) < 2 or not event['critique'].strip(): raise ValueError('Acceptance requires the current candidate, two inspected views, and a concrete visual critique.')
+                    if revision not in reviews:
+                        if len(reviews) >= MAX_REVIEWS:
+                            stop_reason = 'Review limit reached; preserved available files.'
+                            status, progress = 'partial', stop_reason
+                            break
+                        heartbeat('An independent reviewer is checking proportions, structure and materials.')
+                        # Whole-model views only; publication swatches are never evidence for acceptance.
+                        if len([image for image in rendered if image['label'] != 'render-detail']) < 2:
+                            rendered = inspect(['hero', 'front', 'right'], '', operation + '-review')
+                        if remaining_seconds(broker.owned(token, reservation)) <= INFERENCE_TIMEOUT_SECONDS + DELIVERY_RESERVE_SECONDS:
+                            stop_reason = 'Stopped before independent review to preserve delivery time.'
+                            status, progress = 'partial', stop_reason
+                            break
+                        review = validate_review(inference(f'{executor}-review-{revision}', 'critique', images=references + rendered))
+                        reviews[revision] = {**review, 'candidateRevision': revision}
+                    review = reviews[revision]
+                    event['independentReview'] = review
+                    if review['verdict'] != 'ready':
+                        rejected = [item for item in reviews.values() if item['verdict'] == 'revise']
+                        recent = rejected[-3:]
+                        stalled = len(recent) == 3 and recent[-1]['score'] <= recent[0]['score'] and all(item['corrections'][0]['issueId'] == recent[0]['corrections'][0]['issueId'] for item in recent)
+                        if stalled or len(reviews) >= MAX_REVIEWS:
+                            stop_reason = 'Stopped after repeated reviews found no improvement.' if stalled else 'Review limit reached with unresolved corrections.'
+                            status, progress = 'partial', stop_reason
+                            event['result'] = stop_reason
+                            break
+                        repeated = len(rejected) >= 2 and rejected[-1]['score'] <= rejected[-2]['score'] and rejected[-1]['corrections'][0]['issueId'] == rejected[-2]['corrections'][0]['issueId']
+                        strategy = ' Change the construction approach before refining details.' if repeated else ''
+                        raise ValueError('Independent review requests corrections: ' + json.dumps(review, ensure_ascii=False) + strategy)
                     execute("import shutil\nshutil.copyfile('/workspace/artifacts/model.blend', '/workspace/artifacts/accepted.blend')", operation)
                     files.accept(job_id); accepted_revision = revision; accepted_current = True
                     broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor)
-                    event['result'] = 'Accepted the current visually inspected checkpoint.'
+                    event['result'] = 'Accepted the checkpoint after independent visual review.'
                 elif action == 'prepare_asset':
                     if not component_sharing: raise ValueError('Component publication was not enabled with a license for this job.')
                     if not accepted_current or not scene_matches: raise ValueError('Accept and inspect the scene before contributing components.')
