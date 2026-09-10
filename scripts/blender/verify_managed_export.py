@@ -66,6 +66,7 @@ assert sum(doc['accessors'][p['indices']]['count'] for p in doc['meshes'][0]['pr
 assert len(cube.data.polygons) == 6 and cube.modifiers.get(bevel.name), 'Export applied source modifiers'
 assert (output / 'preview.png').stat().st_size > 1000
 assert (output / 'model.blend').stat().st_size > 1000
+assert (output / 'model.blend').read_bytes().startswith(b'BLENDER'), 'Managed source must match the artifact validator, not Blender 5.2 default compression'
 print('MANAGED_EXPORT_RESULT ' + json.dumps({'modelOnly': True, 'meshes': 1, 'preview': True, 'editableSource': True}))
 
 # Run the actual chunked movie pipeline with the same camera and classified model.

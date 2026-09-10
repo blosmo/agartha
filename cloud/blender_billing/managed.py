@@ -63,7 +63,9 @@ if hasattr(scene.render.image_settings, 'media_type'): scene.render.image_settin
 scene.render.image_settings.file_format = 'PNG'
 scene.render.filepath = '/workspace/artifacts/preview.png'
 assert scene.camera, 'Create a camera framing the model.'
-bpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend')
+# Blender 5.2 defaults to Zstd compression; the managed artifact contract uses
+# an uncompressed BLENDER header, including during checkpoint validation.
+bpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend', compress=False)
 bpy.ops.render.render(write_still=True)
 """
 
@@ -292,11 +294,12 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
                 continue
             try:
                 exported = {name: broker.download(token, reservation, name, FILE_LIMIT) for name in sorted(BASE_NAMES)}
-                image = preview_image(exported['preview.png'])
+                next_image = preview_image(exported['preview.png'])
                 if not exported['model.glb'].startswith(b'glTF') or not exported['model.blend'].startswith(b'BLENDER'):
                     raise ValueError('Invalid exported model.')
-                inspected = False
                 files.save(job_id, exported)
+                image = next_image
+                inspected = False
                 saved = True
                 scene_matches_checkpoint = True
                 broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
@@ -304,7 +307,8 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
             except Exception:
                 history += '\nExports or preview could not be validated. Fix the scene and camera.'
         else:
-            status, progress = ('partial' if saved else 'failed'), 'Iteration limit reached; delivered the latest validated files.'
+            status = 'partial' if saved else 'failed'
+            progress = 'Iteration limit reached; delivered the latest validated files.' if saved else 'Iteration limit reached without a validated model.'
     except Exception:
         status = 'partial' if saved else 'failed'
         progress = 'Stopped because the remaining budget, service availability, or execution limit did not permit another safe step.'
@@ -326,7 +330,7 @@ def run_managed(broker: Any, files: ManagedFiles, token: str, job_id: str,
         try:
             broker.stop(token, reservation)
         finally:
-            broker.ledger.call('finishManagedJob', jobId=job_id, executorId=executor, status=status, progress=progress[:1000], visuallyInspected=inspected, artifactsReady=saved, videoReady=video_saved)
+            broker.ledger.call('finishManagedJob', jobId=job_id, executorId=executor, status=status, progress=progress[:1000], visuallyInspected=saved and inspected, artifactsReady=saved, videoReady=video_saved)
 
 
 def recover_managed_files(broker: Any, files: ManagedFiles, job: dict[str, Any]) -> None:

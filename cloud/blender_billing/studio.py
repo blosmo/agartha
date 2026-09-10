@@ -326,7 +326,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         prepared_asset['counted']=True
                     event['result']='Published reusable component: '+json.dumps({key:result[key] for key in ['id','modelId','metadata','source','preview']})
                     trace()  # Record permanent publication even if checkpoint annotation fails.
-                    code="import bpy,shutil\nfrom cloud.blender_mcp.components import mark_published_component\nroot=bpy.data.objects.get("+repr(prepared_asset['rootName'])+")\nassert root and root.get('agarthaComponent'), 'Component root changed.'\nmark_published_component(root,"+repr(result['id'])+")\nbpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend',check_existing=False)\nshutil.copyfile('/workspace/artifacts/model.blend','/workspace/artifacts/accepted.blend')"
+                    code="import bpy,shutil\nfrom cloud.blender_mcp.components import mark_published_component\nroot=bpy.data.objects.get("+repr(prepared_asset['rootName'])+")\nassert root and root.get('agarthaComponent'), 'Component root changed.'\nmark_published_component(root,"+repr(result['id'])+")\nbpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend',check_existing=False,compress=False)\nshutil.copyfile('/workspace/artifacts/model.blend','/workspace/artifacts/accepted.blend')"
                     execute(code,operation+'-provenance')
                     updated={name:files.read(job_id,name) for name in BASE_NAMES}
                     updated['model.blend']=broker.download(token,reservation,'model.blend',FILE_LIMIT)
