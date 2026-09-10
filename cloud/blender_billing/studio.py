@@ -55,6 +55,8 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     status, progress = 'failed', 'The reference-guided job could not complete.'
     history = 'Inspect the persistent scene, then build a strong blockout matching the reference. Work through Blender tools and use rendered evidence to guide each stage.'
     reference_cost = 0
+    sharing_enabled = row.get('shareMaterials') is True
+    history += ' Material publication is '+('enabled' if sharing_enabled else 'disabled')+' for this job.'
     from .material_exchange import MaterialExchange
     exchange = None
     prepared_material = None
@@ -174,7 +176,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     compact = {'entries':[{'id':entry['id'],'name':entry['name'].encode()[:100].decode(errors='ignore'),'tileSize':entry['tileSize'],'description':entry['description'].encode()[:80].decode(errors='ignore')} for entry in result['entries']], 'cursor':result.get('cursor')}
                     event['result'] = json.dumps(compact,ensure_ascii=False)
                     trace()
-                    history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}.\n'+json.dumps(events[-3:],ensure_ascii=False)
+                    history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}.\n'+json.dumps(events[-3:],ensure_ascii=False)
                     continue
                 if not running:
                     heartbeat('Starting the private Blender workspace.')
@@ -237,6 +239,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     material_preview = {'label':'render-detail','image':image_data(material_files['preview'])}
                     event['result'] = 'Prepared a private material-only bundle. render-detail now shows the material sphere and repeating tile, not a model detail. Inspect seams, grain scale, roughness and normal strength before publish_material.'
                 elif action == 'publish_material':
+                    if not sharing_enabled: raise ValueError('Material publication was not enabled for this job.')
                     if not accepted_current or not prepared_material or not prepared_material['reviewed'] or not event['critique'].strip():
                         raise ValueError('Prepare a material, inspect its swatch in a later turn, and provide a visual critique before publishing.')
                     result = shared_materials().publish(prepared_material['files'],prepared_material['metadata'],event['critique'],prepared_material['publication'])
@@ -261,7 +264,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                 if action in {'edit','load_material'}: rendered = []; reviewed_views.clear()
             trace()
             recent = [{key: value for key, value in item.items() if key != 'time'} for item in events[-6:]]
-            history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}.\n' + json.dumps(recent,ensure_ascii=False)
+            history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}.\n' + json.dumps(recent,ensure_ascii=False)
         else:
             status, progress = 'partial' if saved else 'failed', 'Action limit reached; preserved available files.'
     except InterruptedError:
@@ -270,7 +273,9 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         events.append({'action': 'error', 'type': type(error).__name__, 'message': str(error)[:1500]})
         status, progress = 'partial' if saved else 'failed', 'Stopped because budget, availability, or execution limits prevented another safe step.'
     finally:
-        if exchange is not None: exchange.close()
+        if exchange is not None:
+            try: exchange.close()
+            except Exception: pass  # Client cleanup must not skip compute shutdown.
         delivered_inspected = accepted_current
         try:
             if saved and accepted_revision is not None and not accepted_current:

@@ -18,7 +18,7 @@ def catalog() -> dict:
 def list_materials() -> dict:
     data = catalog()
     return {'materials': data['entries'], 'finishes': data['blenderFinishes'],
-            'usage': 'apply_material(object, material_id, finish_id=None, tile_size=2.0, projection="box"); images are packed for GLB.'}
+            'usage': 'apply_material(object, material_id, finish_id=None, tile_size=2.0, projection="surface"); images are packed for GLB.'}
 
 
 def _asset(path: str) -> Path:

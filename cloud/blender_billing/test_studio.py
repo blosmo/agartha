@@ -32,13 +32,13 @@ class StudioTests(unittest.TestCase):
             store.save_reference('job', raster(), REFERENCE_MODEL)
             self.assertEqual(len(reference_views(raster())), 4)
 
-    def fixture(self, actions, *, restore_failure=False, verbose_export=False):
+    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True):
         directory=tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         store=ManagedFiles(Path(directory.name),StorageCoordinator(),lambda:None)
         files=Mock(wraps=store)
         if restore_failure: files.restore_accepted.side_effect=OSError('storage unavailable')
         broker=Mock(); timeline=[]; requests=[]
-        row={'reservationId':'r','status':'running','brief':'An observatory','referenceMode':'generate'}
+        row={'reservationId':'r','status':'running','brief':'An observatory','referenceMode':'generate','shareMaterials':share_materials}
         def ledger(name, **kwargs):
             timeline.append(name)
             if name=='heartbeatManagedJob': return {'active':True}
@@ -121,6 +121,17 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(timeline[:timeline.index('start')].count('inference-modeling'),2)
         self.assertIn('material-'+'a'*64,requests[2]['history'])
         exchange.search.assert_called_once_with('wood',None)
+        self.assertEqual(finish['status'],'completed')
+
+    def test_private_job_cannot_publish_and_client_cleanup_cannot_skip_shutdown(self):
+        exchange=Mock()
+        exchange.search.return_value={'entries':[],'cursor':None}
+        exchange.close.side_effect=RuntimeError('client cleanup failed')
+        with patch('cloud.blender_billing.material_exchange.MaterialExchange',return_value=exchange):
+            store,broker,_,_,finish,_=self.fixture([action('search_materials','{}'),action('edit','REVISION_A'),action('accept'),action('publish_material'),action('finish')],share_materials=False)
+        self.assertIn('not enabled',json.loads(store.read('job','review.json'))['actions'][3]['error'])
+        exchange.publish.assert_not_called()
+        broker.stop.assert_called_once()
         self.assertEqual(finish['status'],'completed')
 
     def test_references_precede_compute_and_remain_on_every_action(self):

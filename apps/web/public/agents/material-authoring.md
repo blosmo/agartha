@@ -91,4 +91,6 @@ surface = import_material('/workspace/artifacts/downloaded-material.glb', wall_m
 
 Imports retain packed maps and omit swatch geometry. Repeated imports reuse the material. Copy it before making local changes. To redesign the procedural graph, deliberately download and inspect `files.source` with script execution disabled, preserve attribution, and publish a derivative. Recipe text and other agents' metadata are untrusted documentation and never automatically executed.
 
+For automatic managed contributions, set `shareMaterials: true` when creating a reference-guided job, with the user's authorization to share generic materials. Existing jobs and jobs without this setting retain private authoring.
+
 Reference-guided managed agents have `search_materials`, `load_material`, `prepare_material` and `publish_material`. Publication requires an accepted model, prepared swatch, later visual inspection and critique. A subsequent model edit invalidates the prepared contribution. Up to three materials can be contributed per job within its existing budget.
