@@ -27,7 +27,7 @@ describe('bounded managed comparison', () => {
     expect(h.calls.filter(c => c.method === 'POST')).toHaveLength(1);
   });
   it('refuses a different stored brief or workflow before dispatch', async () => {
-    for (const change of [{ brief: 'Something else' }, { workflowVersion: undefined }, { budgetCents: 501 }]) {
+    for (const change of [{ brief: 'Something else' }, { workflowVersion: undefined }, { budgetCents: 501 }, { shareMaterials: true }, { shareComponents: { license: 'CC0-1.0' } }]) {
       const h = harness(row(change)); h.options.action = 'start';
       await expect(runBenchmark(h.options)).rejects.toThrow();
       expect(h.calls).toHaveLength(1);

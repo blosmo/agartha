@@ -40,6 +40,7 @@ export async function runBenchmark({ state, name, action, token, save, writeArti
   }
   const row = await (await request('')).json();
   if (row.jobId !== run.jobId || row.budgetCents !== 500 || row.brief !== state.brief) throw Error('Stored job does not match the approved brief and cap');
+  if (row.shareMaterials || row.shareComponents) throw Error('Benchmark asset publication is not approved');
   if ((name === 'improved') !== (row.workflowVersion === 3)) throw Error('Unexpected workflow version');
   run.status = row;
   await save(state);
