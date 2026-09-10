@@ -49,7 +49,7 @@ async function sanitized(ctx: QueryCtx | MutationCtx, row: Job) {
   const reservation = await ctx.db.query("blenderSessionReservations").withIndex("by_reservation", q => q.eq("reservationId", row.reservationId)).unique();
   return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? (row.referenceMode === "generate" ? 165 : 65), computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
 }
-export async function createManagedJobInTransaction(ctx: MutationCtx, args: { token: string; jobId: string; requestId: string; brief: string; shareMaterials?: boolean; shareComponents?: { license: "CC0-1.0"; attribution: string }; referenceMode?: "generate" | "none"; budgetCents: number; livemode: boolean }, fundingActorId?: string) {
+export async function createManagedJobInTransaction(ctx: MutationCtx, args: { token: string; jobId: string; requestId: string; brief: string; shareMaterials?: boolean; shareComponents?: { license: "CC0-1.0" | "CC-BY-4.0" | "MIT"; attribution: string }; referenceMode?: "generate" | "none"; budgetCents: number; livemode: boolean }, fundingActorId?: string) {
     identifier(args.jobId, "jobId", 80); identifier(args.requestId, "requestId");
     if (!args.brief.trim() || new TextEncoder().encode(args.brief).length > 4000) throw new Error("Brief must contain 1 to 4000 UTF-8 bytes.");
     assertCents(args.budgetCents, "budgetCents");
