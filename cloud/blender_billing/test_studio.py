@@ -32,7 +32,7 @@ class StudioTests(unittest.TestCase):
             store.save_reference('job', raster(), REFERENCE_MODEL)
             self.assertEqual(len(reference_views(raster())), 4)
 
-    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None):
+    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None, reviews=None, accept_seconds=None):
         directory=tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         store=ManagedFiles(Path(directory.name),StorageCoordinator(),lambda:None)
         files=Mock(wraps=store)
@@ -77,11 +77,18 @@ class StudioTests(unittest.TestCase):
             if name=='model.glb':return b'glTF'+state['model']
             return raster((64,64),'PNG')
         broker.download.side_effect=download
+        review_outputs = list(reviews) if reviews is not None else None
         outputs=[{'model':REFERENCE_MODEL,'image':'data:image/jpeg;base64,'+base64.b64encode(raster()).decode(),'chargeCents':8},*actions]
         def stream(method,url,**kwargs):
             requests.append(kwargs['json']);timeline.append('inference-'+kwargs['json']['kind'])
-            if not outputs:raise RuntimeError('budget exhausted')
-            value=outputs.pop(0)
+            if kwargs['json']['kind'] == 'critique':
+                value = review_outputs.pop(0) if review_outputs is not None else {'verdict':'ready','score':8,'summary':'Coherent proportions and materials across supplied views.','corrections':[]}
+                if isinstance(value, Exception): raise value
+            else:
+                if not outputs:raise RuntimeError('budget exhausted')
+                value=outputs.pop(0)
+                if value.get('action') == 'accept' and accept_seconds is not None:
+                    broker.owned.return_value={'status':'running','launchClaimedAt':(time.time()+accept_seconds-1800)*1000,'reservedMinutes':30}
             response=Mock();response.iter_bytes.return_value=[json.dumps(value).encode()]
             context=Mock();context.__enter__=Mock(return_value=response);context.__exit__=Mock(return_value=False)
             return context
@@ -92,6 +99,94 @@ class StudioTests(unittest.TestCase):
             run_studio(broker,files,'a'*64,'job','worker',row,Mock(),'https://example.test/inference','key')
         finish=[call.kwargs for call in broker.ledger.call.call_args_list if call.args[0]=='finishManagedJob'][-1]
         return store,broker,requests,timeline,finish,video_mock
+
+    def test_independent_feedback_blocks_self_acceptance_and_is_cached_per_revision(self):
+        revise={'verdict':'revise','score':5,'summary':'Floating supports.','corrections':[{'area':'structure','issueId':'front-leg-floating','evidence':'Front legs float in render-front.','change':'Extend legs to the floor.'}]}
+        ready={'verdict':'ready','score':8,'summary':'Connected supports.','corrections':[]}
+        store,_,requests,_,finish,_=self.fixture([action('edit','REVISION_A'),action('accept'),action('accept'),action('edit','REVISION_B'),action('accept'),action('finish')],reviews=[revise,ready])
+        calls=[request for request in requests if request['kind']=='critique']
+        self.assertEqual(len(calls),2)
+        self.assertTrue(all('history' not in request for request in calls))
+        trace=json.loads(store.read('job','review.json'))
+        self.assertIn('Extend legs',trace['actions'][1]['error'])
+        self.assertEqual(trace['acceptedRevision'],2)
+        self.assertEqual(finish['status'],'completed')
+        self.assertEqual(len(trace['quality']['reviews']),2)
+
+    def test_stalled_reviews_stop_and_preserve_an_unaccepted_candidate_honestly(self):
+        revise={'verdict':'revise','score':5,'summary':'Floating supports.','corrections':[{'area':'structure','issueId':'front-leg-floating','evidence':'Front legs float.','change':'Rebuild the supports.'}]}
+        steps=[item for _ in range(5) for item in [action('edit','REVISION_A'),action('accept')]]
+        store,broker,requests,_,finish,_=self.fixture(steps,reviews=[revise]*5)
+        self.assertEqual(len([r for r in requests if r['kind']=='critique']),3)
+        self.assertEqual(finish['status'],'partial')
+        self.assertFalse(finish['visuallyInspected'])
+        self.assertIn('no improvement',finish['progress'])
+        self.assertIn('Change the construction approach',json.loads(store.read('job','review.json'))['actions'][3]['error'])
+        broker.stop.assert_called_once()
+
+    def test_four_review_cap_restores_accepted_files_after_improving_rejections(self):
+        ready={'verdict':'ready','score':8,'summary':'Good model.','corrections':[]}
+        rejected=[{'verdict':'revise','score':score,'summary':'Supports need work.','corrections':[{'area':'structure','issueId':'front-leg-floating','evidence':'Leg connection is weak.','change':'Rebuild the connection.'}]} for score in [4,5,6]]
+        steps=[action('edit','REVISION_A'),action('accept')]+[item for _ in range(4) for item in [action('edit','REVISION_B'),action('accept')]]
+        store,broker,requests,_,finish,_=self.fixture(steps,reviews=[ready,*rejected])
+        self.assertEqual(len([r for r in requests if r['kind']=='critique']),4)
+        self.assertEqual(finish['status'],'partial')
+        self.assertTrue(finish['visuallyInspected'])
+        self.assertEqual(store.read('job','model.blend'),b'BLENDER-A')
+        self.assertIn('Review limit',finish['progress'])
+        trace=json.loads(store.read('job','review.json'))
+        self.assertEqual(trace['acceptedRevision'],1)
+        self.assertEqual(trace['quality']['reviews'][-1]['candidateRevision'],4)
+        broker.stop.assert_called_once()
+
+    def test_different_material_defects_do_not_trigger_false_stall(self):
+        rejected=[{'verdict':'revise','score':6,'summary':'Fix material.','corrections':[{'area':'materials','issueId':issue,'evidence':'Visible in front view.','change':'Correct this specific material defect.'}]} for issue in ['wood-grain-oversized','glass-opaque','metal-too-rough']]
+        ready={'verdict':'ready','score':8,'summary':'Materials corrected.','corrections':[]}
+        steps=[item for _ in range(4) for item in [action('edit','REVISION_A'),action('accept')]]+[action('finish')]
+        store,_,requests,_,finish,_=self.fixture(steps,reviews=[*rejected,ready])
+        self.assertEqual(len([r for r in requests if r['kind']=='critique']),4)
+        self.assertEqual(finish['status'],'completed')
+        self.assertIsNone(json.loads(store.read('job','review.json'))['quality']['stopReason'])
+
+    def test_slow_acceptance_decision_cannot_spend_the_review_delivery_reserve(self):
+        store,broker,requests,_,finish,_=self.fixture([action('edit','REVISION_A'),action('accept')],accept_seconds=300)
+        self.assertEqual(len([r for r in requests if r['kind']=='critique']),0)
+        self.assertEqual(finish['status'],'partial')
+        self.assertFalse(finish['visuallyInspected'])
+        self.assertIn('preserve delivery time',finish['progress'])
+        self.assertTrue(store.read('job','model.glb').startswith(b'glTF'))
+        broker.stop.assert_called_once()
+
+    def test_malformed_review_never_approves_or_continues_spending(self):
+        for review in [
+            {'verdict':'ready','score':2,'summary':'Poor','corrections':[]},
+            {'verdict':'revise','score':5,'summary':'Fix it','corrections':[]},
+            {'verdict':'revise','score':5,'summary':'Fix it','corrections':[{'area':'structure'}]},
+        ]:
+            with self.subTest(review=review):
+                store,broker,requests,_,finish,_=self.fixture([action('edit','REVISION_A'),action('accept'),action('finish')],reviews=[review])
+                self.assertFalse(finish['visuallyInspected'])
+                self.assertEqual(finish['status'],'partial')
+                self.assertIsNone(json.loads(store.read('job','review.json'))['acceptedRevision'])
+                self.assertEqual(len([r for r in requests if r['kind']=='critique']),1)
+                broker.stop.assert_called_once()
+
+    def test_unavailable_review_does_not_accept_or_retry(self):
+        store,broker,requests,_,finish,_=self.fixture([action('edit','REVISION_A'),action('accept'),action('finish')],reviews=[RuntimeError('budget exhausted')])
+        self.assertFalse(finish['visuallyInspected'])
+        self.assertEqual(finish['status'],'partial')
+        self.assertIsNone(json.loads(store.read('job','review.json'))['acceptedRevision'])
+        self.assertEqual(len([r for r in requests if r['kind']=='critique']),1)
+        broker.stop.assert_called_once()
+
+    def test_restore_does_not_reuse_an_old_revision_review_for_a_new_edit(self):
+        ready={'verdict':'ready','score':8,'summary':'Coherent model.','corrections':[]}
+        steps=[action('edit','REVISION_A'),action('accept'),action('edit','REVISION_B'),action('accept'),action('restore'),action('edit','REVISION_A'),action('accept'),action('finish')]
+        revise={'verdict':'revise','score':5,'summary':'Broken support.','corrections':[{'area':'structure','issueId':'front-leg-floating','evidence':'Gap in front view.','change':'Fix the gap.'}]}
+        store,_,requests,_,finish,_=self.fixture(steps,reviews=[ready,revise,ready])
+        self.assertEqual([r['operationId'] for r in requests if r['kind']=='critique'],['worker-review-1','worker-review-2','worker-review-3'])
+        self.assertEqual(json.loads(store.read('job','review.json'))['acceptedRevision'],3)
+        self.assertEqual(finish['status'],'completed')
 
     def test_component_search_keeps_all_ids_and_loads_a_reviewable_candidate(self):
         exchange=Mock()
@@ -124,7 +219,7 @@ class StudioTests(unittest.TestCase):
         trace=json.loads(store.read('job','review.json'))
         self.assertIn('Accept and inspect',trace['actions'][1]['error'])
         self.assertIn('Prepare a component',trace['actions'][2]['error'])
-        self.assertEqual(requests[6]['images'][-1]['label'],'render-detail')
+        self.assertEqual([r for r in requests if r['kind'] != 'critique'][6]['images'][-1]['label'],'render-detail')
         exchange.publish.assert_called_once()
         self.assertEqual(exchange.publish.call_args.args[1],{**metadata,**share})
         self.assertEqual(exchange.publish.call_args.args[0]['source'],b'BLENDER-component-only')
@@ -167,8 +262,8 @@ class StudioTests(unittest.TestCase):
         trace=json.loads(store.read('job','review.json'))
         self.assertIn('Accept and inspect',trace['actions'][1]['error'])
         self.assertIn('Prepare a material',trace['actions'][2]['error'])
-        self.assertEqual(len(requests[6]['images']),8)
-        self.assertEqual(requests[6]['images'][-1]['label'],'render-detail')
+        self.assertEqual(len([r for r in requests if r['kind'] != 'critique'][6]['images']),8)
+        self.assertEqual([r for r in requests if r['kind'] != 'critique'][6]['images'][-1]['label'],'render-detail')
         exchange.publish.assert_called_once()
         self.assertEqual(exchange.publish.call_args.args[0]['source'],b'BLENDER-material-only')
         self.assertEqual(finish['status'],'completed')

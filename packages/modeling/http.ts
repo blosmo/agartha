@@ -40,7 +40,7 @@ export async function managedInference(req: BillingRequest, res: ServerResponse)
     const reference = await generateReference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, remainingCents }, ledger, credential);
     jsonResponse(res, reference); return;
   }
-  if (body.kind !== undefined && body.kind !== 'modeling') throw new BillingHttpError(400, 'Unknown modeling operation.');
-  const step = await runInference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, history: body.history, ...(body.image === undefined ? {} : { image: body.image }), ...(body.protocol === 2 ? { protocol: 2 as const, images: body.images } : {}), remainingCents }, ledger, credential);
+  if (body.kind !== undefined && body.kind !== 'modeling' && body.kind !== 'critique') throw new BillingHttpError(400, 'Unknown modeling operation.');
+  const step = await runInference({ jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, brief: row.brief, history: body.history, kind: body.kind, ...(body.image === undefined ? {} : { image: body.image }), ...(body.protocol === 2 ? { protocol: 2 as const, images: body.images } : {}), remainingCents }, ledger, credential);
   jsonResponse(res, { model: MANAGED_MODEL, ...step });
 }
