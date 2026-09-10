@@ -1,3 +1,6 @@
+import { BrowserIdentityError, browserSameOrigin, resolveBrowserIdentity } from '../packages/playground/browserIdentity.js';
+import blenderHandler from './blender.js';
+import { playgroundBillingPath, playgroundBroker, launchPlaygroundJob } from '../packages/playground/gateway.js';
 import { hostedChatStream } from '../apps/web/hostedChatStream.js';
 import { ChatValidationError, validateChatSend } from '../packages/protocol/src/chat.js';
 import { MATERIAL_CATALOG } from '../packages/protocol/src/materials.js';
@@ -23,7 +26,8 @@ export default async function handler(req:Request,res:ServerResponse){
     if(!base||!key){send({error:'Cloud configuration is incomplete'},503);return;}
     if(!['GET','POST'].includes(req.method??'')){send({error:'Method not allowed'},405);return;}
     const governancePath=/^governance(?:\/(?:voters|proposals(?:\/[a-zA-Z0-9_-]{1,80}(?:\/(?:open|vote|withdraw|finalize|comments|implementation))?)?))?$/.test(path);
-    if(!governancePath&&!/^(chat(?:\/(?:events|presence))?|session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2}|assets(?:\/[^/?]+){0,3})$/.test(path)){send({error:'Not found'},404);return;}
+    const playgroundPath=/^playground(?:\/[A-Za-z0-9_.-]{1,128}){0,6}$/.test(path);
+    if(!playgroundPath&&!governancePath&&!/^(chat(?:\/(?:events|presence))?|session(?:\/(?:renew|rotate))?|spatial|plots(?:\/[^/?]+){0,2}|plots\/[^/?]+\/proposals\/[^/?]+(?:\/(?:submit|request_changes|withdraw|accept|preview))?|library(?:\/[^/?]+)?|models(?:\/[^/?]+){0,2}|assets(?:\/[^/?]+){0,3})$/.test(path)){send({error:'Not found'},404);return;}
     if(path==='chat/events' && req.method==='GET'){
       const streamUrl=new URL('/api/chat/events',`https://${req.headers.host}`);
       for(const name of ['after','before'])if(typeof req.query[name]==='string')streamUrl.searchParams.set(name,req.query[name] as string);
@@ -44,20 +48,57 @@ export default async function handler(req:Request,res:ServerResponse){
     const externalRegistration=path==='session'&&typeof body.agentToken==='string';
     if(req.method==='POST'&&origin&&origin!==`https://${req.headers.host}`&&!headerToken&&!externalRegistration){send({error:'Origin not allowed'},403);return;}
     let token=headerToken??req.headers.cookie?.split(';').map(c=>c.trim()).find(c=>c.startsWith(`${cookieName}=`))?.slice(cookieName.length+1);
-    const publicRead=req.method==='GET'&&!roomPreview&&!governancePath;
+    const browserIdentityPath = /^playground\/identity(?:\/(export|restore))?$/.test(path);
+    if (path === 'session' && req.method === 'POST' && !externalRegistration && !headerToken || browserIdentityPath) {
+      try {
+        if (headerToken) { send({ error: 'Browser recovery uses your same-origin browser session. Agents use the session recovery API.' }, 400); return; }
+        const creating = path === 'session';
+        const exporting = path === 'playground/identity/export' && req.method === 'POST';
+        const restoring = path === 'playground/identity/restore' && req.method === 'POST';
+        if (!creating && !exporting && !restoring && !(path === 'playground/identity' && req.method === 'GET')) { send({ error: 'Method not allowed.' }, 405); return; }
+        if (restoring && typeof body.recoveryCode !== 'string') { send({ error: 'Provide your saved recovery code.' }, 400); return; }
+        const identity = await resolveBrowserIdentity(req, res, { base: new URL(base), key, allowCreate: creating, ...(creating ? { name: typeof body.name === 'string' ? body.name : 'Playground visitor' } : {}), ...(exporting ? { exportRecovery: true } : {}), ...(restoring ? { restoreCode: body.recoveryCode } : {}) });
+        if (exporting && !identity) { send({ error: 'Create a free session before saving its recovery code.' }, 401); return; }
+        send(exporting ? { recoveryCode: identity?.recoveryCode } : identity?.identity ?? null); return;
+      } catch (error) { send({ error: error instanceof BrowserIdentityError ? error.message : 'Browser identity is unavailable. Your existing identity has not been replaced.' }, error instanceof BrowserIdentityError ? error.status : 503); return; }
+    }
+    if (playgroundPath && !headerToken && browserSameOrigin(req) && req.headers.cookie) {
+      try {
+        const identity = await resolveBrowserIdentity(req, res, { base: new URL(base), key });
+        if (identity) {
+          token = identity.token;
+          if (path === 'playground/credits' && req.method === 'POST' && !identity.identity.recoverable) { send({ error: 'Restore your recovery credential before buying credits for this identity.' }, 409); return; }
+        }
+      } catch (error) { send({ error: error instanceof BrowserIdentityError ? error.message : 'Your browser identity could not be restored.' }, error instanceof BrowserIdentityError ? error.status : 503); return; }
+    }
+    const publicRead=req.method==='GET'&&!roomPreview&&!governancePath&&!playgroundPath;
     if(publicRead&&!headerToken)token=undefined;
     let setCookie=false;
     if(path==='session'){
       token=externalRegistration?body.agentToken:token??randomBytes(32).toString('hex');
       body={...(externalRegistration&&body.recoveryToken?{recoveryToken:body.recoveryToken}:{}),agentToken:token,name:typeof body.name==='string'?body.name:`Visitor ${randomBytes(3).toString('hex')}`};setCookie=!externalRegistration;
     }else if(req.method==='POST')body={...body,requestId:body.requestId??randomUUID(),issuedAt:body.issuedAt??Date.now()};
+    const billingPath = playgroundBillingPath(path);
+    if (billingPath) {
+      const forwarded = Object.assign(Object.create(req), { query: { ...req.query, path: billingPath }, headers: { ...req.headers, ...(token ? { authorization: `Bearer ${token}` } : {}) }, body });
+      await blenderHandler(forwarded, res); return;
+    }
+    let launchBase: URL | undefined;
+    if (req.method === 'POST' && /^playground\/(?:projects\/[^/]+\/funding\/start|allowances\/[^/]+\/jobs)$/.test(path)) {
+      try { launchBase = playgroundBroker(token, req); } catch (error) { send({ error: error instanceof Error ? error.message : 'Compute is unavailable.' }, 503); return; }
+    }
     const url=new URL(`/cloud/${path}`,base);
     for(const [name,value]of Object.entries(req.query))if(name!=='path'&&typeof value==='string')url.searchParams.set(name,value);
     const ip=String(req.headers['x-vercel-forwarded-for']??req.headers['x-forwarded-for']??'unknown');
     const headers:Record<string,string>={'Content-Type':'application/json','x-agartha-gateway-key':key,'x-agartha-client':createHash('sha256').update(`${key}:${ip}`).digest('hex')};if(token)headers.Authorization=`Bearer ${token}`;
+    if (playgroundPath && /^(sk|rk)_(test|live)_/.test(process.env.STRIPE_SECRET_KEY ?? '')) headers['x-agartha-payment-mode'] = /^(sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY!) ? 'live' : 'test';
     const response=await fetch(url,{method:req.method,headers,body:req.method==='POST'?JSON.stringify(body):undefined,signal:AbortSignal.timeout(20000)});
     const data=await response.json();
     if(!response.ok){if(response.status===429&&response.headers.has('Retry-After'))res.setHeader('Retry-After',response.headers.get('Retry-After')!);send(data,response.status);return;}
+    if (launchBase && token && typeof data.jobId === 'string') {
+      const launched = await launchPlaygroundJob(launchBase, token, data.jobId);
+      if (!launched) { send({ error: 'The build budget is reserved, but worker launch was not confirmed. Retry this same request or cancel the build to release unused credits.', ...(data.projectId ? { projectId: data.projectId } : {}), ...(data.allowance?.allowanceId ? { allowanceId: data.allowance.allowanceId } : {}), jobId: data.jobId }, 503); return; }
+    }
     if(setCookie)res.setHeader('Set-Cookie',`${cookieName}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`);
     if(data.modelFile||data.assetFile){const download=new URL(data.url);if(download.protocol!=='https:')throw new Error('Invalid asset download URL');res.statusCode=302;res.setHeader('Location',download.href);res.end();return;}
     if(data.render){

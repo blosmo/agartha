@@ -29,6 +29,11 @@ let localServerChild: ChildProcess | undefined;
 
 export default defineConfig({
   envDir: "../..",
+  resolve: {
+    alias: {
+      "@": resolve(dirname(fileURLToPath(import.meta.url)), "src"),
+    },
+  },
   plugins: [react(), plotSpacePlugin(resolve(repoRoot, ".agartha/world.json")), agarthaAgentRunnerPlugin(), blenderToolkitPlugin(), computeShowcasePlugin()],
   build: {
     rollupOptions: {
