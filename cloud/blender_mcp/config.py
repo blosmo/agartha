@@ -5,7 +5,8 @@ import uuid
 
 APP_NAME = 'agartha-blender-mcp'
 VOLUME_NAME = 'agartha-blender-projects'
-BLENDER_VERSION = '4.5.0'
+BLENDER_VERSION = '5.2.1'
+BLENDER_SERIES = '.'.join(BLENDER_VERSION.split('.')[:2])
 UPSTREAM_COMMIT = 'c5f35d9cc54451d785ac4c00c48bf9e98a2e8db9'
 HTTP_PORT = 8080
 ADDON_PORT = 9876

@@ -345,6 +345,7 @@ def render_preview(path,size=None,samples=None,collection=None,prefix=None,*,qua
     old_render={key:getattr(render,key) for key in ('engine','resolution_x','resolution_y','resolution_percentage','film_transparent','filepath','threads_mode','threads')}
     old_cycles={key:getattr(scene.cycles,key) for key in ('device','samples','use_denoising','denoiser','use_adaptive_sampling','adaptive_threshold','adaptive_min_samples','time_limit')}
     old_format=render.image_settings.file_format
+    old_media_type=getattr(render.image_settings,'media_type',None)
     oldcamera,oldworld=scene.camera,scene.world
     hidden=[]
     camera=light=data=lightdata=preview_world=None
@@ -386,6 +387,7 @@ def render_preview(path,size=None,samples=None,collection=None,prefix=None,*,qua
         render.resolution_x=size
         render.resolution_y=size
         render.resolution_percentage=100
+        if old_media_type is not None: render.image_settings.media_type='IMAGE'
         render.image_settings.file_format='PNG'
         render.film_transparent=False
         preview_world=oldworld.copy() if oldworld else bpy.data.worlds.new('Preview daylight')
@@ -404,6 +406,7 @@ def render_preview(path,size=None,samples=None,collection=None,prefix=None,*,qua
             setattr(render,key,value)
         for key,value in old_cycles.items():
             setattr(scene.cycles,key,value)
+        if old_media_type is not None: render.image_settings.media_type=old_media_type
         render.image_settings.file_format=old_format
         for obj,was_hidden in hidden:
             obj.hide_render=was_hidden

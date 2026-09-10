@@ -30,6 +30,7 @@ state = {
     'render': {key: getattr(scene.render, key) for key in ('engine', 'use_persistent_data', 'threads_mode', 'threads', 'filepath', 'resolution_x', 'resolution_y', 'resolution_percentage', 'pixel_aspect_x', 'pixel_aspect_y', 'use_border', 'use_crop_to_border')},
     'cycles': {key: getattr(scene.cycles, key) for key in ('device', 'samples', 'time_limit', 'use_denoising', 'use_adaptive_sampling', 'adaptive_threshold', 'adaptive_min_samples', 'denoiser', 'denoising_input_passes', 'denoising_prefilter')},
     'format': scene.render.image_settings.file_format,
+    'media_type': getattr(scene.render.image_settings, 'media_type', None),
 }
 scene['_agartha_turnaround_state'] = json.dumps(state)
 camera = source.copy()
@@ -63,6 +64,7 @@ scene.render.threads = 2
 scene.render.resolution_x = 512
 scene.render.resolution_y = 512
 scene.render.resolution_percentage = 100
+if hasattr(scene.render.image_settings, 'media_type'): scene.render.image_settings.media_type = 'IMAGE'
 scene.render.image_settings.file_format = 'PNG'
 scene.render.pixel_aspect_x = scene.render.pixel_aspect_y = 1
 scene.render.use_border = scene.render.use_crop_to_border = False
@@ -133,6 +135,7 @@ encoder.render.fps = {FPS}
 encoder.render.resolution_x = 512
 encoder.render.resolution_y = 512
 encoder.render.resolution_percentage = 100
+if hasattr(encoder.render.image_settings, 'media_type'): encoder.render.image_settings.media_type = 'VIDEO'
 encoder.render.image_settings.file_format = 'FFMPEG'
 encoder.render.ffmpeg.format = 'MPEG4'
 encoder.render.ffmpeg.codec = 'H264'
@@ -157,6 +160,7 @@ for scene in list(bpy.data.scenes):
     scene.camera = bpy.data.objects.get(state['camera'])
     for key, value in state['render'].items(): setattr(scene.render, key, value)
     for key, value in state['cycles'].items(): setattr(scene.cycles, key, value)
+    if state.get('media_type') is not None: scene.render.image_settings.media_type = state['media_type']
     scene.render.image_settings.file_format = state['format']
     scene.frame_set(state['frame'])
     if bpy.context.window: bpy.context.window.scene = scene

@@ -50,6 +50,7 @@ scene.render.threads = 2
 scene.render.resolution_x = 512
 scene.render.resolution_y = 512
 scene.render.resolution_percentage = 100
+if hasattr(scene.render.image_settings, 'media_type'): scene.render.image_settings.media_type = 'IMAGE'
 scene.render.image_settings.file_format = 'PNG'
 scene.render.filepath = '/workspace/artifacts/preview.png'
 assert scene.camera, 'Create a camera framing the model.'
