@@ -27,7 +27,7 @@ No paid managed generation or production deployment was performed for this verif
 
 ## Rollout and post-deploy validation
 
-Deploy as a coordinated worker, broker and web/gateway change. Rebuild the Blender worker image so it includes the updated `cloud/blender_mcp/components.py`; drain old workers and update the configured `AGARTHA_PAID_BLENDER_IMAGE_ID` before enabling new jobs on the updated broker and action prompt. Retain unrelated current production changes.
+Managed Poly Haven actions are disabled by default through `BLENDER_POLYHAVEN_ENABLED`. This keeps a web-only release compatible with older brokers and workers. Deploy as a coordinated worker, broker and web/gateway change. Rebuild the Blender worker image so it includes the updated `cloud/blender_mcp/components.py`; drain old workers and update the configured `AGARTHA_PAID_BLENDER_IMAGE_ID` before enabling new jobs on the updated broker and action prompt. After the new broker and workers are verified, set `BLENDER_POLYHAVEN_ENABLED=true` on the web/gateway and redeploy it. Unset it to disable managed reuse without affecting the local CLI. Retain unrelated current production changes.
 
 After deployment, verify the visible Poly Haven credit and `/agents/polyhaven.md`. With an explicitly authorized managed-job budget, request a suitable prop, check `search_polyhaven` and `load_polyhaven` events in `review.json`, verify the source page/CC0/artist credit, and inspect the delivered GLB and editable source. Check that a deliberately unavailable asset produces a recoverable action error and the job can continue.
 
