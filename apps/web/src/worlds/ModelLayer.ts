@@ -100,7 +100,9 @@ export class ModelLayer {
    const {object,offsetX,offsetY=0,offsetZ}=instance.placement,pose=motionPose(object.motion,time,object.yaw);
    const offset=pose.offset??[0,pose.lift,0];
    instance.root.position.set(object.position[0]+offsetX+offset[0],object.position[1]+offsetY+offset[1],object.position[2]+offsetZ+offset[2]);instance.root.scale.set(...object.scale);instance.root.rotation.y=pose.yaw;instance.root.updateMatrixWorld(true);
-   instance.planes.forEach((plane,i)=>{plane.normal.set(i===0?1:i===1?-1:0,i===2?1:i===3?-1:0,i===4?1:i===5?-1:0);plane.constant=.5;plane.applyMatrix4(instance.root.matrixWorld);});
+   // Allow 1 mm in world space so exact-fit faces do not flicker at the clip boundary.
+   // Geometry size and placement validation stay unchanged; shadows use the same planes.
+   instance.planes.forEach((plane,i)=>{plane.normal.set(i===0?1:i===1?-1:0,i===2?1:i===3?-1:0,i===4?1:i===5?-1:0);plane.constant=.5;plane.applyMatrix4(instance.root.matrixWorld);plane.constant+=.001;});
    if(animate&&object.animation&&!object.animation.paused)instance.mixer.update(delta*(object.animation?.speed??1));
   }
  }

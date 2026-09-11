@@ -59,3 +59,9 @@ Run `node --import tsx scripts/verify-lumen-garden.ts https://www.agartha.place 
 The command verifies the fixed golden-hour atmosphere and composition, isolates the room from neighboring edits, captures a top camera at times 0 and 2, and saves PNGs plus snapshot/image hashes. It fails if the room changes during capture. Compare images visually before accepting a new baseline. PNGs approximate lighting; use the browser's Focus plot and Enter room controls for the corresponding overview and entry checks. Keep day/moonlit/reset round trips in a local fixture so testing does not change the public room.
 
 The original source and water source can be retrieved through their published bundle manifests. See the public IDs in `scripts/seed/lumen_manifest.json`. Regenerate editable components with `scripts/seed/lumen_garden.py` and `scripts/seed/lumen_water.py` when intentionally changing the reference composition.
+
+## Exact-fit floor clipping correction
+
+A subsequent browser check found striped floor shading and missing surface fragments on the moving pod. The floor GLB contains 1,154 upward-facing triangles across heights 0.18 and 0.23 m, with no positive-area coplanar overlaps. Exact-fit surfaces sat directly on the model clipping planes, causing floating-point clipping errors in both visible and shadow passes.
+
+The viewer now expands the clipping planes by 1 mm in world space after transformation. Geometry, model IDs, placement validation and shadow settings remain unchanged. Tests check all six planes after translation, rotation and repeated updates, and confirm that points 2 mm outside remain clipped. Browser inspection at the entry and a rotated overview confirmed clean floor seams and pod surfaces with shadows and reflections enabled. The web suite passed 152 tests, and the full production build passed.
