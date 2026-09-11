@@ -4,7 +4,7 @@ import { ConvexError } from 'convex/values';
 const purchases = anyApi.cloud.purchases;
 const ownerQueries = new Set(['balance', 'getPurchase']);
 const ownerMutations = new Set(['createPurchase', 'authorizePaymentAttempt']);
-const paymentQueries = new Set(['getPurchaseForPayment', 'getCheckoutReceipt']);
+const paymentQueries = new Set(['getPurchaseForPayment', 'getCheckoutReceipt', 'getManagedMeshyOperation']);
 const paymentMutations = new Set(['attachCheckoutSession', 'beginPaymentReconciliation', 'fulfillPurchase']);
 const sessionQueries = new Set(['getReservation']);
 const sessionMutations = new Set(['createQuote', 'reserveSession', 'requestStop']);
@@ -18,8 +18,8 @@ const projectBrokerMutations = new Set(['ensureProjectForReservation', 'reserveA
 const managedOwnerQueries = new Set(['getManagedJob']);
 const managedOwnerMutations = new Set(['createManagedJob', 'requestManagedCancel']);
 const managedBrokerQueries = new Set(['getManagedJobForBroker', 'listActiveManagedJobs']);
-const managedBrokerMutations = new Set(['authorizeManagedDownload', 'claimManagedJob', 'heartbeatManagedJob', 'recordManagedCheckpoint', 'recordManagedVideo', 'recordManagedReference', 'recordManagedAcceptance', 'finishManagedJob', 'recoverManagedJob']);
-const managedPaymentMutations = new Set(['claimManagedInference', 'completeManagedInference']);
+const managedBrokerMutations = new Set(['listPendingMeshyOperations', 'authorizeManagedDownload', 'claimManagedJob', 'heartbeatManagedJob', 'recordManagedCheckpoint', 'recordManagedVideo', 'recordManagedReference', 'recordManagedAcceptance', 'finishManagedJob', 'recoverManagedJob']);
+const managedPaymentMutations = new Set(['claimManagedInference', 'completeManagedInference', 'attachManagedMeshyTask', 'completeManagedMeshyTask']);
 
 function json(value: unknown, status = 200) {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -30,7 +30,7 @@ export function registerBillingRoutes(router: HttpRouter) {
     const key = process.env.AGARTHA_BILLING_GATEWAY_KEY;
     if (!key || request.headers.get('x-agartha-billing-key') !== key) return json({ error: 'Unauthorized gateway.' }, 401);
     const operation = new URL(request.url).pathname.slice('/billing/api/'.length);
-    const managed = managedOwnerQueries.has(operation) || managedOwnerMutations.has(operation) || managedBrokerQueries.has(operation) || managedBrokerMutations.has(operation) || managedPaymentMutations.has(operation);
+    const managed = managedOwnerQueries.has(operation) || managedOwnerMutations.has(operation) || managedBrokerQueries.has(operation) || managedBrokerMutations.has(operation) || managedPaymentMutations.has(operation) || operation === 'getManagedMeshyOperation';
     const trusted = paymentQueries.has(operation) || paymentMutations.has(operation) || managedPaymentMutations.has(operation);
     const broker = managedBrokerQueries.has(operation) || managedBrokerMutations.has(operation) || brokerQueries.has(operation) || brokerMutations.has(operation) || projectBrokerQueries.has(operation) || projectBrokerMutations.has(operation);
     const session = sessionQueries.has(operation) || sessionMutations.has(operation) || brokerQueries.has(operation) || brokerMutations.has(operation);

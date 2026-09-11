@@ -111,3 +111,21 @@ describe('persisted managed quality gateway protocol', () => {
     expect(state.ledger.mock.calls.some(([name]) => name === 'claimManagedInference')).toBe(false);
   });
 });
+
+it('routes Meshy using the snapshotted rate and permits reconciliation after feature shutdown', async () => {
+  vi.stubEnv('AGARTHA_MESHY_ENABLED', 'true'); vi.stubEnv('MESHY_API_KEY', 'mesh-fixture'); vi.stubEnv('AGARTHA_MESHY_PLAN', 'pro-monthly');
+  state.row = { ...state.row, meshyAllowance: { budgetCents: 100, maxAssets: 1, allowRigging: true }, meshyRate: { usdCents: 4000, credits: 3000 } };
+  state.ledger.mockImplementation(async (name: string) => name === 'getManagedJobForBroker' ? state.row : name === 'claimManagedInference' ? { claimed: true } : null);
+  const fetcher = vi.fn().mockResolvedValueOnce(Response.json({ result: 'mesh-task' })); vi.stubGlobal('fetch', fetcher);
+  const input = { ...body, kind: 'meshy-start', stage: 'image-to-3d', image: `data:image/jpeg;base64,${Buffer.from([255,216,255,0]).toString('base64')}`, rate: { usdCents: 1, credits: 1000000 }, providerUrl: 'https://evil.test' };
+  await managedInference(request(input as any) as any, response() as any);
+  expect(state.ledger).toHaveBeenCalledWith('claimManagedInference', expect.objectContaining({ kind: 'meshy', maxCostCents: 40 }));
+  expect(fetcher.mock.calls[0][0]).toBe('https://api.meshy.ai/openapi/v1/image-to-3d');
+  vi.stubEnv('AGARTHA_MESHY_ENABLED', 'false'); vi.stubEnv('AGARTHA_MANAGED_MODELING_ENABLED', 'false'); vi.stubEnv('AI_GATEWAY_API_KEY', '');
+  state.ledger.mockImplementation(async (name: string) => name === 'getManagedJobForBroker' ? state.row : name === 'getManagedMeshyOperation' ? { meshTaskId: 'mesh-task', meshStage: 'image-to-3d' } : {});
+  fetcher.mockResolvedValueOnce(Response.json({ id: 'mesh-task', status: 'FAILED', consumed_credits: 0 }));
+  const res = response();
+  await managedInference(request({ ...body, kind: 'meshy-poll' } as any) as any, res as any);
+  expect(JSON.parse(res.end.mock.calls[0][0])).toMatchObject({ status: 'failed', chargeCents: 0 });
+  await expect(managedInference(request(input as any) as any, response() as any)).rejects.toThrow('not available');
+});

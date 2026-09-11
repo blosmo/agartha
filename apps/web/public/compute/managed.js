@@ -56,7 +56,12 @@
       el('reference-option').hidden = capabilities?.references?.enabled !== true;
       el('references').disabled = Boolean(job) || capabilities?.references?.enabled !== true;
       if (!job && !referenceTouched) el('references').checked = capabilities?.defaultReferenceMode === 'generate';
-      referenceHelp();
+      const meshAvailable = capabilities?.meshy?.enabled === true;
+      el('meshy-option').hidden = !meshAvailable;
+      el('meshy').disabled = Boolean(job) || !meshAvailable;
+      ['meshy-budget', 'meshy-assets', 'meshy-rigging'].forEach(id => { el(id).disabled = Boolean(job) || !meshAvailable; });
+      el('meshy-settings').hidden = !meshAvailable || !el('meshy').checked;
+      referenceHelp(); meshHelp();
       el('availability').textContent = capabilities?.enabled === true ? 'Ready to create.' : 'Creation is unavailable. Select Use your agent to continue.';
       el('submit').disabled = capabilities?.enabled !== true || Boolean(job) || busy;
       document.querySelectorAll('[data-fund]').forEach(button => { button.disabled = pricing.purchasesEnabled !== true || pricing.paymentMode !== 'live'; });
@@ -65,7 +70,13 @@
   function referenceHelp() {
     el('budget-help').textContent = capabilities?.references?.enabled === true && el('references').checked ? '$5–$20 for references, Astra and Blender. Pay for usage; keep unused credits.' : '$1–$20 for Astra and Blender. Pay for usage; keep unused credits.';
   }
+  function meshHelp() {
+    const max = capabilities?.meshy?.maximumAllowanceCents || 1000;
+    const minimum = capabilities?.meshy?.generationCents || 1;
+    el('meshy-help').textContent = `Meshy 7, 2K textures and PBR maps are included. Allow at least ${money(minimum)} for one generation. This is a ceiling inside the existing total budget, not an additional charge (up to ${money(max)}).`;
+  }
   el('references').addEventListener('change', () => { referenceTouched = true; referenceHelp(); });
+  el('meshy').addEventListener('change', () => { el('meshy-settings').hidden = !el('meshy').checked; meshHelp(); });
   function savedJob() { localStorage.setItem(jobKey, JSON.stringify(job)); }
   const quality = document.createElement('div');
   quality.hidden = true; quality.setAttribute('aria-live', 'polite');
@@ -122,8 +133,11 @@
     if (data.referenceMode === 'generate' || data.referenceMode === 'none') el('references').checked = data.referenceMode === 'generate';
     el('job').hidden = false;
     el('progress').textContent = `${data.status || 'Request saved'}${typeof data.progress === 'string' ? ` — ${data.progress}` : ''}${done && typeof data.reason === 'string' && data.reason !== data.progress ? ` — ${data.reason}` : ''}`;
-    const charged = (data.chargedAiCents || 0) + (data.computeChargedCents || 0);
-    el('cost').textContent = `${money(charged)} charged of ${money(job.budgetCents)} cap. ${money(data.pendingAiCents || 0)} AI usage pending reconciliation.${data.computeStatus ? ` Compute: ${data.computeStatus}.` : ''}`;
+    const chargedAi = data.chargedAiCents || 0;
+    const charged = chargedAi + (data.computeChargedCents || 0);
+    const meshyCharged = data.chargedMeshyCents || 0;
+    const meshComponent = meshyCharged ? ` Meshy component: ${money(meshyCharged)} (included in AI usage).` : '';
+    el('cost').textContent = `${money(charged)} charged of ${money(job.budgetCents)} cap.${meshComponent} ${money(data.pendingAiCents || 0)} AI usage pending reconciliation.${data.computeStatus ? ` Compute: ${data.computeStatus}.` : ''}`;
     el('inspection').textContent = data.visuallyInspected === true
       ? data.workflowVersion === 3 ? 'Independent visual review accepted this checkpoint. Review the downloaded model for your intended use.' : 'Astra inspected a preview. Review the downloaded model for your intended use.'
       : data.workflowVersion === 3 ? 'Independent visual acceptance has not been confirmed.' : 'Visual inspection has not been confirmed.';
@@ -184,10 +198,21 @@
     if (new TextEncoder().encode(brief).length > 4000) { error(new Error('Shorten the model brief to fit the 4,000-byte limit.')); el('brief').focus(); return; }
     const cents = /^\d+(?:\.\d{1,2})?$/.test(amount) ? Math.round(Number(amount) * 100) : NaN;
     const referenceMode = !el('references').disabled && el('references').checked ? (capabilities?.defaultReferenceMode === 'generate' ? undefined : 'generate') : 'none';
+    let meshyAllowance;
+    if (el('meshy').checked && capabilities?.meshy?.enabled === true) {
+      const amount = el('meshy-budget').value.trim();
+      const meshCents = /^\d+(?:\.\d{1,2})?$/.test(amount) ? Math.round(Number(amount) * 100) : NaN;
+      const computeReserve = capabilities?.workflowVersion === 3 && cents >= 500 || referenceMode === 'generate' ? 165 : 65;
+      const minimumAllowance = capabilities.meshy.generationCents || 1;
+      const maxAllowance = Math.min(capabilities.meshy.maximumAllowanceCents || 1000, cents - computeReserve - 100);
+      if (!Number.isSafeInteger(meshCents) || meshCents < minimumAllowance || meshCents > maxAllowance) { error(new Error(`Enter a Meshy allowance between ${money(minimumAllowance)} and ${money(Math.max(0, maxAllowance))}.`)); return; }
+      if (cents - meshCents < 100) { error(new Error('Leave at least $1 of the total budget for Astra, Blender and review.')); return; }
+      meshyAllowance = { budgetCents: meshCents, maxAssets: Number(el('meshy-assets').value), allowRigging: el('meshy-rigging').checked };
+    }
     if (referenceMode === 'generate' && cents < 500) { error(new Error('Allow at least $5 for visual references, modeling, and rendering.')); return; }
     if (!brief || !Number.isSafeInteger(cents) || cents < (capabilities.minimumBudgetCents || 100) || cents > (capabilities.maximumBudgetCents || 2000)) { error(new Error('Enter a model brief and a total budget between $1 and $20.')); return; }
-    try { job = { jobId: crypto.randomUUID(), requestId: crypto.randomUUID(), brief, budgetCents: cents, ...(referenceMode === undefined ? {} : { referenceMode }) }; savedJob(); } catch (err) { job = null; error(err); return; }
-    el('brief').disabled = true; el('budget').disabled = true; el('references').disabled = true; start();
+    try { job = { jobId: crypto.randomUUID(), requestId: crypto.randomUUID(), brief, budgetCents: cents, ...(referenceMode === undefined ? {} : { referenceMode }), ...(meshyAllowance ? { meshyAllowance } : {}) }; savedJob(); } catch (err) { job = null; error(err); return; }
+    el('brief').disabled = true; el('budget').disabled = true; el('references').disabled = true; el('meshy').disabled = true; ['meshy-budget', 'meshy-assets', 'meshy-rigging'].forEach(id => { el(id).disabled = true; }); start();
   });
   el('retry').addEventListener('click', start);
   el('cancel').addEventListener('click', async () => {
@@ -195,7 +220,7 @@
     el('cancel').disabled = true;
     try { await identity(); await api(`/api/blender/jobs/${encodeURIComponent(job.jobId)}/cancel`, {}); await poll(); } catch (err) { error(err); } finally { el('cancel').disabled = false; }
   });
-  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; referenceTouched = false; el('references').checked = capabilities?.defaultReferenceMode === 'generate'; quality.hidden = true; quality.replaceChildren(); el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('submit').disabled = capabilities?.enabled !== true; });
+  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; referenceTouched = false; el('references').checked = capabilities?.defaultReferenceMode === 'generate'; el('meshy').checked = false; el('meshy-settings').hidden = true; quality.hidden = true; quality.replaceChildren(); el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('meshy').disabled = capabilities?.meshy?.enabled !== true; ['meshy-budget', 'meshy-assets', 'meshy-rigging'].forEach(id => { el(id).disabled = capabilities?.meshy?.enabled !== true; }); el('submit').disabled = capabilities?.enabled !== true; });
   el('check').addEventListener('click', check);
   el('connect').addEventListener('click', async () => { try { await identity(); await balance(); } catch (err) { error(err); } });
   let funding = false;
@@ -224,8 +249,9 @@
   try {
     token = localStorage.getItem(tokenKey);
     job = JSON.parse(localStorage.getItem(jobKey) || 'null');
-    if (job) { el('references').checked = job.referenceMode === 'generate' || job.referenceMode === undefined && job.budgetCents >= 500; el('brief').value = job.brief; el('budget').value = (job.budgetCents / 100).toFixed(2); el('brief').disabled = true; el('budget').disabled = true; el('job').hidden = false; poll(); }
+    if (job) { el('references').checked = job.referenceMode === 'generate' || job.referenceMode === undefined && job.budgetCents >= 500; if (job.meshyAllowance) { el('meshy').checked = true; el('meshy-budget').value = (job.meshyAllowance.budgetCents / 100).toFixed(2); el('meshy-assets').value = String(job.meshyAllowance.maxAssets); el('meshy-rigging').checked = job.meshyAllowance.allowRigging === true; el('meshy-settings').hidden = false; } el('brief').value = job.brief; el('budget').value = (job.budgetCents / 100).toFixed(2); el('brief').disabled = true; el('budget').disabled = true; el('job').hidden = false; poll(); }
     if (token) balance().catch(error);
   } catch (err) { error(err); }
+  meshHelp();
   check();
 })();

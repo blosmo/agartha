@@ -5,6 +5,12 @@ import { assertCents, allowanceForJob, fundingBackings, getOrCreateWallet, requi
 import { createQuoteInTransaction, reserveSessionInTransaction } from "./blenderSessions";
 
 import {componentSharing} from "./managedJobSchema";
+import { MESHY_STAGE_CREDITS, meshyCostCents, parseMeshyAllowance, type MeshyAllowance, type MeshyRate } from '../../packages/protocol/src/meshy';
+
+const meshyAllowanceValidator = v.object({ budgetCents: v.number(), maxAssets: v.number(), allowRigging: v.boolean() });
+const meshyRateValidator = v.object({ usdCents: v.number(), credits: v.number() });
+const meshyResultValidator = v.object({ status: v.union(v.literal('succeeded'), v.literal('failed')), modelUrl: v.optional(v.string()), walkingUrl: v.optional(v.string()), thumbnailUrl: v.optional(v.string()) });
+function meshyRateInvalid(rate: MeshyRate) { return !Number.isSafeInteger(rate.usdCents) || rate.usdCents < 1 || rate.usdCents > 1_000_000 || !Number.isSafeInteger(rate.credits) || rate.credits < 1 || rate.credits > 1_000_000; }
 
 const terminalStatus = v.union(v.literal("completed"), v.literal("partial"), v.literal("failed"), v.literal("cancelled"));
 type Job = Doc<"managedJobs">;
@@ -50,7 +56,7 @@ async function sanitized(ctx: QueryCtx | MutationCtx, row: Job) {
   const longReservation = row.referenceMode === "generate" || row.workflowVersion === 3 && row.budgetCents >= 500;
   return { ...safe, computeChargedCents: reservation?.chargedCents ?? 0, computeReservedCents: reservation?.reservedCents ?? (longReservation ? 165 : 65), computeStatus: reservation?.status, chargedCents: row.chargedAiCents + (reservation?.chargedCents ?? 0) };
 }
-export async function createManagedJobInTransaction(ctx: MutationCtx, args: { token: string; jobId: string; requestId: string; brief: string; shareMaterials?: boolean; shareComponents?: { license: "CC0-1.0" | "CC-BY-4.0" | "MIT"; attribution: string }; referenceMode?: "generate" | "none"; budgetCents: number; livemode: boolean; admissionEnabled?: boolean; referenceAdmissionEnabled?: boolean }, fundingActorId?: string) {
+export async function createManagedJobInTransaction(ctx: MutationCtx, args: { token: string; jobId: string; requestId: string; brief: string; shareMaterials?: boolean; shareComponents?: { license: "CC0-1.0" | "CC-BY-4.0" | "MIT"; attribution: string }; referenceMode?: "generate" | "none"; budgetCents: number; livemode: boolean; admissionEnabled?: boolean; referenceAdmissionEnabled?: boolean; meshyAllowance?: MeshyAllowance; meshyRate?: MeshyRate; meshyAdmissionEnabled?: boolean }, fundingActorId?: string) {
     identifier(args.jobId, "jobId", 80); identifier(args.requestId, "requestId");
     if (!args.brief.trim() || new TextEncoder().encode(args.brief).length > 4000) throw new Error("Brief must contain 1 to 4000 UTF-8 bytes.");
     assertCents(args.budgetCents, "budgetCents");
@@ -62,11 +68,17 @@ export async function createManagedJobInTransaction(ctx: MutationCtx, args: { to
     const shareComponents=args.shareComponents?{license:args.shareComponents.license,attribution:args.shareComponents.attribution.trim().normalize('NFC')}:undefined;
     if (prior) {
       const referenceMismatch = args.referenceMode !== undefined && (prior.referenceMode ?? "none") !== args.referenceMode;
-      if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || referenceMismatch || (prior.shareMaterials ?? false) !== shareMaterials || JSON.stringify(prior.shareComponents??null)!==JSON.stringify(shareComponents??null)) throw new Error("Job request reused with different payload.");
+      if (prior.jobId !== args.jobId || prior.brief !== args.brief || prior.budgetCents !== args.budgetCents || referenceMismatch || (prior.shareMaterials ?? false) !== shareMaterials || JSON.stringify(prior.shareComponents??null)!==JSON.stringify(shareComponents??null) || JSON.stringify(prior.meshyAllowance ?? null) !== JSON.stringify(args.meshyAllowance ?? null)) throw new Error("Job request reused with different payload.");
       return sanitized(ctx, prior);
     }
     if (args.admissionEnabled === false) throw new Error("Managed modeling is not available.");
     const workflowVersion = process.env.AGARTHA_MANAGED_WORKFLOW_VERSION === "3" || process.env.AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID === authenticated.agentId ? 3 as const : undefined;
+    const meshyAllowance = parseMeshyAllowance(args.meshyAllowance);
+    if (args.meshyAdmissionEnabled === true && (!meshyAllowance || !args.meshyRate)) throw new Error("Meshy admission requires an allowance and rate.");
+    if (meshyAllowance && (args.meshyAdmissionEnabled !== true || !args.meshyRate)) throw new Error("Meshy admission requires an enabled allowance and rate.");
+    if (meshyAllowance && workflowVersion !== 3) throw new Error("Meshy jobs require managed workflow version 3.");
+    if (meshyAllowance && meshyRateInvalid(args.meshyRate!)) throw new Error("Invalid Meshy credit rate.");
+    if (meshyAllowance && meshyAllowance.budgetCents < meshyCostCents(MESHY_STAGE_CREDITS["image-to-3d"], args.meshyRate!)) throw new Error("Meshy allowance must cover at least one textured generation.");
     const referenceMode = args.referenceMode ?? (workflowVersion === 3 && args.budgetCents >= 500 && process.env.AGARTHA_REFERENCE_MODELING_ENABLED === "true" ? "generate" : "none");
     if (referenceMode === "generate" && args.referenceAdmissionEnabled === false) throw new Error("Reference-guided modeling is not available yet.");
     if(shareComponents&&(referenceMode!=="generate"||shareComponents.attribution.length>500||shareComponents.license!=="CC0-1.0"&&!shareComponents.attribution))throw new Error("Component sharing requires reference-guided modeling and bounded license attribution.");
@@ -80,18 +92,19 @@ export async function createManagedJobInTransaction(ctx: MutationCtx, args: { to
     const reservation = await reserveSessionInTransaction(ctx, { token: args.token, quoteId: reservationId, reservationId, requestId: reservationId }, fundingActorId);
     await ctx.db.patch(reservation._id, { deferredStart: true });
     const ai = args.budgetCents - quote.reserveCents;
+    if (meshyAllowance && ai - meshyAllowance.budgetCents < 100) throw new Error("Meshy allowance must retain 100 cents for review.");
     const wallet = await getOrCreateWallet(ctx, actor.agentId, args.livemode);
     if (wallet.frozen || wallet.availableCents < ai) throw new Error("Insufficient available Blender credits.");
     await ctx.db.patch(wallet._id, { availableCents: wallet.availableCents - ai, heldCents: wallet.heldCents + ai });
     const now = Date.now();
-    const id = await ctx.db.insert("managedJobs", { jobId: args.jobId, requestId: args.requestId, agentId: actor.agentId, livemode: args.livemode, brief: args.brief, ...(workflowVersion === undefined ? {} : { workflowVersion }), referenceMode, shareMaterials, ...(shareComponents?{shareComponents}:{}), chargedReferenceCents: 0, budgetCents: args.budgetCents, reservationId, status: "queued", cancelled: false, progress: "Queued", reservedAiCents: ai, chargedAiCents: 0, pendingAiCents: 0, releasedAiCents: 0, visuallyInspected: false, createdAt: now, updatedAt: now, deadlineAt: now + (reservationMinutes === 30 ? 45 : 20) * 60_000 });
+    const id = await ctx.db.insert("managedJobs", { jobId: args.jobId, requestId: args.requestId, agentId: actor.agentId, livemode: args.livemode, brief: args.brief, ...(workflowVersion === undefined ? {} : { workflowVersion }), referenceMode, shareMaterials, ...(shareComponents?{shareComponents}:{}), ...(meshyAllowance ? { meshyAllowance, meshyRate: args.meshyRate!, meshyAdmissionEnabled: true, chargedMeshyCents: 0 } : {}), chargedReferenceCents: 0, budgetCents: args.budgetCents, reservationId, status: "queued", cancelled: false, progress: "Queued", reservedAiCents: ai, chargedAiCents: 0, pendingAiCents: 0, releasedAiCents: 0, visuallyInspected: false, createdAt: now, updatedAt: now, deadlineAt: now + (reservationMinutes === 30 ? 45 : 20) * 60_000 });
     const row = (await ctx.db.get(id))!;
     await entry(ctx, row, "reserve", "reserve", -ai);
     return sanitized(ctx, row);
 
 }
 export const createManagedJob = internalMutation({
-  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), shareMaterials: v.optional(v.boolean()), shareComponents: v.optional(componentSharing), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean(), admissionEnabled: v.optional(v.boolean()), referenceAdmissionEnabled: v.optional(v.boolean()) },
+  args: { token: v.string(), jobId: v.string(), requestId: v.string(), brief: v.string(), shareMaterials: v.optional(v.boolean()), shareComponents: v.optional(componentSharing), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), budgetCents: v.number(), livemode: v.boolean(), admissionEnabled: v.optional(v.boolean()), referenceAdmissionEnabled: v.optional(v.boolean()), meshyAllowance: v.optional(meshyAllowanceValidator), meshyRate: v.optional(meshyRateValidator), meshyAdmissionEnabled: v.optional(v.boolean()) },
   handler: (ctx, args) => createManagedJobInTransaction(ctx, args),
 });
 
@@ -156,7 +169,7 @@ export const requestManagedCancel = internalMutation({ args: { token: v.string()
   const allowed = allowance && (allowance.sponsorId === actor.agentId || allowance.recipientId === actor.agentId);
   return cancelManagedJobInTransaction(ctx, args.jobId, allowed ? row.agentId : actor.agentId);
 } });
-export const claimManagedInference = internalMutation({ args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), maxCostCents: v.number(), payloadFingerprint: v.string(), kind: v.optional(v.union(v.literal("modeling"), v.literal("reference"), v.literal("strategy"), v.literal("review"))) }, handler: async (ctx, args) => {
+export const claimManagedInference = internalMutation({ args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), maxCostCents: v.number(), payloadFingerprint: v.string(), kind: v.optional(v.union(v.literal("modeling"), v.literal("reference"), v.literal("strategy"), v.literal("review"), v.literal("asset-reference"), v.literal("meshy"))), meshStage: v.optional(v.union(v.literal("image-to-3d"), v.literal("rigging"))), meshParentOperationId: v.optional(v.string()) }, handler: async (ctx, args) => {
   identifier(args.operationId, "operationId"); identifier(args.payloadFingerprint, "payloadFingerprint"); assertCents(args.maxCostCents, "maxCostCents");
   if (!args.maxCostCents) throw new Error("Inference requires a positive reservation.");
   const row = await job(ctx, args.jobId);
@@ -170,6 +183,29 @@ export const claimManagedInference = internalMutation({ args: { jobId: v.string(
   if ((args.kind === "strategy" || args.kind === "review") && row.workflowVersion !== 3) throw new Error("This inference kind requires managed workflow version 3.");
   if (args.kind === "reference" && (row.referenceMode !== "generate" || row.referenceReady || args.operationId !== `${args.executorId}-reference`)) throw new Error("Reference generation is not available for this job.");
   if (row.pendingAiCents) throw new Error("Another inference is in flight.");
+  if (args.kind === "asset-reference") {
+    if (!row.meshyAllowance || row.meshyAdmissionEnabled !== true || row.workflowVersion !== 3) throw new Error("Asset references are not available for this job.");
+    const references = (await Promise.all(['claimed', 'completed', 'unresolved'].map(state => ctx.db.query('managedInferenceOperations').withIndex('by_job_state', q => q.eq('jobId', row.jobId).eq('state', state as 'claimed' | 'completed' | 'unresolved')).collect()))).flat();
+    if (row.reservedAiCents - row.chargedAiCents - row.releasedAiCents - args.maxCostCents < 100) throw new Error("Asset references must retain 100 cents for review.");
+    if (references.filter(operation => operation.kind === 'asset-reference').length >= row.meshyAllowance.maxAssets) throw new Error("Asset reference allowance exhausted.");
+  }
+  if (args.kind === "meshy") {
+    if (!row.meshyAllowance || row.meshyAdmissionEnabled !== true || row.workflowVersion !== 3 || !row.meshyRate || !args.meshStage) throw new Error("Meshy generation is not available for this job.");
+    const expected = meshyCostCents(MESHY_STAGE_CREDITS[args.meshStage], row.meshyRate as MeshyRate);
+    if (args.maxCostCents !== expected) throw new Error("Meshy reservation must match the stage cost.");
+    if ((row.chargedMeshyCents ?? 0) + expected > row.meshyAllowance.budgetCents) throw new Error("Meshy allowance exhausted.");
+    if (args.meshStage === 'rigging') {
+      if (!row.meshyAllowance.allowRigging || !args.meshParentOperationId) throw new Error("Rigging is not allowed for this job.");
+      const parent = await ctx.db.query("managedInferenceOperations").withIndex("by_operation", q => q.eq("operationId", args.meshParentOperationId!)).unique();
+      if (!parent || parent.jobId !== row.jobId || parent.executorId !== args.executorId || parent.kind !== 'meshy' || parent.meshStage !== 'image-to-3d' || parent.state !== 'completed' || parent.meshResult?.status !== 'succeeded') throw new Error("Rigging requires a successful owned Meshy generation.");
+      const existingRig = await ctx.db.query("managedInferenceOperations").withIndex("by_job_state", q => q.eq("jobId", row.jobId).eq("state", "completed")).collect();
+      if (existingRig.some(operation => operation.kind === 'meshy' && operation.meshStage === 'rigging' && operation.meshParentOperationId === args.meshParentOperationId)) throw new Error("A rig already exists for this generation.");
+    } else {
+      const generated = (await Promise.all(['claimed', 'completed', 'unresolved'].map(state => ctx.db.query('managedInferenceOperations').withIndex('by_job_state', q => q.eq('jobId', row.jobId).eq('state', state as 'claimed' | 'completed' | 'unresolved')).collect()))).flat();
+      if (generated.filter(operation => operation.kind === 'meshy' && operation.meshStage === 'image-to-3d').length >= row.meshyAllowance.maxAssets) throw new Error("Meshy asset allowance exhausted.");
+    }
+    if (row.reservedAiCents - row.chargedAiCents - row.releasedAiCents - expected < 100) throw new Error("Meshy jobs must retain 100 cents for review.");
+  }
   if (args.maxCostCents > row.reservedAiCents - row.chargedAiCents - row.releasedAiCents) throw new Error("AI budget exhausted.");
   await ctx.db.insert("managedInferenceOperations", { ...args, state: "claimed", createdAt: Date.now() });
   await ctx.db.patch(row._id, { pendingAiCents: args.maxCostCents, updatedAt: Date.now() });
@@ -196,10 +232,78 @@ export const completeManagedInference = internalMutation({ args: { jobId: v.stri
   await ctx.db.patch(wallet._id, { heldCents: wallet.heldCents - args.chargeCents - refund, availableCents: wallet.availableCents + refund, frozen: wallet.availableCents + refund < 0 || wallet.openDisputes > 0 });
   await entry(ctx, row, `operation:${op.operationId}:release`, "release", refund);
   // The original reserve debit minus releases equals actual spend; a second charge debit would double-count it.
-  await ctx.db.patch(row._id, { chargedAiCents: row.chargedAiCents + args.chargeCents, chargedReferenceCents: (row.chargedReferenceCents ?? 0) + (op.kind === "reference" ? args.chargeCents : 0), pendingAiCents: 0, releasedAiCents: row.releasedAiCents + refund, updatedAt: Date.now() });
+  await ctx.db.patch(row._id, { chargedAiCents: row.chargedAiCents + args.chargeCents, chargedReferenceCents: (row.chargedReferenceCents ?? 0) + (["reference", "asset-reference"].includes(op.kind ?? "") ? args.chargeCents : 0), chargedMeshyCents: (row.chargedMeshyCents ?? 0) + (op.kind === "meshy" ? args.chargeCents : 0), pendingAiCents: 0, releasedAiCents: row.releasedAiCents + refund, updatedAt: Date.now() });
   await ctx.db.patch(op._id, { state: "completed", chargeCents: args.chargeCents, completedAt: Date.now() });
   return { state: "completed", reused: false, chargeCents: args.chargeCents };
 } });
+
+export const getManagedMeshyOperation = internalQuery({
+  args: { jobId: v.string(), executorId: v.string(), operationId: v.string() },
+  handler: async (ctx, args) => {
+    const row = await job(ctx, args.jobId);
+    const op = await ctx.db.query('managedInferenceOperations').withIndex('by_operation', q => q.eq('operationId', args.operationId)).unique();
+    if (!op || op.jobId !== row.jobId || op.executorId !== args.executorId || row.executorId !== args.executorId || op.kind !== 'meshy') return null;
+    return { operationId: op.operationId, jobId: op.jobId, meshTaskId: op.meshTaskId, meshStage: op.meshStage, meshParentOperationId: op.meshParentOperationId, meshResult: op.meshResult, payloadFingerprint: op.payloadFingerprint, maxCostCents: op.maxCostCents, status: op.meshResult?.status ?? (op.state === 'completed' ? 'failed' : 'pending') };
+  },
+});
+
+// Lease the oldest known tasks before network I/O so repeated failures rotate fairly.
+// Active tasks may also be polled: settlement is idempotent and never starts work.
+export const listPendingMeshyOperations = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const candidates = await ctx.db.query('managedInferenceOperations').withIndex('by_meshy_poll', q => q.eq('needsMeshyPoll', true)).take(5);
+    const pending = [];
+    for (const operation of candidates) {
+      await ctx.db.patch(operation._id, { meshLastPollAt: Date.now() });
+      if (operation.kind === 'meshy' && operation.meshTaskId && operation.state !== 'completed') {
+        pending.push({ jobId: operation.jobId, executorId: operation.executorId, operationId: operation.operationId });
+      } else await ctx.db.patch(operation._id, { needsMeshyPoll: false });
+    }
+    return pending;
+  },
+});
+
+function knownMeshyTaskId(taskId: string) { return /^[A-Za-z0-9][A-Za-z0-9_-]{0,199}$/.test(taskId); }
+
+export const attachManagedMeshyTask = internalMutation({
+  args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), taskId: v.string() },
+  handler: async (ctx, args) => {
+    if (!knownMeshyTaskId(args.taskId)) throw new Error('Invalid Meshy task ID.');
+    const row = await job(ctx, args.jobId);
+    const op = await ctx.db.query('managedInferenceOperations').withIndex('by_operation', q => q.eq('operationId', args.operationId)).unique();
+    if (!op || op.jobId !== row.jobId || op.executorId !== args.executorId || row.executorId !== args.executorId || op.kind !== 'meshy') throw new Error('Stale Meshy operation.');
+    if (op.meshTaskId && op.meshTaskId !== args.taskId) throw new Error('Meshy task is immutable.');
+    if (!op.meshTaskId) await ctx.db.patch(op._id, { meshTaskId: args.taskId, needsMeshyPoll: op.state !== 'completed', meshLastPollAt: 0 });
+    return { taskId: op.meshTaskId ?? args.taskId, reused: Boolean(op.meshTaskId) };
+  },
+});
+
+export const completeManagedMeshyTask = internalMutation({
+  args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), chargeCents: v.number(), result: meshyResultValidator },
+  handler: async (ctx, args) => {
+    const row = await job(ctx, args.jobId);
+    const op = await ctx.db.query('managedInferenceOperations').withIndex('by_operation', q => q.eq('operationId', args.operationId)).unique();
+    if (!op || op.jobId !== row.jobId || op.executorId !== args.executorId || row.executorId !== args.executorId || op.kind !== 'meshy') throw new Error('Stale Meshy completion.');
+    if (!op.meshTaskId && !(args.result.status === 'failed' && args.chargeCents === 0 && op.state !== 'unresolved')) throw new Error('Meshy task is not attached.');
+    assertCents(args.chargeCents, 'chargeCents');
+    if (args.result.status === 'failed' && args.chargeCents !== 0) throw new Error('Failed Meshy tasks cannot charge.');
+    if (args.chargeCents > op.maxCostCents) throw new Error('Charge exceeds reserved Meshy cost.');
+    if (op.state === 'completed') {
+      if (op.chargeCents !== args.chargeCents || JSON.stringify(op.meshResult) !== JSON.stringify(args.result)) throw new Error('Conflicting Meshy completion.');
+      return { state: 'completed', reused: true, chargeCents: args.chargeCents };
+    }
+    if (op.state === 'unresolved' && args.result.status === 'failed' && args.chargeCents !== 0) throw new Error('Unresolved failed Meshy task cannot charge.');
+    const refund = terminal(row) ? op.maxCostCents - args.chargeCents : 0;
+    const wallet = await getOrCreateWallet(ctx, row.agentId, row.livemode);
+    if (wallet.heldCents < args.chargeCents + refund || row.pendingAiCents !== op.maxCostCents) throw new Error('Inconsistent Meshy hold.');
+    await ctx.db.patch(wallet._id, { heldCents: wallet.heldCents - args.chargeCents - refund, availableCents: wallet.availableCents + refund, frozen: wallet.availableCents + refund < 0 || wallet.openDisputes > 0 });
+    await entry(ctx, row, `operation:${op.operationId}:release`, 'release', refund);
+    await ctx.db.patch(row._id, { chargedAiCents: row.chargedAiCents + args.chargeCents, chargedMeshyCents: (row.chargedMeshyCents ?? 0) + args.chargeCents, pendingAiCents: 0, releasedAiCents: row.releasedAiCents + refund, updatedAt: Date.now() });
+    await ctx.db.patch(op._id, { state: 'completed', chargeCents: args.chargeCents, meshResult: args.result, needsMeshyPoll: false, completedAt: Date.now() });
+    return { state: 'completed', reused: false, chargeCents: args.chargeCents };
+  },
+});
 export const finishManagedJob = internalMutation({
   args: { jobId: v.string(), executorId: v.string(), status: terminalStatus, progress: v.string(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()), videoReady: v.optional(v.boolean()) },
   handler: async (ctx, args) => {

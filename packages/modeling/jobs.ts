@@ -2,6 +2,8 @@ import type { ServerResponse } from 'node:http';
 import { BillingHttpError, type LedgerCall } from '../billing/ledgerClient.js';
 import { jsonBody, jsonResponse, type BillingRequest } from '../billing/http.js';
 import { managedEnabled, referencesEnabled } from './http.js';
+import { meshyConfiguration } from './meshyConfig.js';
+import { parseMeshyAllowance } from '../protocol/src/meshy.js';
 
 const names = ['model.glb', 'model.blend', 'preview.png'];
 function links(row: Record<string, any>) {
@@ -15,7 +17,11 @@ function links(row: Record<string, any>) {
 export async function managedJobs(req: BillingRequest, res: ServerResponse, path: string, token: string, ledger: LedgerCall, livemode: boolean) {
   if (path === 'jobs' && req.method === 'POST') {
     const body = await jsonBody(req);
-    const row = await ledger<Record<string, any>>('createManagedJob', { token, jobId: body.jobId, requestId: body.requestId, brief: body.brief, ...(body.referenceMode === undefined ? {} : { referenceMode: body.referenceMode }), ...(body.shareMaterials === undefined ? {} : {shareMaterials:body.shareMaterials}), ...(body.shareComponents === undefined ? {} : {shareComponents:body.shareComponents}), budgetCents: body.budgetCents, livemode, admissionEnabled: managedEnabled(token, req), referenceAdmissionEnabled: referencesEnabled(token) });
+    let meshyAllowance;
+    try { meshyAllowance = parseMeshyAllowance(body.meshyAllowance); }
+    catch { throw new BillingHttpError(400, 'Choose a Meshy allowance of 1–1000 cents, up to 3 assets and optional rigging.'); }
+    const meshy = meshyConfiguration();
+    const row = await ledger<Record<string, any>>('createManagedJob', { token, jobId: body.jobId, requestId: body.requestId, brief: body.brief, ...(body.referenceMode === undefined ? {} : { referenceMode: body.referenceMode }), ...(body.shareMaterials === undefined ? {} : {shareMaterials:body.shareMaterials}), ...(body.shareComponents === undefined ? {} : {shareComponents:body.shareComponents}), ...(meshyAllowance ? { meshyAllowance, meshyRate: meshy.rate, meshyAdmissionEnabled: meshy.enabled } : {}), budgetCents: body.budgetCents, livemode, admissionEnabled: managedEnabled(token, req), referenceAdmissionEnabled: referencesEnabled(token) });
     jsonResponse(res, links(row), 201);
     return;
   }

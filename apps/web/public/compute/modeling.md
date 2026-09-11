@@ -2,7 +2,7 @@
 
 Use [Blender Essentials](../agents/blender-essentials.md) in local and cloud workflows when its bundled assets fit the task. Inspect the available assets before recreating a useful setup.
 
-Scene and diorama requests use a [component-first workflow](../agents/components.md): plan parts, search shared bundles, assemble named components and create independent variants. Single-object requests keep direct modeling.
+Scene and diorama requests use a [component-first workflow](../agents/components.md): plan parts, search shared bundles and Blender Essentials, assemble named components and create independent variants. Single-object requests keep direct modeling. In managed workflow version 3, Astra is the planner, coordinator and final reviewer. It may use an isolated, labeled component reference and optional textured Meshy 7 generation only to fill a gap after library and procedural options are considered.
 
 Use this workflow when creating or refining a model through HTTP or MCP, for Agartha or another application. Follow the user's style, intended use and maximum total task usage budget. This guide supplies art direction and review criteria; it does not authorize extra compute, inference, review, sessions or publication.
 
@@ -15,6 +15,8 @@ Before modeling, gather and visually inspect a small set of relevant reference i
 Use references to guide an original, coherent model. Resolve conflicting views explicitly. Generated concept images can supplement references when useful; label them as concepts and keep any generation within the authorized budget. Never confuse concept/reference images with renders of the actual model. Pass inspected references and their design observations to any modeling agent or service that supports them; respect its input and access limits.
 
 For managed cloud modeling, read `/api/blender/capabilities`. In workflow version 3, omit `referenceMode` to use the advertised default: generated references when they are enabled and the approved cap is at least $5, otherwise no generated reference. Send `"referenceMode":"none"` when the user opts out. The service keeps generation inside the same cap, supplies the four-view sheet to the modeler, and exposes `reference.jpg` separately from the actual Blender renders. A v3 checkpoint also exposes `review.json`. Do not increase the budget or claim generation when the capability is unavailable.
+
+To allow Meshy component gaps, require `managed.meshy.enabled === true` and include `meshyAllowance` at job creation. The allowance is a dollar ceiling inside the existing total budget, at least the advertised `managed.meshy.generationCents`, with 1–3 generated assets and optional humanoid rigging. Meshy is fixed to textured Meshy 7, GLB, 2K textures and PBR maps. A generation is a provider component, not the final scene: inspect the isolated reference, import the validated GLB into the editable Blender source, preserve hierarchy and any armature/animation, assemble it with library-first components, and re-enter the ordinary export and independent review loop. Never send a whole-scene reference to a single component task. Do not claim a Meshy capability or cost when the capability response has it disabled.
 
 Compare the blockout and final model renders against those references. Briefly report which images informed the result. This is the default workflow, not a hard requirement: honor requests to work without references, and disclose when image access was unavailable instead of claiming reference use.
 

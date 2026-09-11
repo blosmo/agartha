@@ -33,7 +33,7 @@ class StudioTests(unittest.TestCase):
             store.save_reference('job', raster(), REFERENCE_MODEL)
             self.assertEqual(len(reference_views(raster())), 4)
 
-    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None, workflow_version=None, reference_mode='generate', quality_verdicts=None, cancel_after=None, final_mutation=False, mutate_after_review=False, strategy_response=None, reviews=None, accept_seconds=None):
+    def fixture(self, actions, *, restore_failure=False, verbose_export=False, share_materials=True, share_components=None, workflow_version=None, reference_mode='generate', quality_verdicts=None, cancel_after=None, final_mutation=False, mutate_after_review=False, strategy_response=None, reviews=None, accept_seconds=None, meshy=False, meshy_payload=None, meshy_failure=False, export_failure_once=False, import_failure_once=False, cache_tool_results=False):
         directory=tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         store=ManagedFiles(Path(directory.name),StorageCoordinator(),lambda:None)
         files=Mock(wraps=store)
@@ -41,6 +41,8 @@ class StudioTests(unittest.TestCase):
         broker=Mock(); timeline=[]; requests=[]
         broker.upload_material.return_value="shared-material-test.glb"
         row={'reservationId':'r','status':'running','brief':'An observatory','referenceMode':reference_mode,'workflowVersion':workflow_version,'shareMaterials':share_materials, 'shareComponents':share_components}
+        if meshy:
+            row.update({'meshyAllowance': {'budgetCents': 100, 'maxAssets': 1, 'allowRigging': False}, 'meshyAdmissionEnabled': True, 'meshyContext': {'enabled': True, 'budgetRemainingCents': 100, 'maxAssets': 1, 'allowRigging': False, 'generationCents': 60, 'riggingCents': 10}})
         def ledger(name, **kwargs):
             timeline.append(name)
             if name=='heartbeatManagedJob': return {'active':True}
@@ -48,10 +50,16 @@ class StudioTests(unittest.TestCase):
         broker.ledger.call.side_effect=ledger
         broker.owned.return_value={'status':'running','launchClaimedAt':time.time()*1000,'reservedMinutes':30}
         broker.start.side_effect=lambda *args:timeline.append('start')
-        state={'model':b'BLENDER-A','accepted':None,'parent':None}
+        state={'model':b'BLENDER-A','accepted':None,'parent':None,'exportFailed':False,'importFailed':False}
         def call(token,reservation,request,operation,limit):
             params=request['params'];code=params['arguments'].get('code','')
             if 'BROKEN' in code:return {'result':{'isError':True,'content':[{'text':'Geometry edit failed'}]}}
+            if import_failure_once and '-meshy-' in operation and operation.endswith('-import') and not state['importFailed']:
+                state['importFailed'] = True
+                return {'result':{'isError':True,'content':[{'text':'Import failed once and cleaned up'}]}}
+            if export_failure_once and '-meshy-' in operation and operation.endswith('-export') and not state['exportFailed']:
+                state['exportFailed'] = True
+                return {'result':{'isError':True,'content':[{'text':'Export failed once'}]}}
             if 'REVISION_B' in code or final_mutation and operation == 'worker-final-render':state['model']=b'BLENDER-B'
             if 'REVISION_C' in code:state['model']=b'BLENDER-C'
             if "mark_published_component(root," in code:
@@ -66,7 +74,12 @@ class StudioTests(unittest.TestCase):
             if len(json.dumps(result).encode()) > limit:
                 raise ValueError('Worker response exceeds the configured limit')
             return result
-        broker.call.side_effect=call
+        cached_results = {}
+        def cached_call(token, reservation, request, operation, limit):
+            if operation not in cached_results:
+                cached_results[operation] = call(token, reservation, request, operation, limit)
+            return cached_results[operation]
+        broker.call.side_effect=cached_call if cache_tool_results else call
         def download(token,reservation,name,limit):
             if name=='component_template.json':return b'{}'
             if name=='component_parent.json':return json.dumps([state['parent']] if state['parent'] else []).encode()
@@ -84,6 +97,10 @@ class StudioTests(unittest.TestCase):
         outputs=list(actions)
         verdicts=list(quality_verdicts or [])
         def stream(method,url,**kwargs):
+            if meshy and 'json' not in kwargs:
+                response=httpx.Response(200, content=meshy_payload or b'', request=httpx.Request(method,url))
+                context=Mock();context.__enter__=Mock(return_value=response);context.__exit__=Mock(return_value=False)
+                return context
             requests.append(kwargs['json']);timeline.append('inference-'+kwargs['json']['kind'])
             request=kwargs['json'];kind=request['kind']
             if kind=='reference': value={'model':REFERENCE_MODEL,'image':'data:image/jpeg;base64,'+base64.b64encode(raster()).decode(),'chargeCents':8}
@@ -99,6 +116,15 @@ class StudioTests(unittest.TestCase):
                 if isinstance(value,Exception): raise value
                 if not isinstance(value, (bytes, httpx.Response)):
                     value={'candidateRevision':request['candidateRevision'],'glbSha256':request['glbSha256'],**value}
+            elif kind=='asset-reference':
+                value={'model':'openai/gpt-image-2.5-flare','image':'data:image/jpeg;base64,'+base64.b64encode(raster()).decode(),'chargeCents':8, 'padding':'x'*120_000}
+            elif kind=='meshy-start':
+                if meshy_failure:
+                    value=httpx.Response(502, json={'error':'provider unavailable','code':'meshy_provider_unavailable'}, request=httpx.Request('POST',url))
+                else:
+                    value={'operationId':request['operationId'],'taskId':'meshy-task-1','status':'pending'}
+            elif kind=='meshy-poll':
+                value={'operationId':request['operationId'],'taskId':'meshy-task-1','status':'succeeded','result':{'status':'succeeded','modelUrl':'https://assets.meshy.ai/generated.glb'}}
             else:
                 if not outputs:raise RuntimeError('budget exhausted')
                 value=outputs.pop(0)

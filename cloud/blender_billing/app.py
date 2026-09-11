@@ -84,6 +84,13 @@ def reconcile_sessions():
             except (FileNotFoundError, ValueError):
                 pass
             broker.ledger.call('recoverManagedJob', jobId=job['jobId'])
+    from .meshy_exchange import reconcile_meshy
+    # Meshy recovery is best effort. A provider or ledger outage must not prevent
+    # ordinary managed-job and reservation monitors from being scheduled.
+    try:
+        reconcile_meshy(broker, 'https://3dforagents.com/api/blender/inference', os.environ['AGARTHA_BILLING_BROKER_KEY'])
+    except Exception:
+        pass
     for row in broker.ledger.call("listActiveReservations"):
         monitor_session.spawn(row["reservationId"])
 

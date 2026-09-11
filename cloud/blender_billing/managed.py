@@ -37,10 +37,10 @@ for obj in meshes:
         obj.evaluated_get(depsgraph).to_mesh_clear()
 assert triangles <= 100000, 'Simplify the evaluated model before export.'
 bpy.ops.object.select_all(action='DESELECT')
-for obj in meshes:
-    obj.select_set(True)
+for obj in model.all_objects:
+    if obj.type in {'MESH', 'ARMATURE', 'EMPTY'}: obj.select_set(True)
 bpy.context.view_layer.objects.active = meshes[0]
-bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_apply=True, export_cameras=False, export_lights=False)
+bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_apply=not any(o.type == 'MESH' and o.data.shape_keys for o in meshes), export_animations=True, export_cameras=False, export_lights=False)
 scene = bpy.context.scene
 scene.render.engine = 'CYCLES'
 scene.cycles.device = 'CPU'
@@ -164,6 +164,24 @@ class ManagedFiles:
                 if len(payload) != size:
                     raise ValueError('Artifact changed during download.')
                 return payload
+
+    def save_component(self, job_id: str, operation: str, payload: bytes, reference: bytes, metadata: dict[str, Any]) -> None:
+        from .meshy_exchange import validate_generated_glb
+        validate_generated_glb(payload)
+        if not isinstance(operation, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', operation) or len(reference) > 3_000_000:
+            raise ValueError('Invalid generated component snapshot.')
+        name = 'component-' + hashlib.sha256(operation.encode()).hexdigest()
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            directory.mkdir(parents=True, exist_ok=True)
+            existing = list(directory.glob('component-*.glb'))
+            if len(existing) >= 6 and not (directory / (name + '.glb')).exists():
+                raise ValueError('Generated component storage limit reached.')
+            for extension, content in [('glb', payload), ('jpg', reference), ('json', json.dumps(metadata).encode())]:
+                temporary = directory / ('.' + name + '.' + extension)
+                temporary.write_bytes(content)
+                os.replace(temporary, directory / (name + '.' + extension))
+            self.commit()
 
     def save_reference(self, job_id: str, payload: bytes, model: str) -> None:
         from PIL import Image
