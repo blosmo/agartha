@@ -36,25 +36,43 @@ describe('independent managed quality', () => {
       expect(() => qualityRequest({ ...input, ...changes })).toThrow();
     }
   });
-  it('bounds the maximal critic request within the protected 100 cent allowance', () => {
+  it('bounds the maximal critic request within the protected 125 cent allowance', () => {
     const larger = maximumStrategy('\u0001');
     const request = qualityRequest({ ...input, brief: 'x'.repeat(4000), strategy: larger, candidateRevision: Number.MAX_SAFE_INTEGER, remainingCents: REVIEW_RESERVE_CENTS, images: [...images, ...['front', 'right', 'rear', 'hero'].map(view => ({ label: `reference-${view}`, image: images[0].image }))] });
     expect(request.maxCostCents).toBeLessThanOrEqual(REVIEW_RESERVE_CENTS);
-    expect(request.body.max_output_tokens).toBe(4096);
+    expect(request.maxCostCents).toBe(120);
+    expect(request.body.max_output_tokens).toBe(8192);
+    expect(request.body.reasoning.effort).toBe('medium');
     expect(() => qualityRequest({ ...input, remainingCents: request.maxCostCents - 50 })).toThrow('budget');
     const modeling = inferenceRequest({ ...input, kind: 'modeling', images: [], remainingCents: 180 });
-    expect(modeling.maxCostCents).toBeLessThanOrEqual(80);
+    expect(modeling.maxCostCents).toBeLessThanOrEqual(180 - REVIEW_RESERVE_CENTS);
     expect(() => inferenceRequest({ ...input, kind: 'modeling', images: [], remainingCents: 110 })).toThrow('budget');
   });
-  it('admits a full initial modeling request under the 500 cent reference default', () => {
+  it('admits bounded initial modeling while protecting final review under the 500 cent reference default', () => {
     const references = ['front', 'right', 'rear', 'hero'].map(view => ({ label: `reference-${view}`, image: images[0].image }));
     const initial = { ...input, remainingCents: 335 };
     const reference = referenceRequest(initial);
     const planning = inferenceRequest({ ...initial, kind: 'strategy', images: references, remainingCents: 335 - reference.maxCostCents });
     const remaining = 335 - reference.maxCostCents - planning.maxCostCents;
     const modeler = inferenceRequest({ ...initial, kind: 'modeling', history: 'Begin', images: references, remainingCents: remaining });
-    expect(modeler.body.max_output_tokens).toBe(12000);
+    expect(planning.body.max_output_tokens).toBe(8192);
+    expect(planning.body.reasoning.effort).toBe('medium');
+    expect(modeler.body.max_output_tokens).toBeGreaterThanOrEqual(1024);
+    expect(modeler.body.max_output_tokens).toBeLessThan(12000);
+    expect(modeler.body.reasoning.effort).toBe('high');
     expect(modeler.maxCostCents + REVIEW_RESERVE_CENTS).toBeLessThanOrEqual(remaining);
+    expect(reference.maxCostCents + planning.maxCostCents + modeler.maxCostCents + REVIEW_RESERVE_CENTS + 165).toBeLessThanOrEqual(500);
+    const unconstrained = inferenceRequest({ ...initial, kind: 'modeling', history: 'Begin', images: references });
+    expect(unconstrained.body.max_output_tokens).toBe(12000);
+  });
+  it('refuses a paid plan when its maximum charge would consume the final review reserve', async () => {
+    const planning = { ...input, kind: 'strategy' as const, images: [] };
+    const { maxCostCents } = inferenceRequest(planning);
+    const call = vi.fn(); const fetcher = vi.fn();
+    await expect(runInference({ ...planning, remainingCents: maxCostCents + REVIEW_RESERVE_CENTS - 1 }, call as LedgerCall, 'key', fetcher)).rejects.toThrow('budget');
+    expect(call).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(inferenceRequest({ ...planning, remainingCents: maxCostCents + REVIEW_RESERVE_CENTS }).maxCostCents).toBeLessThanOrEqual(maxCostCents);
   });
   it('accepts every schema maximum including non-ASCII and worst-case JSON escaping', () => {
     for (const [character, bytes] of [['x', 2143], ['形', 6007], ['🦣', 7939], ['\u0001', 11803]] as const) {
