@@ -10,9 +10,12 @@ from mathutils import Vector
 
 output = Path(sys.argv[sys.argv.index('--') + 1]).resolve()
 output.mkdir(parents=True, exist_ok=True)
-source = Path(__file__).resolve().parents[2] / 'cloud/blender_billing/managed.py'
+root = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(root), str(root / 'scripts/blender')]
+from cloud.blender_billing.export_materials import EXPORT_MATERIALS_CODE
+source = root / 'cloud/blender_billing/managed.py'
 module = ast.parse(source.read_text())
-code = next(ast.literal_eval(node.value) for node in module.body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'EXPORT_CODE' for target in node.targets))
+code = next(eval(compile(ast.Expression(node.value), '<managed export>', 'eval'), {'EXPORT_MATERIALS_CODE': EXPORT_MATERIALS_CODE}) for node in module.body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'EXPORT_CODE' for target in node.targets))
 code = code.replace('/workspace/artifacts', str(output))
 bpy.ops.wm.read_factory_settings(use_empty=True)
 try:
@@ -72,7 +75,7 @@ print('MANAGED_EXPORT_RESULT ' + json.dumps({'modelOnly': True, 'meshes': 1, 'pr
 # The delivery render must never re-export an unreviewed geometry change or save
 # it over the accepted editable source. Evaluate the exact production render code.
 studio_module = ast.parse(source.with_name('studio.py').read_text())
-render_scope = {'EXPORT_CODE': next(ast.literal_eval(node.value) for node in module.body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'EXPORT_CODE' for target in node.targets))}
+render_scope = {'EXPORT_CODE': next(eval(compile(ast.Expression(node.value), '<managed export>', 'eval'), {'EXPORT_MATERIALS_CODE': EXPORT_MATERIALS_CODE}) for node in module.body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'EXPORT_CODE' for target in node.targets))}
 for node in studio_module.body:
     if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id in {'EXPORT', 'FINAL_EXPORT', 'FINAL_RENDER'} for target in node.targets):
         exec(compile(ast.Module(body=[node], type_ignores=[]), '<managed render code>', 'exec'), render_scope)

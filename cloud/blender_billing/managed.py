@@ -15,11 +15,12 @@ from typing import Any, Callable
 
 import httpx
 from .turnaround import render_turnaround, remaining_seconds, DELIVERY_RESERVE_SECONDS
+from .export_materials import EXPORT_MATERIALS_CODE
 
 BASE_NAMES = {'model.glb', 'model.blend', 'preview.png'}
 NAMES = BASE_NAMES | {'turnaround.mp4', 'reference.jpg', 'review.json'}
 FILE_LIMIT = 16 * 1024 * 1024
-EXPORT_CODE = """
+EXPORT_CODE = EXPORT_MATERIALS_CODE + """
 import bpy, os
 os.makedirs('/workspace/artifacts', exist_ok=True)
 model = bpy.data.collections.get('AGARTHA_MODEL')
@@ -40,7 +41,7 @@ bpy.ops.object.select_all(action='DESELECT')
 for obj in meshes:
     obj.select_set(True)
 bpy.context.view_layer.objects.active = meshes[0]
-bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_apply=True, export_cameras=False, export_lights=False)
+_agartha_export_glb(meshes, '/workspace/artifacts/model.glb')
 scene = bpy.context.scene
 scene.render.engine = 'CYCLES'
 scene.cycles.device = 'CPU'
