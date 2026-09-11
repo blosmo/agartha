@@ -142,10 +142,10 @@ def reconcile_meshy(broker: Any, files: Any, inference_url: str, broker_key: str
                             continue
                         payload = candidate
                         break
-                    except ValueError:
+                    except (ValueError, httpx.TransportError, httpx.HTTPStatusError):
                         continue
                 if payload is None: continue
-                name = files.save_recovered_component(row['jobId'], row['operationId'], payload, {'provider': 'meshy', 'taskId': outcome.get('taskId'), 'stage': row.get('meshStage')})
-                broker.ledger.call('recordManagedMeshyArtifact', jobId=row['jobId'], executorId=row['executorId'], operationId=row['operationId'], recovered=True, artifactName=name)
+                name = files.save_generated_component_artifact(row['jobId'], row['operationId'], payload, {'provider': 'meshy', 'taskId': outcome.get('taskId'), 'stage': row.get('meshStage')})
+                broker.ledger.call('recordManagedMeshyArtifact', jobId=row['jobId'], executorId=row['executorId'], operationId=row['operationId'], artifactName=name)
             except Exception:
                 pass  # The same known task remains pending for the next recovery pass.

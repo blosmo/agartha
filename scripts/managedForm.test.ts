@@ -92,7 +92,7 @@ it('submits the optional Meshy allowance inside the same total cap', async () =>
 });
 
 it('shows an authenticated late Meshy component download', async () => {
-  const name = 'recovered-' + 'a'.repeat(64) + '.glb';
+  const name = 'generated-image-to-3d-' + 'a'.repeat(64) + '.glb';
   await boot({ status: 'partial', progress: 'Provider component retained', workflowVersion: 3, referenceMode: 'none', visuallyInspected: false, artifacts: [{ name, url: `/api/blender/jobs/job/artifacts/${name}` }] });
   (el('references') as HTMLInputElement).checked = false;
   (el('references') as HTMLInputElement).dispatchEvent(new Event('change', { bubbles: true }));

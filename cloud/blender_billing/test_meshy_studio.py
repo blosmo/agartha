@@ -37,8 +37,8 @@ class MeshyStudioTests(StudioTests):
         self.assertTrue(any(item.get('action') == 'generate_asset' and 'Generated and imported' in item.get('result', '') for item in trace['actions']))
         self.assertEqual(finish['status'], 'completed')
         self.assertTrue(any(path.name.startswith('component-') and path.suffix == '.glb' for path in store.directory('job').iterdir()))
-        self.assertTrue(any(path.name.startswith('recovered-') and path.suffix == '.glb' for path in store.directory('job').iterdir()))
-        self.assertTrue(any(call.args[0] == 'recordManagedMeshyArtifact' and call.kwargs.get('recovered') is True for call in broker.ledger.call.call_args_list))
+        self.assertTrue(any(path.name.startswith('generated-image-to-3d-') and path.suffix == '.glb' for path in store.directory('job').iterdir()))
+        self.assertTrue(any(call.args[0] == 'recordManagedMeshyArtifact' and call.kwargs.get('artifactName', '').startswith('generated-image-to-3d-') for call in broker.ledger.call.call_args_list))
         self.assertEqual(broker.upload_material.call_count, 1)
 
     def test_asset_reference_response_over_100kb_is_accepted(self):

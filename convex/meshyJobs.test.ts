@@ -49,7 +49,8 @@ describe('Meshy managed ledger', () => {
     await expect(t.mutation(api.claimManagedInference, { ...image, operationId: 'mesh-second' })).rejects.toThrow('in flight');
     expect(await t.mutation(api.attachManagedMeshyTask, { jobId: 'mesh-job', executorId: 'mesh-worker', operationId: 'mesh-image', taskId: '123e4567-e89b-12d3-a456-426614174000' })).toMatchObject({ reused: false });
     expect(await t.mutation(api.completeManagedMeshyTask, { jobId: 'mesh-job', executorId: 'mesh-worker', operationId: 'mesh-image', chargeCents: 40, result: { status: 'succeeded', modelUrl: 'https://assets.meshy.ai/model.glb' } })).toMatchObject({ state: 'completed', chargeCents: 40 });
-    expect(await t.mutation(api.recordManagedMeshyArtifact, { jobId: 'mesh-job', executorId: 'mesh-worker', operationId: 'mesh-image', recovered: false })).toEqual({ meshArtifactReady: true, recovered: false });
+    const generatedName = 'generated-image-to-3d-' + 'f'.repeat(64) + '.glb';
+    expect(await t.mutation(api.recordManagedMeshyArtifact, { jobId: 'mesh-job', executorId: 'mesh-worker', operationId: 'mesh-image', artifactName: generatedName })).toEqual({ meshArtifactReady: true, artifactName: generatedName });
     expect(await t.query(api.getManagedMeshyOperation, { jobId: 'mesh-job', executorId: 'mesh-worker', operationId: 'mesh-image' })).toMatchObject({ meshTaskId: '123e4567-e89b-12d3-a456-426614174000', meshResult: { status: 'succeeded' } });
     const rig = { jobId: 'mesh-job', executorId: 'mesh-worker', operationId: 'mesh-rig', payloadFingerprint: 'rig-fingerprint', kind: 'meshy' as const, meshStage: 'rigging' as const, meshParentOperationId: 'mesh-image', maxCostCents: 7 };
     expect(await t.mutation(api.claimManagedInference, rig)).toMatchObject({ claimed: true, maxCostCents: 7 });
@@ -157,9 +158,9 @@ describe('Meshy allowance boundaries', () => {
     await t.mutation(api.attachManagedMeshyTask, { jobId: claim.jobId, executorId: claim.executorId, operationId: claim.operationId, taskId: 'late-task' });
     await t.mutation(api.completeManagedMeshyTask, { jobId: claim.jobId, executorId: claim.executorId, operationId: claim.operationId, chargeCents: 40, result: { status: 'succeeded', modelUrl: 'https://assets.meshy.ai/late.glb' } });
     expect(await t.mutation(api.listPendingMeshyOperations, {})).toEqual([{ jobId: claim.jobId, executorId: claim.executorId, operationId: claim.operationId, meshStage: 'image-to-3d' }]);
-    const artifactName = 'recovered-' + 'a'.repeat(64) + '.glb';
-    await t.mutation(api.recordManagedMeshyArtifact, { jobId: claim.jobId, executorId: claim.executorId, operationId: claim.operationId, recovered: true, artifactName });
-    expect(await t.query(api.getManagedJob, { token, jobId: claim.jobId })).toMatchObject({ recoveredMeshyArtifacts: [artifactName] });
+    const artifactName = 'generated-image-to-3d-' + 'a'.repeat(64) + '.glb';
+    await t.mutation(api.recordManagedMeshyArtifact, { jobId: claim.jobId, executorId: claim.executorId, operationId: claim.operationId, artifactName });
+    expect(await t.query(api.getManagedJob, { token, jobId: claim.jobId })).toMatchObject({ generatedMeshyArtifacts: [artifactName] });
     expect(await t.mutation(api.listPendingMeshyOperations, {})).toEqual([]);
   });
 });

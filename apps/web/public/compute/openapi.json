@@ -1552,8 +1552,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "pattern": "^(?:model\\.glb|model\\.blend|preview\\.png|turnaround\\.mp4|reference\\.jpg|review\\.json|recovered-[a-f0-9]{64}\\.glb)$",
-            "description": "Use an artifact name returned by the authenticated job response. recovered-*.glb is a late Meshy result retained after provider reconciliation."
+            "pattern": "^(?:model\\.glb|model\\.blend|preview\\.png|turnaround\\.mp4|reference\\.jpg|review\\.json|generated-(?:image-to-3d|rigging)-[a-f0-9]{64}\\.glb)$",
+            "description": "Use an artifact name returned by the authenticated job response. generated-image-to-3d-* and generated-rigging-* are durable Meshy component snapshots, including late results retained after provider reconciliation."
           }
         }
       ],

@@ -35,7 +35,7 @@ The create call atomically reserves the cap. Start with `POST BASE/api/blender/j
 
 Status is `queued`, `running`, `completed`, `partial`, `failed`, or `cancelled`. Report `chargedAiCents`, `chargedMeshyCents` (a component of `chargedAiCents`), `pendingAiCents`, `computeChargedCents`, `computeStatus`, and `visuallyInspected`. Pending usage is unresolved, not refunded. Unused settled credit remains in the wallet.
 
-Download only returned authenticated artifact links. A checkpoint may expose `model.glb`, `model.blend`, `preview.png`, `review.json`, and sometimes `turnaround.mp4`; generated-reference jobs can also expose `reference.jpg`. A failed or expired worker can expose a `recovered-*.glb` generated component after its original Meshy task settles successfully. Save copies within seven days. Keep credentials and private artifact URLs private. Inspect the model for its intended use before publication.
+Download only returned authenticated artifact links. A checkpoint may expose `model.glb`, `model.blend`, `preview.png`, `review.json`, and sometimes `turnaround.mp4`; generated-reference jobs can also expose `reference.jpg`. Meshy jobs expose durable `generated-image-to-3d-*.glb` base snapshots and, when successful, `generated-rigging-*.glb` rigged or animated snapshots. These links also preserve late results after provider reconciliation. Save copies within seven days. Keep credentials and private artifact URLs private. Inspect the model for its intended use before publication.
 
 ## Fund only when needed
 

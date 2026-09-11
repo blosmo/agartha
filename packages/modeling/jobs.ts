@@ -8,11 +8,11 @@ import { parseMeshyAllowance } from '../protocol/src/meshy.js';
 const names = ['model.glb', 'model.blend', 'preview.png'];
 function links(row: Record<string, any>) {
   const base = `/api/blender/jobs/${encodeURIComponent(row.jobId)}`;
-  const recovered = Array.isArray(row.recoveredMeshyArtifacts) ? row.recoveredMeshyArtifacts.filter((name: unknown) => typeof name === 'string' && /^recovered-[a-f0-9]{64}\.glb$/.test(name)).slice(0, 6) : [];
+  const generated = Array.isArray(row.generatedMeshyArtifacts) ? row.generatedMeshyArtifacts.filter((name: unknown) => typeof name === 'string' && /^generated-(?:image-to-3d|rigging)-[a-f0-9]{64}\.glb$/.test(name)).slice(0, 6) : [];
   const artifacts = [
     ...(row.artifactsReady ? [...names, ...(row.videoReady ? ['turnaround.mp4'] : []), ...(row.workflowVersion === 3 ? ['review.json'] : [])] : []),
     ...(row.referenceReady ? ['reference.jpg', ...(row.workflowVersion === 3 ? [] : ['review.json'])] : []),
-    ...recovered,
+    ...generated,
   ];
   return { ...row, statusUrl: base, startUrl: `${base}/start`, cancelUrl: `${base}/cancel`, artifacts: artifacts.map(name => ({ name, url: `${base}/artifacts/${name}` })) };
 }
@@ -27,7 +27,7 @@ export async function managedJobs(req: BillingRequest, res: ServerResponse, path
     jsonResponse(res, links(row), 201);
     return;
   }
-  const match = /^jobs\/([A-Za-z0-9_-]{1,80})(?:\/(start|cancel|artifacts\/(?:model\.glb|model\.blend|preview\.png|turnaround\.mp4|reference\.jpg|review\.json|recovered-[a-f0-9]{64}\.glb)))?$/.exec(path);
+  const match = /^jobs\/([A-Za-z0-9_-]{1,80})(?:\/(start|cancel|artifacts\/(?:model\.glb|model\.blend|preview\.png|turnaround\.mp4|reference\.jpg|review\.json|generated-(?:image-to-3d|rigging)-[a-f0-9]{64}\.glb)))?$/.exec(path);
   if (!match) throw new BillingHttpError(404, 'Job not found.');
   const jobId = match[1], action = match[2];
   const row = await ledger<Record<string, any>>('getManagedJob', { token, jobId });

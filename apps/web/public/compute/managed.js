@@ -146,12 +146,12 @@
     for (const artifact of data.artifacts || []) {
       const value = typeof artifact === 'string' ? artifact : artifact.name || artifact.url || '';
       const name = value.split('/').pop()?.split('?')[0];
-      if (!['model.glb', 'model.blend', 'preview.png', 'turnaround.mp4', 'reference.jpg', 'review.json'].includes(name) && !/^recovered-[a-f0-9]{64}\.glb$/.test(name)) continue;
+      if (!['model.glb', 'model.blend', 'preview.png', 'turnaround.mp4', 'reference.jpg', 'review.json'].includes(name) && !/^generated-(?:image-to-3d|rigging)-[a-f0-9]{64}\.glb$/.test(name)) continue;
       if (name === 'review.json') {
         const review = document.createElement('button'); review.type = 'button'; review.textContent = 'View quality review';
         review.addEventListener('click', () => showReview(review)); el('artifacts').append(review);
       }
-      const button = document.createElement('button'); button.type = 'button'; button.textContent = name === 'turnaround.mp4' ? 'Download 360° video' : name === 'reference.jpg' ? 'Download design reference' : name === 'review.json' ? 'Download review history' : /^recovered-/.test(name) ? 'Download generated component' : `Download ${name}`; button.addEventListener('click', () => download(name, button)); el('artifacts').append(button);
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = name === 'turnaround.mp4' ? 'Download 360° video' : name === 'reference.jpg' ? 'Download design reference' : name === 'review.json' ? 'Download review history' : /^generated-rigging-/.test(name) ? 'Download rigged component' : /^generated-image-to-3d-/.test(name) ? 'Download generated component' : `Download ${name}`; button.addEventListener('click', () => download(name, button)); el('artifacts').append(button);
     }
     return done;
   }

@@ -308,20 +308,21 @@ export const completeManagedMeshyTask = internalMutation({
 });
 
 export const recordManagedMeshyArtifact = internalMutation({
-  args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), recovered: v.boolean(), artifactName: v.optional(v.string()) },
+  args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), artifactName: v.string() },
   handler: async (ctx, args) => {
     const row = await job(ctx, args.jobId);
     const op = await ctx.db.query('managedInferenceOperations').withIndex('by_operation', q => q.eq('operationId', args.operationId)).unique();
     if (!op || op.jobId !== row.jobId || op.executorId !== args.executorId || row.executorId !== args.executorId || op.kind !== 'meshy' || op.state !== 'completed' || op.meshResult?.status !== 'succeeded') throw new Error('Stale Meshy artifact.');
-    if (args.recovered && (!args.artifactName || !/^recovered-[a-f0-9]{64}\.glb$/.test(args.artifactName))) throw new Error('Recovered Meshy artifact name is invalid.');
-    const recovered = row.recoveredMeshyArtifacts ?? [];
-    if (args.recovered && !recovered.includes(args.artifactName!)) {
-      if (recovered.length >= 6) throw new Error('Recovered Meshy artifact allowance exhausted.');
-      recovered.push(args.artifactName!);
-      await ctx.db.patch(row._id, { recoveredMeshyArtifacts: recovered, updatedAt: Date.now() });
+    const expectedStage = op.meshStage;
+    if (!expectedStage || !new RegExp(`^generated-${expectedStage}-[a-f0-9]{64}\\.glb$`).test(args.artifactName)) throw new Error('Generated Meshy artifact name is invalid.');
+    const artifacts = row.generatedMeshyArtifacts ?? [];
+    if (!artifacts.includes(args.artifactName)) {
+      if (artifacts.length >= 6) throw new Error('Generated Meshy artifact allowance exhausted.');
+      artifacts.push(args.artifactName);
+      await ctx.db.patch(row._id, { generatedMeshyArtifacts: artifacts, updatedAt: Date.now() });
     }
     await ctx.db.patch(op._id, { meshArtifactReady: true, needsMeshyPoll: false });
-    return { meshArtifactReady: true, recovered: args.recovered };
+    return { meshArtifactReady: true, artifactName: args.artifactName };
   },
 });
 export const finishManagedJob = internalMutation({

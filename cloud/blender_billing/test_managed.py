@@ -32,11 +32,11 @@ class ManagedTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             files = ManagedFiles(Path(directory), StorageCoordinator(), lambda: None)
             payload = textured_glb()
-            name = files.save_recovered_component('one', 'meshy-operation', payload, {'provider': 'meshy'})
-            self.assertRegex(name, r'^recovered-[a-f0-9]{64}\.glb$')
+            name = files.save_generated_component_artifact('one', 'meshy-operation', payload, {'provider': 'meshy', 'stage': 'image-to-3d'})
+            self.assertRegex(name, r'^generated-image-to-3d-[a-f0-9]{64}\.glb$')
             self.assertEqual(files.read('one', name), payload)
             with self.assertRaises(ValueError):
-                files.save_recovered_component('one', '../other', payload, {})
+                files.save_generated_component_artifact('one', '../other', payload, {'stage': 'image-to-3d'})
 
     def test_duplicate_claim_never_runs_inference_or_compute(self):
         broker = Mock(); broker.ledger.call.return_value = {'claimed': False}

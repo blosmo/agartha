@@ -10,7 +10,7 @@ export const managedJobTables = {
     downloadBytes: v.optional(v.number()), downloadWindowStart: v.optional(v.number()), downloadRequests: v.optional(v.number()),
     jobId: v.string(), requestId: v.string(), agentId: v.string(), livemode: v.boolean(), brief: v.string(), workflowVersion: v.optional(v.literal(3)), shareMaterials: v.optional(v.boolean()), shareComponents: v.optional(componentSharing), referenceMode: v.optional(v.union(v.literal("generate"), v.literal("none"))), referenceReady: v.optional(v.boolean()), chargedReferenceCents: v.optional(v.number()), meshyAllowance: v.optional(meshyAllowance), meshyRate: v.optional(meshyRate), meshyAdmissionEnabled: v.optional(v.boolean()), chargedMeshyCents: v.optional(v.number()), budgetCents: v.number(), reservationId: v.string(),
     status: managedStatus, cancelled: v.boolean(), progress: v.string(), executorId: v.optional(v.string()),
-    reservedAiCents: v.number(), chargedAiCents: v.number(), pendingAiCents: v.number(), releasedAiCents: v.number(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()), videoReady: v.optional(v.boolean()), recoveredMeshyArtifacts: v.optional(v.array(v.string())),
+    reservedAiCents: v.number(), chargedAiCents: v.number(), pendingAiCents: v.number(), releasedAiCents: v.number(), visuallyInspected: v.boolean(), artifactsReady: v.optional(v.boolean()), videoReady: v.optional(v.boolean()), generatedMeshyArtifacts: v.optional(v.array(v.string())),
     createdAt: v.number(), updatedAt: v.number(), deadlineAt: v.number(), finishedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]).index("by_owner_request", ["agentId", "livemode", "requestId"]).index("by_status", ["status", "createdAt"]),
   managedInferenceOperations: defineTable({

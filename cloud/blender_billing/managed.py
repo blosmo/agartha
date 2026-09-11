@@ -18,7 +18,7 @@ from .turnaround import render_turnaround, remaining_seconds, DELIVERY_RESERVE_S
 
 BASE_NAMES = {'model.glb', 'model.blend', 'preview.png'}
 NAMES = BASE_NAMES | {'turnaround.mp4', 'reference.jpg', 'review.json'}
-RECOVERED_COMPONENT = re.compile(r'recovered-[a-f0-9]{64}\.glb')
+GENERATED_COMPONENT = re.compile(r'generated-(?:image-to-3d|rigging)-[a-f0-9]{64}\.glb')
 FILE_LIMIT = 16 * 1024 * 1024
 EXPORT_CODE = """
 import bpy, os
@@ -166,12 +166,12 @@ class ManagedFiles:
             self.commit()
 
     def read(self, job_id: str, name: str, authorize: Callable[[int], Any] | None = None) -> bytes:
-        recovered = bool(RECOVERED_COMPONENT.fullmatch(name))
-        if name not in NAMES and not recovered:
+        generated = bool(GENERATED_COMPONENT.fullmatch(name))
+        if name not in NAMES and not generated:
             raise ValueError('Unknown artifact.')
         with self.storage.transaction():
             directory = self.directory(job_id)
-            if recovered:
+            if generated:
                 metadata = json.loads((directory / (name + '.json')).read_text())
                 path = directory / name
             elif name in {'reference.jpg', 'review.json'}:
@@ -201,18 +201,21 @@ class ManagedFiles:
                     raise ValueError('Artifact changed during download.')
                 return payload
 
-    def save_recovered_component(self, job_id: str, operation: str, payload: bytes, metadata: dict[str, Any]) -> str:
+    def save_generated_component_artifact(self, job_id: str, operation: str, payload: bytes, metadata: dict[str, Any]) -> str:
         from .meshy_exchange import validate_generated_glb
         validate_generated_glb(payload)
         if not isinstance(operation, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', operation):
             raise ValueError('Invalid recovered component.')
-        name = 'recovered-' + hashlib.sha256(operation.encode()).hexdigest() + '.glb'
+        stage = metadata.get('stage') or ('rigging' if metadata.get('rigged') else 'image-to-3d')
+        if stage not in {'image-to-3d', 'rigging'}:
+            raise ValueError('Invalid generated component stage.')
+        name = 'generated-' + stage + '-' + hashlib.sha256(operation.encode()).hexdigest() + '.glb'
         descriptor = {**metadata, 'created': time.time(), 'sha256': hashlib.sha256(payload).hexdigest()}
         encoded = json.dumps(descriptor).encode()
         with self.storage.transaction():
             directory = self.directory(job_id)
             directory.mkdir(parents=True, exist_ok=True)
-            existing = list(directory.glob('recovered-*.glb'))
+            existing = list(directory.glob('generated-*.glb'))
             if len(existing) >= 6 and not (directory / name).exists():
                 raise ValueError('Recovered component storage limit reached.')
             for suffix, content in [('', payload), ('.json', encoded)]:

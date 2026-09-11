@@ -32,8 +32,8 @@ describe('managed quality discovery', () => {
 
   it('publishes only validated late Meshy recovery artifacts', async () => {
     const res = response();
-    const valid = 'recovered-' + 'a'.repeat(64) + '.glb';
-    const ledger = vi.fn(async () => ({ jobId: 'job', recoveredMeshyArtifacts: [valid, '../private.glb', 'recovered-short.glb'] }));
+    const valid = 'generated-image-to-3d-' + 'a'.repeat(64) + '.glb';
+    const ledger = vi.fn(async () => ({ jobId: 'job', generatedMeshyArtifacts: [valid, '../private.glb', 'generated-short.glb'] }));
     await managedJobs({ method: 'GET' } as BillingRequest, res as never, 'jobs/job', 'a'.repeat(64), ledger as LedgerCall, false);
     const body = JSON.parse(res.end.mock.calls[0][0]);
     expect(body.artifacts).toEqual([{ name: valid, url: `/api/blender/jobs/job/artifacts/${valid}` }]);
