@@ -1,6 +1,6 @@
-# Managed elephant comparison — 2026-09-10
+# Managed elephant comparison: 2026-09-10
 
-This comparison uses one legacy managed job and one version-3 managed job with the same brief and a 500-cent cap per job. The approved total cap is 1000 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
+This comparison records one legacy managed job and two version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
 
 ## Exact brief
 
@@ -20,7 +20,7 @@ The source is recognizable as an elephant and has a continuous body, ears, trunk
 
 A reproducible delivery regression was found: Blender 5.2 wrote compressed source by default, while managed source validation required the raw `BLENDER` header. The controlled export now requests `compress=False`; actual-Blender regression checks passed. Failed saves no longer count as delivered or inspected models.
 
-## Version-3 run
+## Version-3 attempt 1
 
 - Job: `7c3ecb43-f4dc-4112-9cf9-aab87e1824f7`, started once on 2026-09-10 at approximately 14:56 UTC.
 - Reviewed application revision: `9ff75f3`; generated references, no asset/material publication, 500-cent cap and 165-cent compute hold.
@@ -31,10 +31,21 @@ A reproducible delivery regression was found: Blender 5.2 wrote compressed sourc
 
 The exact rejected response was not recoverable from the retained trace. An offline reproduction established a contract defect: the tool schema admitted strategies larger than the parser's 6000-byte limit, and a schema-valid oversized mock settled its charge before producing the same HTTP status. This is a plausible cause, not proof of the particular validation branch hit by this run. The subsequent correction aligns generation and parsing bounds, requests a single tool call, and preserves bounded validation diagnostics without storing model prompts or images in logs.
 
-There is no successful improved model to compare. Both approved dispatches are used, although the combined service charge was only $1.16 of the $10 cap. Version 3 remains disabled for public admission. A new paid run requires additional authorization under the explicit two-run scope; neither technical validation nor reference-image quality establishes an improvement in model quality.
+## Version-3 attempt 2
+
+- Job: `8632b50e-b7d3-4f3a-9fe0-2a00522ecded`, started once on 2026-09-11 at approximately 08:23 UTC.
+- Reviewed source revision: `15ffbd2`; application deployment `https://agartha-lims40nl6-divine-inside.vercel.app`, with the broker updated to the same source.
+- Final state: `failed` before worker launch, zero pending charge and no geometry revision. The 165-cent compute hold was released.
+- Settled charge: 8 cents for the generated reference and 0 cents for strategy. AI Gateway reported $0.0766 for the reference. Strategy generation `gen_01M27S1W45VY4HZHKE7EC5HCC6` returned HTTP 200 in 1.18 seconds, but reported no usage; the dashboard displayed $0.0000.
+- The retained trace recorded HTTP 502 with the message that exactly one structured result was required, plus `tools=0` and `finish=length`. This records the missing structured tool call; it does not establish that 4,096 reasoning tokens were spent.
+- Only `reference.jpg` was available. It is a design target, not a produced model. There is no GLB, editable Blender source, or model preview from this attempt.
+
+The deployed strategy path still used Chat Completions with a required function call. OpenAI's official [reasoning-model guidance](https://developers.openai.com/api/docs/guides/reasoning) states that GPT-6 Astra function calling requires the Responses API and is unsupported through Chat Completions. This identifies an endpoint compatibility defect in the integration. The subsequent correction migrates all managed Astra function calls to Responses while preserving the model, token ceilings, reasoning effort and budget reserve. It validates completed function-call output, settles known usage once, and leaves missing or all-zero usage unresolved. Mocked provider, billing and gateway regressions pass, but no later paid run has verified this correction or established improved model quality.
+
+There is no successful improved model to compare. All three authorized dispatches are used. Their combined service-ledger charge was 124 cents: 95 cents for the legacy baseline, 21 cents for version-3 attempt 1, and 8 cents for version-3 attempt 2. Version 3 remains unproven by a successful improved model. No further paid run is authorized; technical validation and reference-image quality alone do not establish an improvement in model quality.
 
 ## Reproduction and evidence
 
-`scripts/managed-quality-benchmark.mjs` resumes two pre-created jobs from a private manifest, with the bearer token supplied separately. It checks the stored brief, cap, version, and publication settings, records each start attempt before dispatch, refuses an uncertain second start, and bounds same-origin artifact downloads. One `status` command performs one bounded poll. Creation/funding remains an explicit operator action.
+`scripts/managed-quality-benchmark.mjs` resumes pre-created jobs from a private manifest, with the bearer token supplied separately. It checks the stored brief, cap, version, and publication settings, records each start attempt before dispatch, refuses an uncertain second start, and bounds same-origin artifact downloads. One `status` command performs one bounded poll. Creation/funding remains an explicit operator action.
 
 Private state, tokens, source files, reference images, and render files are excluded from this report and the repository. A failed delivery and a recovered checkpoint must remain distinguishable in any comparison.

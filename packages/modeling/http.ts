@@ -51,6 +51,9 @@ export async function managedInference(req: BillingRequest, res: ServerResponse)
     if (body.protocol === 3 && (body.kind ?? 'modeling') === 'modeling' && error instanceof BillingHttpError && error.status === 409 && error.message === 'Remaining budget is reserved for delivery.') {
       jsonResponse(res, { error: error.message, code: 'quality_review_reserved' }, 409); return;
     }
+    if (error instanceof BillingHttpError && [502, 503].includes(error.status) && error.code && /^(inference|quality)_[a-z_]{1,48}$/.test(error.code)) {
+      jsonResponse(res, { error: error.message, code: error.code }, error.status); return;
+    }
     throw error;
   }
   jsonResponse(res, { model: MANAGED_MODEL, ...step });

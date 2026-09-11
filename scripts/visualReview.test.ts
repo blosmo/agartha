@@ -10,8 +10,8 @@ const ready = { verdict: 'ready', score: 8, summary: 'Coherent silhouette and co
 it('isolates the reviewer from builder history and editing tools, with a bounded allowance', () => {
   const request = criticRequest(input);
   expect(JSON.stringify(request.body)).not.toContain(input.history);
-  expect(request.body.tools.map(tool => tool.function.name)).toEqual(['visual_review']);
-  expect(request.body.max_completion_tokens).toBeLessThanOrEqual(2048);
+  expect(request.body.tools.map(tool => tool.name)).toEqual(['visual_review']);
+  expect(request.body.max_output_tokens).toBeLessThanOrEqual(2048);
   expect(request.maxCostCents).toBeLessThanOrEqual(input.remainingCents);
   expect(() => criticRequest({ ...input, remainingCents: 1 })).toThrow('budget');
   expect(() => criticRequest({ ...input, images: images.slice(0, 2) })).toThrow('two whole-model');
@@ -30,7 +30,7 @@ it('rejects contradictory approvals and unbounded or empty correction records', 
 
 it('uses the existing durable charge fence and settles before returning review feedback', async () => {
   const ledger = vi.fn(async (operation: string) => operation === 'claimManagedInference' ? { claimed: true } : {});
-  const fetcher = vi.fn().mockResolvedValue(Response.json({ usage: { prompt_tokens: 1000, completion_tokens: 200 }, choices: [{ message: { tool_calls: [{ function: { name: 'visual_review', arguments: JSON.stringify(ready) } }] } }] }));
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ usage: { input_tokens: 1000, output_tokens: 200 }, status: 'completed', output: [{ type: 'reasoning', id: 'rs_fixture', summary: [], encrypted_content: 'opaque-private-reasoning' }, { type: 'function_call', id: 'fc_fixture', call_id: 'call_fixture', status: 'completed', name: 'visual_review', arguments: JSON.stringify(ready) }] }));
   expect(await runInference(input, ledger as LedgerCall, 'key', fetcher)).toEqual(ready);
   expect(ledger.mock.invocationCallOrder[0]).toBeLessThan(fetcher.mock.invocationCallOrder[0]);
   expect(ledger).toHaveBeenLastCalledWith('completeManagedInference', expect.objectContaining({ chargeCents: 2 }));
