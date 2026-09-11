@@ -23,12 +23,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { addressFromId, PLOT_SIZE, plotId, type PlotAddress } from '../../../../packages/protocol/src/plots';
 import type { SharedShader } from '../../../../packages/protocol/src/sharedLibrary';
 import type { BuildObject } from '../../../../packages/protocol/src/worldbuilding';
-import { motionPose, type ObjectMotion } from '../../../../packages/protocol/src/objectMotion';
+import { motionExtents, motionPose, type ObjectMotion } from '../../../../packages/protocol/src/objectMotion';
+import { activeRoomEnvironment, WorldPresentation } from './worldPresentation';
 import type { ObjectHighlight } from './activity';
 import type { SharedWorld, WorldObject } from './world';
 
 type MovingInstance = { mesh: THREE.InstancedMesh; index: number; position: THREE.Vector3; scale: THREE.Vector3; yaw: number; motion: ObjectMotion };
-type Runtime = { characters: AgentCharacters; models:ModelLayer; meshGeometries:Map<string,THREE.BufferGeometry>; textures: PbrTextures; moving: MovingInstance[]; movingOutlines: Array<{ outline: THREE.LineSegments; y: number; yaw: number; motion: ObjectMotion }>; scene: THREE.Scene; group: THREE.Group; terrain: THREE.Group; camera: THREE.OrthographicCamera; controls: OrbitControls; aspect: number; time: {value:number}; };
+type Runtime = { presentation: WorldPresentation; characters: AgentCharacters; models:ModelLayer; meshGeometries:Map<string,THREE.BufferGeometry>; textures: PbrTextures; moving: MovingInstance[]; movingObjects: Array<{ object: THREE.Object3D; position: THREE.Vector3; yaw: number; motion: ObjectMotion }>; scene: THREE.Scene; group: THREE.Group; terrain: THREE.Group; camera: THREE.OrthographicCamera; controls: OrbitControls; aspect: number; time: {value:number}; };
 const NO_AGENTS: AgentPresence[] = [];
 const NO_MESSAGES: ChatMessage[] = [];
 const NO_HIGHLIGHTS: ObjectHighlight[] = [];
@@ -105,7 +106,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
   useEffect(()=>{
     const element=host.current!;let renderer:THREE.WebGLRenderer;
     try {renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});}catch{setError(true);return;}
-    renderer.localClippingEnabled=true;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
+    renderer.info.autoReset=false;renderer.localClippingEnabled=true;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.setClearColor('#111c23');renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     renderer.domElement.setAttribute('aria-label','Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Open Rooms to choose a room by name or coordinates.');renderer.domElement.tabIndex=0;element.appendChild(renderer.domElement);
     const scene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-80,80,60,-60,.1,2000),controls=new OrbitControls(camera,renderer.domElement);
@@ -122,13 +123,15 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     const environment=environmentGenerator.fromScene(environmentScene,.04);scene.environment=environment.texture;scene.environmentIntensity=.45;
     environmentScene.dispose();environmentGenerator.dispose();
     const textures=new PbrTextures(()=>setMaterialError(true));
-    scene.add(new THREE.HemisphereLight('#e5efff','#71644f',.85));
+    const hemisphere=new THREE.HemisphereLight('#e5efff','#71644f',.85);scene.add(hemisphere);
     const sun=new THREE.DirectionalLight('#fff1d6',3);sun.position.set(-30,70,30);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-70,right:70,top:70,bottom:-70,far:250});sun.shadow.bias=-.00015;sun.shadow.normalBias=.035;sun.shadow.radius=2;scene.add(sun);scene.add(sun.target);
+    const presentation=new WorldPresentation(renderer,scene,sky,sun,hemisphere,environment.texture);
+    presentation.set(activeRoomEnvironment(callbacks.current.plots,callbacks.current.activePlotId),callbacks.current.activePlotId);
     const horizon=new THREE.Group();
     const ground=new THREE.Mesh(new THREE.PlaneGeometry(4096,4096),new THREE.MeshStandardMaterial({color:'#53636a',roughness:1}));
     ground.rotation.x=-Math.PI/2;ground.position.y=-.08;horizon.add(ground);
     const grid=new THREE.GridHelper(4096,128,'#92a094','#92a094');grid.position.set(16,-.07,16);horizon.add(grid);scene.add(horizon);
-    const group=new THREE.Group(),terrain=new THREE.Group(),models=new ModelLayer(setModelError);scene.add(group,terrain,models.group);const characters = new AgentCharacters();scene.add(characters.group);runtime.current={characters,models,meshGeometries:new Map(),textures,scene,group,terrain,camera,controls,aspect:1,time:{value:0},moving:[],movingOutlines:[]};
+    const group=new THREE.Group(),terrain=new THREE.Group(),models=new ModelLayer(setModelError);scene.add(group,terrain,models.group);const characters = new AgentCharacters();scene.add(characters.group);runtime.current={presentation,characters,models,meshGeometries:new Map(),textures,scene,group,terrain,camera,controls,aspect:1,time:{value:0},moving:[],movingObjects:[]};
     let cameraPlotId=callbacks.current.activePlotId;
     let previousCameraCell={x:anchor.current.x,z:anchor.current.z};
     const exploration=cameraExploration(()=>{
@@ -151,7 +154,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     const clearInput=()=>{roomCamera.current.clearInput();lookPointer=null;};
     window.addEventListener('keyup',keyUp);window.addEventListener('blur',clearInput);document.addEventListener('visibilitychange',clearInput);renderer.domElement.addEventListener('blur',clearInput);
     let lookPointer:number|null=null,lookPosition={x:0,y:0};
-    const resize=new ResizeObserver(()=>{const {width,height}=element.getBoundingClientRect();renderer.setSize(width,height);if(runtime.current){runtime.current.aspect=width/Math.max(1,height);fitCamera();}});resize.observe(element);
+    const resize=new ResizeObserver(()=>{const {width,height}=element.getBoundingClientRect();renderer.setSize(width,height);presentation.resize(width,height);if(runtime.current){runtime.current.aspect=width/Math.max(1,height);fitCamera();}});resize.observe(element);
     let down={x:0,y:0}, gesture=false;const pointers=new Set<number>();
     const pointerDown=(event:PointerEvent)=>{if(roomCamera.current.active){if(lookPointer===null){lookPointer=event.pointerId;lookPosition={x:event.clientX,y:event.clientY};renderer.domElement.setPointerCapture(event.pointerId);}return;}if(pointers.size===0){down={x:event.clientX,y:event.clientY};gesture=false;}pointers.add(event.pointerId);if(pointers.size>1)gesture=true;};
     const pointerMove=(event:PointerEvent)=>{if(roomCamera.current.active){if(lookPointer===event.pointerId){roomCamera.current.look(event.clientX-lookPosition.x,event.clientY-lookPosition.y);lookPosition={x:event.clientX,y:event.clientY};}return;}if(pointers.has(event.pointerId)&&Math.hypot(event.clientX-down.x,event.clientY-down.y)>5)gesture=true;};
@@ -171,11 +174,11 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
     renderer.domElement.addEventListener('pointerdown',pointerDown);renderer.domElement.addEventListener('pointerup',pointerUp);renderer.domElement.addEventListener('pointermove',pointerMove);renderer.domElement.addEventListener('pointercancel',pointerCancel);renderer.domElement.addEventListener('lostpointercapture',pointerCancel);
     const transform = new THREE.Matrix4(), rotation = new THREE.Quaternion(), position = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
     const collisions=new WalkCollisions([terrain,group,models.group]);
-    let shadowExtent=0;
     let lastFrame = performance.now(),metricsAt=lastFrame,frameTotal=0,frameCount=0;
     renderer.setAnimationLoop(now => {
       frameTotal+=now-lastFrame;frameCount++;
-      const delta = Math.min((now-lastFrame)/1000, .1); lastFrame = now;
+      const frameGap=now-lastFrame;
+      const delta = document.hidden||frameGap>250?0:Math.min(frameGap/1000,.1); lastFrame = now;
       if(!roomCamera.current.active){controls.update();if(turn.current.active)applyRotation(turn.current.sample(now));}
       roomCamera.current.step(delta, (from,to)=>{
         const x=Math.round(to.x/PLOT_SIZE)+anchor.current.x,z=Math.round(to.z/PLOT_SIZE)+anchor.current.z;
@@ -189,40 +192,38 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
         rt.models.update(delta,rt.time.value,Boolean(animateRef.current&&!motion.matches&&!document.hidden));
         for (const item of rt.moving) {
           const pose = motionPose(item.motion, rt.time.value, item.yaw);
-          position.copy(item.position); position.y += pose.lift;
+          const offset=pose.offset??[0,pose.lift,0];
+          position.copy(item.position).add(new THREE.Vector3(...offset));
           rotation.setFromAxisAngle(up, pose.yaw);
           transform.compose(position, rotation, item.scale);
           item.mesh.setMatrixAt(item.index, transform);
           item.mesh.instanceMatrix.needsUpdate = true;
         }
-        for (const item of rt.movingOutlines) {
+        for (const item of rt.movingObjects) {
           const pose = motionPose(item.motion, rt.time.value, item.yaw);
-          item.outline.position.y = item.y + pose.lift; item.outline.rotation.y = pose.yaw;
+          const offset=pose.offset??[0,pose.lift,0];
+          item.object.position.copy(item.position).add(new THREE.Vector3(...offset)); item.object.rotation.y = pose.yaw;
         }
       }
       const renderCamera=roomCamera.current.active?roomCamera.current.camera:camera;
-      const fogShift=roomCamera.current.active?0:Math.max(0,camera.position.distanceTo(controls.target)-Math.sqrt(3)*100);
-      if(scene.fog instanceof THREE.Fog){scene.fog.near=200+fogShift;scene.fog.far=1200+fogShift;}
       const lightTarget=roomCamera.current.active?roomCamera.current.camera.position:controls.target;
-      const extent=roomCamera.current.active?28:100;
-      if(shadowExtent!==extent){shadowExtent=extent;Object.assign(sun.shadow.camera,{left:-extent,right:extent,top:extent,bottom:-extent});sun.shadow.camera.updateProjectionMatrix();}
-      // Snap the shadow volume to texels to prevent shimmering while walking.
-      const texel=extent*2/2048;
-      const lightX=Math.round(lightTarget.x/texel)*texel,lightZ=Math.round(lightTarget.z/texel)*texel;
-      sun.target.position.set(lightX,0,lightZ);sun.position.set(lightX-30,70,lightZ+30);
+      const activeAddress=addressFromId(callbacks.current.activePlotId);
+      const roomCenter=new THREE.Vector3((activeAddress.x-anchor.current.x)*32,0,(activeAddress.z-anchor.current.z)*32);
+      presentation.frame(renderCamera,lightTarget,roomCamera.current.active,focusRef.current,now,models.metrics.templates,roomCenter);
       sky.position.copy(renderCamera.position);sky.scale.setScalar(roomCamera.current.active?100:1400);
       runtime.current?.characters.update(delta, renderCamera, motion.matches, now / 1000);
-      renderer.render(scene,renderCamera);
-      if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{agentCount:String(agentRef.current.length),roomCount:String(callbacks.current.plots.length+callbacks.current.empty.length),rotationAnimating:String(turn.current.active),skybox:'procedural',cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraY:roomCamera.current.camera.position.y.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3)});metricsAt=now;frameTotal=0;frameCount=0;}
+      renderer.info.reset();presentation.render(renderCamera,delta);
+      if(now-metricsAt>=500){const metrics=models.metrics;Object.assign(renderer.domElement.dataset,{agentCount:String(agentRef.current.length),roomCount:String(callbacks.current.plots.length+callbacks.current.empty.length),rotationAnimating:String(turn.current.active),skybox:'procedural',cameraMode:roomCamera.current.active?'first-person':'overview',cameraX:roomCamera.current.camera.position.x.toFixed(3),cameraY:roomCamera.current.camera.position.y.toFixed(3),cameraZ:roomCamera.current.camera.position.z.toFixed(3),cameraYaw:roomCamera.current.yaw.toFixed(3),overviewRotation:String(Math.round(overviewRotation.current*180/Math.PI)),frameMs:(frameTotal/frameCount).toFixed(2),drawCalls:String(renderer.info.render.calls),triangles:String(renderer.info.render.triangles),modelCount:String(metrics.models),modelTemplates:String(metrics.templates),modelSourceBytes:String(metrics.sourceBytes),modelTexturePixels:String(metrics.texturePixels),gpuGeometries:String(renderer.info.memory.geometries),gpuTextures:String(renderer.info.memory.textures),modelAnimationTime:metrics.animationTime.toFixed(3),worldMotionTime:(runtime.current?.time.value??0).toFixed(3),environmentPreset:activeRoomEnvironment(callbacks.current.plots,callbacks.current.activePlotId)?.preset??'default',environmentExposure:String(presentation.lighting.exposure),environmentBloom:String(presentation.lighting.bloom)});metricsAt=now;frameTotal=0;frameCount=0;}
     });
-    return()=>{roomCamera.current.exit();window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);exploration.dispose();renderer.domElement.removeEventListener('pointerdown',tunePan,true);renderer.setAnimationLoop(null);resize.disconnect();motion.removeEventListener('change',updateMotion);unbindTrackpadPan();controls.dispose();models.dispose();scene.remove(models.group,characters.group);scene.traverse(disposeObject);sun.shadow.dispose();textures.dispose();for(const geometry of runtime.current?.meshGeometries.values()??[])geometry.dispose();environment.dispose();characters.dispose();renderer.dispose();renderer.domElement.remove();runtime.current=null;};
+    return()=>{roomCamera.current.exit();window.removeEventListener('keyup',keyUp);window.removeEventListener('blur',clearInput);document.removeEventListener('visibilitychange',clearInput);exploration.dispose();renderer.domElement.removeEventListener('pointerdown',tunePan,true);renderer.setAnimationLoop(null);resize.disconnect();motion.removeEventListener('change',updateMotion);unbindTrackpadPan();controls.dispose();presentation.dispose();models.dispose();scene.remove(models.group,characters.group);scene.traverse(disposeObject);sun.shadow.dispose();textures.dispose();for(const geometry of runtime.current?.meshGeometries.values()??[])geometry.dispose();environment.dispose();characters.dispose();renderer.dispose();renderer.domElement.remove();runtime.current=null;};
   },[]);
   useEffect(()=>{host.current?.querySelector('canvas')?.setAttribute('aria-label',inside?'First-person room view. Drag to look, WASD or arrow keys to move, hold Shift to run, Space to jump, Escape to exit.':'Isometric plot grid. Arrow keys pan, + and - zoom, 0 resets. Use camera controls to rotate or enter a room.');},[inside]);
   useEffect(()=>{fitCamera();},[focused]);
   useEffect(()=>{if(focusRequest){focusRef.current=true;setFocused(true);if(roomCamera.current.active)exitRoom();fitCamera();}},[focusRequest]);
   useEffect(()=>{
     const rt=runtime.current;if(!rt)return;
-    rt.moving = []; rt.movingOutlines = [];
+    rt.moving = []; rt.movingObjects = [];
+    rt.presentation.set(activeRoomEnvironment(plots,activePlotId),activePlotId);rt.presentation.invalidateReflection();
     rt.group.traverse(disposeObject);rt.group.clear();rt.terrain.traverse(disposeObject);rt.terrain.clear();
     const all=[...plots.map(world=>({id:world.id,address:world.placement??addressFromId(world.id),empty:false})),...empty.map(address=>({id:address.id,address,empty:true}))];
     const visibleMeshIds=new Set([...plots.flatMap(plot=>plot.objects),...(proposal??[])].flatMap(object=>object.meshId?[object.meshId]:[]));
@@ -250,8 +251,11 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       items.forEach(({object,world},index)=>{const address=world.placement??addressFromId(world.id);matrix.compose(new THREE.Vector3(object.position[0]+(address.x-origin.x)*32,object.position[1],object.position[2]+(address.z-origin.z)*32),new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),object.yaw??0),new THREE.Vector3(...object.scale));mesh.setMatrixAt(index,matrix);const color=new THREE.Color(object.color);if(world.id===activePlotId&&object.id===selected)color.lerp(new THREE.Color('#ffffff'),.4);mesh.setColorAt(index,color);
         if (object.motion) rt.moving.push({ mesh, index, motion: object.motion, yaw: object.yaw ?? 0, position: new THREE.Vector3(object.position[0]+(address.x-origin.x)*32,object.position[1],object.position[2]+(address.z-origin.z)*32), scale: new THREE.Vector3(...object.scale) });
       });
-      mesh.castShadow=true;mesh.receiveShadow=true;mesh.computeBoundingSphere();
-      if (mesh.boundingSphere) mesh.boundingSphere.radius += Math.max(0, ...items.map(({object}) => object.motion?.kind === 'float' ? object.motion.amplitude : 0));
+      mesh.castShadow=true;mesh.receiveShadow=true;
+      // Full motion bounds support both frustum culling and raycasting at every path position.
+      const bounds=new THREE.Box3();
+      for(const {object,world} of items){const address=world.placement??addressFromId(world.id);const center=new THREE.Vector3(object.position[0]+(address.x-origin.x)*32,object.position[1],object.position[2]+(address.z-origin.z)*32);const extent=new THREE.Vector3(...motionExtents(object.scale,object.yaw,object.motion));bounds.expandByPoint(center.clone().sub(extent));bounds.expandByPoint(center.clone().add(extent));}
+      mesh.boundingBox=bounds;mesh.boundingSphere=bounds.getBoundingSphere(new THREE.Sphere());
       if (items.some(({object}) => object.motion)) mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       rt.group.add(mesh);
     }
@@ -267,7 +271,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
       outline.scale.set(...object.scale.map(value => value + .12) as [number, number, number]);
       outline.rotation.y = object.yaw ?? 0;
       rt.group.add(outline);
-      if (object.motion) rt.movingOutlines.push({ outline, y: object.position[1], yaw: object.yaw ?? 0, motion: object.motion });
+      if (object.motion) rt.movingObjects.push({ object: outline, position: outline.position.clone(), yaw: object.yaw ?? 0, motion: object.motion });
     }
     if(proposal){
       const address=addressFromId(activePlotId);
@@ -277,6 +281,7 @@ export function WorldViewport({ plots, empty, activePlotId, selected, proposal, 
         const geometry=object.shape==='mesh'?rt.meshGeometries.get(object.meshId!)!:object.shape==='box'?new THREE.BoxGeometry(1,1,1):object.shape==='sphere'?new THREE.SphereGeometry(.5,16,12):object.shape==='cone'?new THREE.ConeGeometry(.5,1,8):new THREE.CylinderGeometry(.5,.5,1,24);
         const mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color:'#d6efb5',transparent:true,opacity:.45,depthWrite:false}));
         mesh.position.set(object.position[0]+(address.x-origin.x)*32,object.position[1],object.position[2]+(address.z-origin.z)*32);mesh.scale.set(...object.scale);mesh.rotation.y=object.yaw??0;rt.group.add(mesh);
+        if(object.motion)rt.movingObjects.push({object:mesh,position:mesh.position.clone(),yaw:object.yaw??0,motion:object.motion});
       }
     }
     updateLabels();

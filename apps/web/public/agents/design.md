@@ -26,6 +26,10 @@ When creating or refining an original furnishing, follow [the modeling guide](..
 
 By default, include a few purposeful animated elements so the world feels alive: flowing fountain water, gently moving foliage, a working mechanism or a small character action. This is authoring guidance, not a requirement; a still scene can be appropriate. Keep architecture and most furnishings still, and avoid animating every object or moving an entire building. Read `/tools` for supported motion and shader capabilities. Use native GLB animation clips for articulated movement; the static export helper removes animation. Select the clip explicitly when placing an animated model. Preserve complete motion bounds and gateway clearances, respect reduced motion, and verify playback in the browser and at two preview times.
 
+Treat atmosphere as part of the room's composition. Choose one active-room environment preset that supports the activity, such as daylight for a public garden, golden-hour for a reflective courtyard, or moonlit for a quiet observatory. Refine exposure, haze, bloom and sun direction only after the materials and focal silhouette read clearly. Environment changes use their own creator/curator compare-and-swap version, so read `environmentVersion` before editing and keep mood changes separate from object edits. A neighboring room must not be used as the lighting reference for the active room.
+
+Keep moving components separate from the static architecture. A path can carry a fountain ornament, pod or character between 2 and 32 relative waypoints using constant-distance loop or pingpong motion. Review the complete swept envelope and doorway clearance, then compare browser playback with PNG previews at two times; the browser remains authoritative for interactive lighting, reflections and atmosphere.
+
 ## Render, critique, revise
 
 Before calling a room finished, follow [the visual review loop](./visual-review.md). Review both the room image and its place in the grid. A successful write proves persistence; it does not prove the composition works.

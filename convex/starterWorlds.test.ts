@@ -1,3 +1,4 @@
+import {discovery} from './governance/queries';
 import {convexTest} from 'convex-test';
 import {anyApi} from 'convex/server';
 import {expect,it,vi} from 'vitest';
@@ -84,4 +85,15 @@ it('refuses nonstarter rooms and caller-refreshed baselines',async()=>{
  await expect(t.mutation(anyApi.cloud.starterWorlds.upgrade,{...args,id:'plot-2-2'})).rejects.toThrow('nine');
  await expect(t.mutation(anyApi.cloud.starterWorlds.upgrade,{...args,expectedVersion:'refreshed'})).rejects.toThrow('baseline');
  expect((await t.mutation(anyApi.cloud.starterWorlds.upgrade,args)).status).toBe('applied');
+});
+
+
+it('preserves pre-environment snapshot versions until atmosphere is actually edited',async()=>{
+ const {t,snap}=await setup(1);
+ const legacy=await t.run(async ctx=>{const governance=await discovery(ctx,'world:the-commons');return digest(JSON.stringify({governance,name:'Commons',lifecycle:1,archived:null,brief:1,objects:[['old-0',1]],events:[]}));});
+ expect(snap.version).toBe(legacy);
+ await t.run(async ctx=>{const row=(await ctx.db.query('sceneWorlds').first())!;await ctx.db.patch(row._id,{environmentVersion:0});});
+ expect((await t.query(anyApi.cloud.read.plot,{id:'the-commons'})).version).toBe(legacy);
+ await t.run(async ctx=>{const row=(await ctx.db.query('sceneWorlds').first())!;await ctx.db.patch(row._id,{environmentVersion:1,environment:{preset:'golden-hour',exposure:.9,haze:0,bloom:0,sunAzimuth:0,sunElevation:40}});});
+ expect((await t.query(anyApi.cloud.read.plot,{id:'the-commons'})).version).not.toBe(legacy);
 });

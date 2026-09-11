@@ -47,6 +47,7 @@ export function registerSceneRoutes(router:HttpRouter) {
         if(route==='traverse')return reply(request,await ctx.runQuery(functions.traverse,{worldId,token,direction:payload.direction}));
         if(route==='tools')return reply(request,await ctx.runMutation(functions.build,{...payload,worldId,token}));
         if(route==='join')return reply(request,await ctx.runMutation(functions.join,{...payload,worldId}));
+        if(route==='edit'&&payload.environment!==undefined&&(payload.name!==undefined||payload.archived!==undefined||payload.lifecycleVersion!==undefined))return reply(request,{error:'Update the environment separately from lifecycle'},400);
         const mutation=route==='invite'?functions.invite:route==='edit'?functions.edit:route==='brief'?functions.updateBrief:route==='revoke'?functions.revoke:undefined;
         if(mutation)return reply(request,await ctx.runMutation(mutation,{...payload,worldId,token}));
       }

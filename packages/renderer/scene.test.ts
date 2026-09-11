@@ -2,6 +2,9 @@ import {readFileSync} from 'node:fs';
 import { describe,expect,it } from 'vitest';
 import { orderSceneObjects,packScene,sceneCamera,sceneCameraUniform,type RenderObject } from './scene';
 import {motionExtents} from '../protocol/src/objectMotion';
+import {parseObjectMotion} from '../protocol/src/objectMotion';
+import {parseRoomEnvironment} from '../protocol/src/roomEnvironment';
+import {previewLighting} from './previewLighting';
 import { roomShell } from '../protocol/src/roomShell';
 const object:RenderObject={id:'box',name:'Box',shape:'box',position:[1,2,3],scale:[2,3,4],color:'#ff8000'};
 describe('vgpu scene batching',()=>{
@@ -30,6 +33,33 @@ it('renders the authored motion phase at time zero in deterministic PNG previews
   const [batch]=packScene([{...object,motion:{kind:'float',speed:1,amplitude:1,phase:Math.PI/2}}]);
   expect(batch.data[1]).toBeCloseTo(3);
   expect(packScene([{...object,yaw:.2,motion:{kind:'spin',speed:1,phase:.4}}])[0].data[3]).toBeCloseTo(.6);
+});
+
+it('moves path previews on all axes and frames the complete motion envelope',()=>{
+ const moving={...object,position:[0,1,0],motion:parseObjectMotion({kind:'path',points:[[0,0,0],[4,2,0]],mode:'pingpong',speed:Math.sqrt(20),orient:true})};
+ const first=packScene([moving],.5)[0].data,second=packScene([moving],1.5)[0].data;
+ expect([...first.slice(0,3)]).toEqual([2,2,0]);
+ expect([...second.slice(0,3)]).toEqual([2,2,0]);
+ expect(first[3]).toBeCloseTo(Math.PI/2);
+ expect(second[3]).toBeCloseTo(-Math.PI/2);
+ const bounds=motionExtents(moving.scale,moving.yaw,moving.motion);
+ for(const view of ['front','side','top'] as const){
+   const camera=sceneCamera([moving],1,.25,view);
+   for(const x of [-1,1])for(const y of [-1,1])for(const z of [-1,1]){
+     const p=moving.position.map((value,axis)=>value+[x,y,z][axis]*bounds[axis]);
+     const [px,py]=projected(camera,p);expect(Math.abs(px)).toBeLessThanOrEqual(1);expect(Math.abs(py)).toBeLessThanOrEqual(1);
+   }
+ }
+});
+
+it('provides configured lighting uniforms while preserving the legacy preview path',()=>{
+ const plain=previewLighting([100,100,100]);
+ const warm=previewLighting([100,100,100],parseRoomEnvironment({preset:'golden-hour',exposure:1.2}));
+ expect(plain.configured).toBe(0);
+ expect(warm.configured).toBe(1);
+ expect(warm.exposure).toBeCloseTo(1.2/.9);
+ expect(warm.sunColor[0]).toBeGreaterThan(warm.sunColor[2]);
+ expect(warm.sunDirection[2]).toBeGreaterThan(0);
 });
 it('keeps different PBR materials in separate GPU batches',()=>{const batches=packScene([{...object,materialId:'pbr-dark-wood'},{...object,id:'metal',materialId:'pbr-brass'}]);expect(batches.map(b=>b.materialId)).toEqual(['pbr-dark-wood','pbr-brass']);expect(()=>packScene([{...object,materialId:'invalid'}])).toThrow();});
 it('batches repeated custom geometry while keeping distinct meshes separate',()=>{

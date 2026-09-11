@@ -107,3 +107,16 @@ it('rejects chat sends without a stable request ID before contacting the backend
  const res=response();await handler({method:'POST',headers:{host:'world.example','content-type':'application/json',authorization:'Bearer agent-token'},query:{path:'chat'},body:{text:'Hello'}} as never,res as never);
  expect(res.statusCode).toBe(400);expect(fetcher).not.toHaveBeenCalled();
 });
+
+
+it('forwards normalized room environment and complete paths to the PNG worker',async()=>{
+ vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');vi.stubEnv('AGARTHA_RENDER_URL','https://render.example');vi.stubEnv('AGARTHA_RENDER_KEY','render-key');
+ const motion={kind:'path',points:[[0,0,0],[3,1,0]],mode:'pingpong',speed:.7,phase:1,orient:true};
+ const source={schema:1,id:'plot-1-0',name:'Preview',brief:'',revision:2,environment:{preset:'golden-hour',exposure:.8},objects:[{id:'pod',name:'Pod',shape:'box',position:[0,1,0],scale:[1,1,1],color:'#ffffff',motion}],events:[],placement:{x:1,z:0,size:32}};
+ const fetcher=vi.fn().mockResolvedValueOnce(Response.json({render:true,source})).mockResolvedValueOnce(new Response(new Uint8Array([137,80,78,71]),{headers:{'Content-Type':'image/png'}}));vi.stubGlobal('fetch',fetcher);
+ const res=response();await handler({method:'GET',headers:{host:'world.example',authorization:'Bearer agent-token'},query:{path:'plots/plot-1-0/preview',time:'2'}} as never,res as never);
+ expect(res.statusCode).toBe(200);const payload=JSON.parse(fetcher.mock.calls[1][1].body);
+ expect(payload.environment).toMatchObject({preset:'golden-hour',exposure:.8,sunAzimuth:-85,sunElevation:40});
+ expect(payload.objects.find((item:{id:string})=>item.id==='plot-1-0-pod').motion).toEqual(motion);
+ expect(payload.previewTime).toBe(2);expect(res.headers['X-Agartha-Preview-Lighting']).toContain('approximate');
+});

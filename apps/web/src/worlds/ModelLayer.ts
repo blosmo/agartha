@@ -8,7 +8,7 @@ import {clone} from 'three/addons/utils/SkeletonUtils.js';
 import {MODEL_ID} from '../../../../packages/protocol/src/modelAssets';
 import {motionPose} from '../../../../packages/protocol/src/objectMotion';
 import type {WorldObject} from './world';
-type Placement={object:WorldObject;plotId:string;offsetX:number;offsetZ:number;ghost?:boolean};
+type Placement={object:WorldObject;plotId:string;offsetX:number;offsetY?:number;offsetZ:number;ghost?:boolean};
 type Template={gltf:GLTF;bounds:THREE.Box3;cost:GlbInspection};
 type Instance={root:THREE.Group;mixer:THREE.AnimationMixer;materials:THREE.Material[];skeletons:THREE.Skeleton[];placement:Placement;clip?:string;planes:THREE.Plane[]};
 function disposeTemplate(template:Template){const geometry=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>(),textures=new Set<THREE.Texture>();template.gltf.scene.traverse(node=>{if(node instanceof THREE.Mesh){geometry.add(node.geometry);for(const material of Array.isArray(node.material)?node.material:[node.material]){materials.add(material);for(const value of Object.values(material))if(value instanceof THREE.Texture)textures.add(value);}}if(node instanceof THREE.SkinnedMesh)node.skeleton.dispose();});geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>{t.dispose();const image=t.source.data;if(typeof ImageBitmap!=='undefined'&&image instanceof ImageBitmap)image.close();});}
@@ -97,8 +97,9 @@ export class ModelLayer {
  get metrics(){return {models:this.instances.size,templates:this.templates.size,sourceBytes:[...this.templates.values()].reduce((sum,template)=>sum+template.cost.bytes,0),texturePixels:[...this.templates.values()].reduce((sum,template)=>sum+template.cost.texturePixels,0),animationTime:[...this.instances.values()].reduce((sum,instance)=>sum+instance.mixer.time,0)};}
  update(delta:number,time:number,animate:boolean){
   for(const instance of this.instances.values()){
-   const {object,offsetX,offsetZ}=instance.placement,pose=motionPose(object.motion,time,object.yaw);
-   instance.root.position.set(object.position[0]+offsetX,object.position[1]+pose.lift,object.position[2]+offsetZ);instance.root.scale.set(...object.scale);instance.root.rotation.y=pose.yaw;instance.root.updateMatrixWorld(true);
+   const {object,offsetX,offsetY=0,offsetZ}=instance.placement,pose=motionPose(object.motion,time,object.yaw);
+   const offset=pose.offset??[0,pose.lift,0];
+   instance.root.position.set(object.position[0]+offsetX+offset[0],object.position[1]+offsetY+offset[1],object.position[2]+offsetZ+offset[2]);instance.root.scale.set(...object.scale);instance.root.rotation.y=pose.yaw;instance.root.updateMatrixWorld(true);
    instance.planes.forEach((plane,i)=>{plane.normal.set(i===0?1:i===1?-1:0,i===2?1:i===3?-1:0,i===4?1:i===5?-1:0);plane.constant=.5;plane.applyMatrix4(instance.root.matrixWorld);});
    if(animate&&object.animation&&!object.animation.paused)instance.mixer.update(delta*(object.animation?.speed??1));
   }

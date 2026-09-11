@@ -115,7 +115,10 @@ export function registerCloudRoutes(router:HttpRouter){
         const result=await ctx.runMutation(library.place,{worldId:member.worldId,token:member.token,requestId,issuedAt,assetId:body.assetId,parameters:body.parameters??{},preview:body.preview});
         if(body.preview)return json({...result,concurrency:'object-versions',snapshotVersion:(await ctx.runQuery(read.plot,{id,token})).version});
       }else if(!action){
-        if(body.brief!==undefined){
+        if(body.environment!==undefined){
+          if(body.brief!==undefined||body.objects?.length||body.remove?.length||body.name!==undefined||body.archived!==undefined)return json({error:'Update the environment separately from brief, geometry, and lifecycle'},400);
+          await ctx.runMutation(scene.edit,{worldId:member.worldId,token:member.token,requestId,issuedAt,message:body.message,changes:[],environment:body.environment,expectedEnvironmentVersion:body.expectedEnvironmentVersion});
+        }else if(body.brief!==undefined){
           if(body.objects?.length||body.remove?.length)return json({error:'Update the brief separately from geometry'},400);
           await ctx.runMutation(scene.updateBrief,{worldId:member.worldId,token:member.token,expectedVersion:body.expectedBriefVersion,brief:body.brief});
         }else{

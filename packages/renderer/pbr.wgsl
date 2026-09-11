@@ -37,7 +37,7 @@ fn pbrShade(input:VertexOut,front:bool)->vec4f {
   let n0=normalize(input.normal)*select(-1.0,1.0,front);
   let inv=inverseSqrt(max(max(dot(tangent,tangent),dot(bitangent,bitangent)),0.00001));
   let n=normalize(tangent*inv*mapped.x*pbr.normalScale.x+bitangent*inv*mapped.y*pbr.normalScale.y+n0*mapped.z);
-  let v=normalize(camera.viewDirection);let l=normalize(vec3f(-0.5,1.0,0.4));let h=normalize(v+l);
+  let v=normalize(camera.viewDirection);let l=normalize(select(vec3f(-0.5,1.0,0.4),lighting.sunDirection,lighting.configured>0.5));let h=normalize(v+l);
   let nv=max(dot(n,v),0.001);let nl=max(dot(n,l),0.0);let nh=max(dot(n,h),0.0);let vh=max(dot(v,h),0.0);
   let rough=max(0.08,arm.g*pbr.roughness);let metal=arm.b*pbr.metalness;
   let color=agarthaShade(input.surfacePosition,input.surfaceNormal,base,camera.time);
@@ -51,5 +51,9 @@ fn pbrShade(input:VertexOut,front:bool)->vec4f {
   let spec=d*g*f/(4.0*nv*max(nl,0.001));
   let diffuse=(vec3f(1.0)-f)*(1.0-metal)*color/3.1415927;
   let lit=(diffuse+spec)*nl*2.6+color*0.48*ao+f0*0.28+emission;
+  if(lighting.configured>0.5){
+    let configured=(diffuse+spec)*nl*2.6*lighting.direct*lighting.sunColor+color*0.48*ao*lighting.ambient*lighting.ambientColor+f0*0.28*lighting.reflection+emission;
+    return vec4f(previewOutput(configured,input.worldPosition),alpha);
+  }
   return vec4f(pow(clamp(lit,vec3f(0.0),vec3f(1.0)),vec3f(1.0/2.2)),alpha);
 }
