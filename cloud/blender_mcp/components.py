@@ -175,6 +175,24 @@ def import_component(path, name, *, bundle_id, location=(0, 0, 0), rotation=(0, 
         bpy.data.scenes.remove(temporary)
 
 
+def import_polyhaven(path, name, *, asset_id, attribution="Powered by Poly Haven", **transform):
+    """Keep external provenance separate from Agartha's canonical bundle identity."""
+    import re
+    if not isinstance(asset_id, str) or not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,99}', asset_id):
+        raise ValueError('Choose a Poly Haven asset ID.')
+    if not isinstance(attribution, str) or len(attribution) > 500:
+        raise ValueError('Invalid Poly Haven attribution.')
+    root = import_component(path, name, bundle_id=None, **transform)
+    import hashlib
+    payload = Path(path).read_bytes()
+    source = json.dumps({'provider': 'Poly Haven', 'id': asset_id,
+                         'url': 'https://polyhaven.com/a/' + asset_id, 'license': 'CC0-1.0', 'attribution': attribution,
+                         'modelId': 'model-' + hashlib.sha256(payload).hexdigest(), 'bytes': len(payload), 'resolution': '1k'})
+    for obj in [root, *root.children_recursive]:
+        obj['agarthaExternalSource'] = source
+    return root
+
+
 def component_sources(root):
     import re
     _, parts = _parts(root)
@@ -200,6 +218,7 @@ def assembly_manifest():
     import bpy
     return {'coordinateSystem':'Blender Z-up; rotation radians','components':[
         {'name':o.name,'parentId':o.get('agarthaParentBundleId'),'variantOf':o.get('agarthaVariantOf'),
+         'externalSource':json.loads(o.get('agarthaExternalSource', 'null')),
          'templateId':o.get('agarthaTemplateId'),'templateParameters':json.loads(o.get('agarthaTemplateParameters','{}')),
          'location':list(o.location),'rotation':list(o.rotation_euler),'scale':list(o.scale),
          'parts':[child.name for child in o.children_recursive if child.type == 'MESH']}
@@ -265,7 +284,7 @@ def export_component(root, directory):
         _remap_modifiers(copies)
         copies[root].matrix_world = Matrix.Identity(4)
         bpy.context.view_layer.update()
-        scene['agarthaComponent'] = json.dumps({'name':root.name,'parentId':root.get('agarthaParentBundleId'),'coordinateSystem':'Blender Z-up; glTF Y-up','pivot':'component local origin'})
+        scene['agarthaComponent'] = json.dumps({'name':root.name,'parentId':root.get('agarthaParentBundleId'),'externalSource':json.loads(root.get('agarthaExternalSource','null')),'coordinateSystem':'Blender Z-up; glTF Y-up','pivot':'component local origin'})
         # Writing only this scene retains no unrelated Text blocks or objects.
         bpy.data.libraries.write(paths['source'], {scene}, path_remap='RELATIVE_ALL', fake_user=True, compress=False)
         kit.export_runtime(paths['glb'])

@@ -257,6 +257,50 @@ class StudioTests(unittest.TestCase):
         self.assertFalse(any('open_mainfile' in code for code in codes))
         exchange.close.assert_called_once()
 
+    def test_polyhaven_search_and_load_use_trusted_transport_and_require_review(self):
+        provider = Mock()
+        entry = {'id':'ball','name':'Ball','source':'https://polyhaven.com/a/ball','license':'CC0-1.0','attribution':'Powered by Poly Haven','modelId':'model-'+'b'*64}
+        provider.search.return_value = {'provider':'Powered by Poly Haven','entries':[entry],'cursor':None}
+        provider.load.return_value = (entry, b'glTF-ball')
+        steps = [action('search_polyhaven', '{"q":"ball"}'), action('load_polyhaven', json.dumps({'id':'ball','name':'Ball','location':[0,0,0],'rotation':[0,0,0],'scale':[1,1,1]})), action('finish'), action('accept'), action('finish')]
+        with patch('cloud.blender_billing.polyhaven.PolyHaven', return_value=provider):
+            store, broker, requests, timeline, finish, _ = self.fixture(steps)
+        provider.search.assert_called_once_with('ball', None)
+        provider.load.assert_called_once_with('ball', timeout_seconds=60)
+        self.assertIn('Powered by Poly Haven', requests[2]['history'])
+        self.assertEqual(finish['status'], 'completed')
+        self.assertTrue(finish['visuallyInspected'])
+        events = json.loads(store.read('job', 'review.json'))['actions']
+        self.assertIn('Accept the current', events[2]['error'])
+        self.assertEqual(events[1]['sourceMetadata']['source'], entry['source'])
+        codes = [call.args[2]['params']['arguments'].get('code', '') for call in broker.call.call_args_list]
+        broker.upload_material.assert_called_once_with('a'*64, 'r', b'glTF-ball', 'worker-tool-1-upload')
+        imported = next(code for code in codes if 'import_polyhaven(path' in code)
+        self.assertIn('shared-material-test.glb', imported)
+        self.assertIn("hashlib.sha256(open(path,'rb').read()).hexdigest()==" + repr('b'*64), imported)
+        self.assertIn('Powered by Poly Haven', imported)
+        self.assertFalse(any('open_mainfile' in code for code in codes))
+        provider.close.assert_called_once()
+
+    def test_polyhaven_failure_allows_modeling_to_continue(self):
+        provider = Mock()
+        provider.search.side_effect = ValueError('Poly Haven is unavailable (503)')
+        with patch('cloud.blender_billing.polyhaven.PolyHaven', return_value=provider):
+            store, _, _, _, finish, _ = self.fixture([action('search_polyhaven', '{"q":"ball"}'), action('edit', 'REVISION_A'), action('accept'), action('finish')])
+        self.assertEqual(finish['status'], 'completed')
+        self.assertIn('unavailable', json.loads(store.read('job', 'review.json'))['actions'][0]['error'])
+        provider.close.assert_called_once()
+
+    def test_real_polyhaven_transport_timeout_does_not_end_the_job(self):
+        def timeout(request):
+            raise httpx.ReadTimeout('slow provider', request=request)
+        from .polyhaven import PolyHaven
+        provider = PolyHaven(httpx.Client(transport=httpx.MockTransport(timeout)))
+        with patch('cloud.blender_billing.polyhaven.PolyHaven', return_value=provider):
+            store, _, _, _, finish, _ = self.fixture([action('search_polyhaven', '{"q":"ball"}'), action('edit', 'REVISION_A'), action('accept'), action('finish')])
+        self.assertEqual(finish['status'], 'completed')
+        self.assertIn('network request failed', json.loads(store.read('job', 'review.json'))['actions'][0]['error'])
+
     def test_component_publication_requires_licensed_job_and_later_visual_review(self):
         metadata={'name':'Window','description':'Reusable oak frame'}
         share={'license':'MIT','attribution':'Example author'}

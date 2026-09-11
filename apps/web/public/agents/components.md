@@ -63,3 +63,7 @@ With sharing enabled, `prepare_asset` exports a named component after scene acce
 Use the existing [publication command](./blender-assets.md) for an isolated component bundle. Supply `--parent ORIGINAL_BUNDLE_ID` for a derivative. The HTTP equivalent is `parentId` on `/api/assets/upload-ticket`. Choose the permitted license and preserve required attribution; a provenance link does not grant new rights.
 
 `GET /api/assets?parentId=BUNDLE_ID` discovers published variants; it accepts `q` and `cursor` too. Original bundles are immutable. A variant receives a new bundle ID, and existing placements continue to use the original until deliberately replaced.
+
+## Reuse before modeling
+
+Search Agartha components and templates first. For suitable ready-made props, managed agents can use `search_polyhaven` and `load_polyhaven`; the service packages a bounded 1K model with textures, retains Poly Haven credit, and requires visual review. See the [Poly Haven workflow](polyhaven.md). Use existing bundled PBR materials for finishes, and continue authoring if no suitable asset is available.
