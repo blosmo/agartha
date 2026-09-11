@@ -8,4 +8,4 @@ Managed private Blender creation from a brief and one approved $1–$20 cap.
 - [Direct Blender](./direct.md): Advanced paid Blender control through HTTP or MCP.
 - [Billing and constraints](../agents/blender-billing.md): Identity, MPP, Checkout paymentUrl, settlement, limits, and recovery.
 
-Generated references are the version-3 default only when enabled and the approved cap is at least $5. Send `referenceMode: "none"` to opt out. The cap does not increase automatically, and service review does not guarantee artistic quality.
+Generated references are the version-3 default only when enabled and the approved cap is at least $5. Send `referenceMode: "none"` to opt out. Optional Meshy requires `managed.meshy.enabled: true`; send `meshyAllowance` with `budgetCents` 1–1000, `maxAssets` 1–3 and `allowRigging` (default false). Its allowance is inside the existing `budgetCents`, not an extra charge. Meshy uses textured Meshy 7, GLB, 2K textures and PBR maps. `chargedMeshyCents` is already included in `chargedAiCents`. The cap does not increase automatically, and service review does not guarantee artistic quality.

@@ -63,6 +63,18 @@
           <label for="managed-brief">Describe your model</label>
           <textarea id="managed-brief" rows="4" maxlength="2000" required placeholder="A ceramic teapot with a wide handle and subtle leaf details, for a game"></textarea>
           <label class="reference-option" id="managed-reference-option" hidden><input id="managed-references" type="checkbox" checked disabled> Create visual references first when the cap is at least $5</label>
+          <fieldset class="meshy-option" id="managed-meshy-option" hidden>
+            <legend>Optional Meshy components</legend>
+            <label><input id="managed-meshy" type="checkbox" disabled> Allow generated components</label>
+            <div id="managed-meshy-settings" hidden>
+              <label for="managed-meshy-budget">Meshy allowance (USD, within the total budget)</label>
+              <input id="managed-meshy-budget" type="text" inputmode="decimal" value="1.00" aria-describedby="managed-meshy-help">
+              <label for="managed-meshy-assets">Maximum generated assets</label>
+              <select id="managed-meshy-assets"><option value="1">1 asset</option><option value="2">2 assets</option><option value="3">3 assets</option></select>
+              <label><input id="managed-meshy-rigging" type="checkbox"> Allow optional humanoid rigging within this Meshy allowance</label>
+              <p id="managed-meshy-help">Meshy 7, 2K textures and PBR maps are included. This is a ceiling inside the existing total budget, not an additional charge.</p>
+            </div>
+          </fieldset>
           <label for="managed-budget">Total budget (USD)</label>
           <input id="managed-budget" type="text" inputmode="decimal" value="5.00" required aria-describedby="managed-budget-help">
           <p id="managed-budget-help">$1–$20 for Astra and Blender. Pay for usage; keep unused credits.</p>
@@ -113,7 +125,7 @@
       <div>
         <h2 id="price-title">Pay for what you use</h2>
         <p id="price-description">Direct Blender compute: $0.40 for the first 5 minutes, then $0.05 per started minute. Buy $5 or $20 in credits.</p>
-        <p class="note">Managed service Astra, references, review and Blender usage stay inside the job cap. Direct Blender compute excludes the controller agent’s AI charges; either path may have separate outside-platform fees.</p>
+        <p class="note">Managed service Astra, references, optional Meshy components, review and Blender usage stay inside the job cap. Meshy is an optional allowance within that total, never an extra charge. Direct Blender compute excludes the controller agent’s AI charges; either path may have separate outside-platform fees.</p>
         <p class="note">You approve each credit purchase. No subscription or automatic top-ups.</p>
         <p class="note">Idle time is billed; shutdown starts after 60 idle seconds. Each resumed session has a new minimum charge.</p>
       </div>

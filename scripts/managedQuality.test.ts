@@ -60,7 +60,7 @@ describe('independent managed quality', () => {
   it('admits bounded initial modeling while protecting final review under the 500 cent reference default', () => {
     const references = ['front', 'right', 'rear', 'hero'].map(view => ({ label: `reference-${view}`, image: images[0].image }));
     const initial = { ...input, remainingCents: 335 };
-    const reference = referenceRequest(initial);
+    const reference = referenceRequest({ ...initial, kind: 'reference' });
     const planning = inferenceRequest({ ...initial, kind: 'strategy', images: references, remainingCents: 335 - reference.maxCostCents });
     const remaining = 335 - reference.maxCostCents - planning.maxCostCents;
     const modeler = inferenceRequest({ ...initial, kind: 'modeling', history: 'Begin', images: references, remainingCents: remaining });

@@ -10,7 +10,7 @@ function reply(data: unknown, status = 200) {
   return Promise.resolve({ ok: status >= 200 && status < 300, status, json: async () => data });
 }
 
-async function boot(jobState: Record<string, unknown> = { status: 'completed', progress: 'Done', workflowVersion: 3, referenceMode: 'none', visuallyInspected: false }) {
+async function boot(jobState: Record<string, unknown> = { status: 'completed', progress: 'Done', workflowVersion: 3, referenceMode: 'none', visuallyInspected: false }, meshy = { enabled: true, maximumAllowanceCents: 1000 }) {
   document.documentElement.innerHTML = html;
   const values = new Map<string, string>();
   vi.stubGlobal('localStorage', {
@@ -25,7 +25,7 @@ async function boot(jobState: Record<string, unknown> = { status: 'completed', p
     const path = String(input);
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
     requests.push({ path, body });
-    if (path === '/api/blender/capabilities') return reply({ managed: { enabled: true, workflowVersion: 3, defaultReferenceMode: 'generate', minimumBudgetCents: 100, maximumBudgetCents: 2000, references: { enabled: true, minimumBudgetCents: 500 } } });
+    if (path === '/api/blender/capabilities') return reply({ managed: { enabled: true, workflowVersion: 3, defaultReferenceMode: 'generate', minimumBudgetCents: 100, maximumBudgetCents: 2000, references: { enabled: true, minimumBudgetCents: 500 }, meshy } });
     if (path === '/api/blender/pricing') return reply({ purchasesEnabled: false, paymentMode: 'unconfigured' });
     if (path === '/api/session') return reply({ recoveryConfigured: true });
     if (path === '/api/session/renew') return reply({});
@@ -38,7 +38,7 @@ async function boot(jobState: Record<string, unknown> = { status: 'completed', p
   vi.stubGlobal('fetch', fetcher);
   new Function(script)();
   await vi.waitFor(() => expect((el('submit') as HTMLButtonElement).disabled).toBe(false));
-  return { fetcher, requests };
+  return { fetcher, requests, values };
 }
 
 afterEach(() => {
@@ -71,4 +71,79 @@ it('does not describe legacy visual inspection as independent acceptance', async
   el('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   await vi.waitFor(() => expect(el('inspection').textContent).toContain('Astra inspected a preview'));
   expect(el('inspection').textContent).not.toContain('Independent visual review accepted');
+});
+
+it('submits the optional Meshy allowance inside the same total cap', async () => {
+  const { requests } = await boot({ status: 'completed', progress: 'Done', referenceMode: 'none', visuallyInspected: false, chargedAiCents: 40, chargedMeshyCents: 10, computeChargedCents: 20 });
+  (el('references') as HTMLInputElement).checked = false;
+  (el('references') as HTMLInputElement).dispatchEvent(new Event('change', { bubbles: true }));
+  (el('meshy') as HTMLInputElement).checked = true;
+  (el('meshy') as HTMLInputElement).dispatchEvent(new Event('change', { bubbles: true }));
+  (el('meshy-budget') as HTMLInputElement).value = '1.00';
+  (el('meshy-assets') as HTMLSelectElement).value = '2';
+  (el('meshy-rigging') as HTMLInputElement).checked = true;
+  (el('brief') as HTMLTextAreaElement).value = 'A ceramic teapot';
+  (el('budget') as HTMLInputElement).value = '5.00';
+  el('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(requests.some(request => request.path === '/api/blender/jobs')).toBe(true));
+  expect(requests.find(request => request.path === '/api/blender/jobs')?.body).toMatchObject({ budgetCents: 500, meshyAllowance: { budgetCents: 100, maxAssets: 2, allowRigging: true } });
+  await vi.waitFor(() => expect(el('cost').textContent).toContain('Meshy component: $0.10 (included in AI usage).'));
+  expect(el('cost').textContent).toContain('$0.60 charged of $5.00 cap.');
+});
+
+it('shows an authenticated late Meshy component download', async () => {
+  const name = 'generated-image-to-3d-' + 'a'.repeat(64) + '.glb';
+  await boot({ status: 'partial', progress: 'Provider component retained', workflowVersion: 3, referenceMode: 'none', visuallyInspected: false, artifacts: [{ name, url: `/api/blender/jobs/job/artifacts/${name}` }] });
+  (el('references') as HTMLInputElement).checked = false;
+  (el('references') as HTMLInputElement).dispatchEvent(new Event('change', { bubbles: true }));
+  (el('brief') as HTMLTextAreaElement).value = 'A ceramic teapot';
+  (el('budget') as HTMLInputElement).value = '5.00';
+  el('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(el('artifacts').textContent).toContain('Download generated component'));
+});
+
+it('hides Meshy and omits its allowance when the capability is disabled', async () => {
+  const { requests } = await boot(undefined, { enabled: false, maximumAllowanceCents: 1000 });
+  expect((el('meshy-option') as HTMLElement).hidden).toBe(true);
+  expect((el('meshy') as HTMLInputElement).disabled).toBe(true);
+  // Simulate stale or scripted browser state. The request must still be capability-gated.
+  (el('meshy') as HTMLInputElement).checked = true;
+  (el('brief') as HTMLTextAreaElement).value = 'A ceramic teapot';
+  (el('budget') as HTMLInputElement).value = '5.00';
+  el('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(requests.some(request => request.path === '/api/blender/jobs')).toBe(true));
+  expect(requests.find(request => request.path === '/api/blender/jobs')?.body).not.toHaveProperty('meshyAllowance');
+});
+
+it('rejects an allowance above the advertised Meshy cap', async () => {
+  const { requests } = await boot(undefined, { enabled: true, maximumAllowanceCents: 75 });
+  (el('meshy') as HTMLInputElement).checked = true;
+  (el('meshy') as HTMLInputElement).dispatchEvent(new Event('change', { bubbles: true }));
+  (el('meshy-budget') as HTMLInputElement).value = '0.76';
+  (el('brief') as HTMLTextAreaElement).value = 'A ceramic teapot';
+  (el('budget') as HTMLInputElement).value = '5.00';
+  el('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(el('error').textContent).toContain('between $0.01 and $0.75'));
+  expect(requests.some(request => request.path === '/api/blender/jobs')).toBe(false);
+});
+
+it('retains the exact request and allowance for a replayable saved job', async () => {
+  const { requests, values } = await boot({ status: 'running', progress: 'Queued', referenceMode: 'none', visuallyInspected: false });
+  (el('meshy') as HTMLInputElement).checked = true;
+  (el('meshy') as HTMLInputElement).dispatchEvent(new Event('change', { bubbles: true }));
+  (el('meshy-budget') as HTMLInputElement).value = '1.00';
+  (el('meshy-assets') as HTMLSelectElement).value = '3';
+  (el('brief') as HTMLTextAreaElement).value = 'A ceramic teapot';
+  (el('budget') as HTMLInputElement).value = '5.00';
+  el('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(requests.some(request => request.path === '/api/blender/jobs')).toBe(true));
+  const first = requests.find(request => request.path === '/api/blender/jobs')?.body;
+  expect(first).toMatchObject({ jobId: expect.any(String), requestId: expect.any(String), budgetCents: 500, meshyAllowance: { budgetCents: 100, maxAssets: 3, allowRigging: false } });
+  const saved = JSON.parse(values.get('agartha-compute-job')!);
+  expect(saved).toEqual(first);
+  expect(saved.requestId).toMatch(/^[0-9a-f-]{36}$/);
+  const startsBeforeRetry = requests.filter(request => request.path.endsWith('/start')).length;
+  el('retry').click();
+  await vi.waitFor(() => expect(requests.filter(request => request.path.endsWith('/start')).length).toBe(startsBeforeRetry + 1));
+  expect(JSON.parse(values.get('agartha-compute-job')!)).toEqual(first);
 });

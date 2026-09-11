@@ -4,6 +4,7 @@ import base64
 import hashlib
 import io
 import json
+import math
 import threading
 import time
 from typing import Any, Callable
@@ -15,6 +16,7 @@ from .resource_inspection import resource_inspection_code
 from .review import VIEWS, render_view_code
 from .export_review import render_export_view_code
 from .turnaround import DELIVERY_RESERVE_SECONDS, remaining_seconds, render_turnaround
+from .meshy_exchange import MeshyExchange
 
 REFERENCE_MODEL = 'openai/gpt-image-2.5-flare'
 MAX_ACTIONS = 24
@@ -105,6 +107,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     history += ' Material publication is '+('enabled' if sharing_enabled else 'disabled')+' for this job.'
     from .material_exchange import MaterialExchange
     exchange = None
+    exchange_client = None
     asset_exchange = None
     polyhaven = None
     prepared_asset = None
@@ -113,6 +116,21 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     prepared_material = None
     material_preview = None
     published_materials = 0
+    generated_assets = 0
+    meshy_allowance = row.get('meshyAllowance')
+    meshy_context = row.get('meshyContext')
+    if meshy_context is None and isinstance(meshy_allowance, dict):
+        # The trusted gateway snapshots the rate on the managed row. Keep this
+        # context informational; the gateway remains the authority for claims.
+        meshy_context = {
+            'enabled': row.get('meshyAdmissionEnabled', True) is True,
+            'budgetRemainingCents': max(0, int(meshy_allowance.get('budgetCents', 0)) - int(row.get('chargedMeshyCents', 0))),
+            'maxAssets': meshy_allowance.get('maxAssets', 1),
+            'allowRigging': meshy_allowance.get('allowRigging', False),
+            **({'generationCents': row['meshyGenerationCents']} if isinstance(row.get('meshyGenerationCents'), int) else {}),
+            **({'riggingCents': row['meshyRiggingCents']} if isinstance(row.get('meshyRiggingCents'), int) else {}),
+        }
+    meshy_enabled = isinstance(meshy_context, dict) and meshy_context.get('enabled') is True
 
     def shared_materials():
         nonlocal exchange
@@ -204,7 +222,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             with httpx.Client(timeout=INFERENCE_TIMEOUT_SECONDS, follow_redirects=False) as client:
                 with client.stream('POST', inference_url, json=request, headers={'x-agartha-broker-key': broker_key}) as response:
                     chunks = bytearray()
-                    limit = 4_000_000 if kind == 'reference' else 100_000
+                    limit = 4_000_000 if kind in {'reference', 'asset-reference'} else 100_000
                     for chunk in response.iter_bytes():
                         chunks.extend(chunk)
                         if len(chunks) > limit: raise InferenceProtocolError('Inference response exceeds its limit.')
@@ -324,7 +342,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             broker.ledger.call('recordManagedReference', jobId=job_id, executorId=executor)
         if quality:
             heartbeat('Planning geometry and independent acceptance checks.')
-            planned = inference(executor + '-strategy', 'strategy', images=references)
+            planned = inference(executor + '-strategy', 'strategy', images=references, **({'meshy': meshy_context} if meshy_context else {}))
             strategy = planned.get('strategy')
             if not isinstance(strategy, dict) or len(json.dumps(strategy, ensure_ascii=False, separators=(',', ':')).encode('utf-8')) > 12000: raise ValueError('Invalid service strategy.')
             trace()
@@ -337,7 +355,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             publication_preview = asset_preview or material_preview
             visible_model_views = [image for image in rendered if not publication_preview or image['label'] != publication_preview['label']]
             try:
-                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), history=history, images=modeler_images(references, visible_model_views, publication_preview) if quality else references + visible_model_views + ([publication_preview] if publication_preview else []))
+                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), **({'meshy': meshy_context} if meshy_context else {}), history=history, images=modeler_images(references, visible_model_views, publication_preview) if quality else references + visible_model_views + ([publication_preview] if publication_preview else []))
             except CorrectableModelResponse as error:
                 current()
                 invalid_actions += 1
@@ -357,7 +375,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             if scene_matches:
                 reviewed_views.update(image['label'].removeprefix('render-') for image in visible_model_views)
             action = step.get('action')
-            if action not in {'inspect_scene', 'inspect_resources', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'search_polyhaven', 'load_polyhaven', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
+            if action not in {'prepare_generated_asset', 'generate_asset', 'inspect_scene', 'inspect_resources', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'search_polyhaven', 'load_polyhaven', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
             event = {'turn': turn, 'action': action, 'candidateRevision': revision, 'summary': str(step.get('summary', ''))[:1000], 'critique': str(step.get('critique', ''))[:2000], 'inspectedViews': sorted(reviewed_views), 'time': int(time.time())}
             events.append(event)
             operation = f'{executor}-tool-{turn}'
@@ -411,11 +429,93 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     trace()
                     history = workflow_history()
                     continue
+                if action == 'prepare_generated_asset':
+                    if not meshy_enabled: raise ValueError('Meshy is not enabled for this managed job.')
+                    parameters = json.loads(step.get('code', '{}'))
+                    if not isinstance(parameters, dict): raise ValueError('Invalid generated component parameters.')
+                    name = parameters.get('name') or step.get('objectName')
+                    brief = parameters.get('brief')
+                    if not isinstance(name, str) or not name.strip() or len(name) > 100 or not isinstance(brief, str) or not brief.strip() or len(brief.encode()) > 2000:
+                        raise ValueError('Generated component name and brief are required.')
+                    rigging = parameters.get('rigging', False); height_meters = parameters.get('heightMeters', 1.7)
+                    if type(rigging) is not bool or not isinstance(height_meters, (int, float)) or not 0.2 <= height_meters <= 5:
+                        raise ValueError('Invalid generated component rigging options.')
+                    for key, value in [('location', parameters.get('location', [0, 0, 0])), ('rotation', parameters.get('rotation', [0, 0, 0])), ('scale', parameters.get('scale', [1, 1, 1]))]:
+                        if not isinstance(value, (list, tuple)) or len(value) != 3 or any(not isinstance(item, (int, float)) or not math.isfinite(item) or abs(item) > 10000 for item in value) or key == 'scale' and any(item <= 0 for item in value):
+                            raise ValueError('Invalid generated component transform.')
+                    if rigging and not meshy_context.get('allowRigging', False): raise ValueError('Rigging is not enabled for this Meshy allowance.')
+                    operation_seed = json.dumps({'name': name.strip(), 'brief': brief.strip(), 'rigging': rigging, 'heightMeters': height_meters}, sort_keys=True, separators=(',', ':'))
+                    reference_operation = executor + '-asset-reference-' + hashlib.sha256(operation_seed.encode()).hexdigest()[:40]
+                    reference_result = inference(reference_operation, 'asset-reference', componentBrief=brief.strip())
+                    encoded = reference_result.get('image')
+                    if not isinstance(encoded, str) or not encoded.startswith('data:image/jpeg;base64,'): raise ValueError('Invalid generated component reference.')
+                    try: reference_payload = base64.b64decode(encoded.split(',', 1)[1], validate=True)
+                    except (ValueError, UnicodeError): raise ValueError('Invalid generated component reference.') from None
+                    prepared_asset = {'kind': 'generated', 'name': name.strip(), 'brief': brief.strip(), 'rigging': rigging, 'heightMeters': float(height_meters), 'location': parameters.get('location', [0, 0, 0]), 'rotation': parameters.get('rotation', [0, 0, 0]), 'scale': parameters.get('scale', [1, 1, 1]), 'reference': reference_payload, 'referenceOperation': reference_operation, 'reviewed': False, 'generated': False}
+                    asset_preview = {'label': 'asset-reference', 'image': image_data(reference_payload)}
+                    event['result'] = 'Prepared an isolated generated component reference. Inspect this target in the next turn before generate_asset.'
+                    trace(); history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Meshy component reference is awaiting visual review.\n' + json.dumps(events[-3:], ensure_ascii=False)
+                    continue
                 if not running:
                     heartbeat('Starting the private Blender workspace.')
                     broker.start(token, reservation); running = True; monitor(reservation)
                 heartbeat(event['summary'] or 'Operating Blender.')
-                if action == 'inspect_resources':
+                if action == 'generate_asset':
+                    if not meshy_enabled: raise ValueError('Meshy is not enabled for this managed job.')
+                    if not prepared_asset or prepared_asset.get('kind') != 'generated' or not asset_preview or asset_preview.get('label') != 'asset-reference' or not prepared_asset.get('reviewed'):
+                        raise ValueError('Prepare and visually review an isolated component reference before generating it.')
+                    if step.get('objectName') != prepared_asset['name']: raise ValueError('Generate the prepared component using its exact name.')
+                    if not event['critique'].strip(): raise ValueError('Describe the visual fit and remaining component concerns before generation.')
+                    if prepared_asset.get('generated'): raise ValueError('This component generation is already complete.')
+                    operation = executor + '-meshy-' + hashlib.sha256(prepared_asset['referenceOperation'].encode()).hexdigest()[:40]
+                    if generated_assets >= int(meshy_context.get('maxAssets', 1)) and prepared_asset.get('generationOperation') != operation:
+                        raise ValueError('The Meshy asset allowance is exhausted.')
+                    if not prepared_asset.get('generationStarted'):
+                        generated_assets += 1; prepared_asset['generationStarted'] = True; prepared_asset['generationOperation'] = operation
+                    available = remaining_seconds(broker.owned(token, reservation)) - DELIVERY_RESERVE_SECONDS
+                    if available <= 0: raise ValueError('Stopped before Meshy generation to preserve delivery and review time.')
+                    deadline = time.time() + min(900, available)
+                    if prepared_asset.get('payload') is not None and prepared_asset.get('metadata') is not None:
+                        payload, metadata = prepared_asset['payload'], prepared_asset['metadata']
+                    else:
+                        exchange_client = MeshyExchange(inference, heartbeat, lambda: deadline)
+                        def save_generated_component(save_operation, save_payload, save_metadata):
+                            provenance = {**save_metadata, 'operationId': operation, 'referenceSha256': hashlib.sha256(prepared_asset['reference']).hexdigest(), 'componentName': prepared_asset['name'], 'transform': {key: prepared_asset[key] for key in ['location', 'rotation', 'scale']}}
+                            files.save_component(job_id, save_operation, save_payload, prepared_asset['reference'], provenance)
+                            public_name = files.save_generated_component_artifact(job_id, save_operation, save_payload, provenance)
+                            broker.ledger.call('recordManagedMeshyArtifact', jobId=job_id, executorId=executor, operationId=save_operation, artifactName=public_name)
+                        try:
+                            payload, metadata = exchange_client.generate(operation, 'data:image/jpeg;base64,' + base64.b64encode(prepared_asset['reference']).decode(), rigging=prepared_asset['rigging'], height_meters=prepared_asset['heightMeters'], save=save_generated_component)
+                        except InterruptedError: raise
+                        except Exception as error: raise ValueError(str(error)[:2000]) from error
+                        prepared_asset['payload'], prepared_asset['metadata'] = payload, metadata
+                    uploaded = broker.upload_material(token, reservation, payload, operation + '-upload')
+                    if not isinstance(uploaded, str) or not uploaded: raise ValueError('Generated model upload failed.')
+                    task_id = metadata.get('taskId')
+                    if not isinstance(task_id, str): raise ValueError('Generated model has no durable provider task.')
+                    transform = {key: prepared_asset[key] for key in ['location', 'rotation', 'scale']}
+                    code = "import sys,json,hashlib\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.generated_components import import_generated_component\n"
+                    code += "path='/workspace/artifacts/" + uploaded + "'\nassert hashlib.sha256(open(path,'rb').read()).hexdigest()==" + repr(metadata['sha256']) + "\n"
+                    code += "root=import_generated_component(path," + repr(prepared_asset['name']) + ",task_id=" + repr(task_id) + ",rigged=" + repr(bool(metadata.get('rigged'))) + ",**json.loads(" + repr(json.dumps(transform)) + "))\nprint(root.name)"
+                    scene_matches = accepted_current = False; rendered = []; reviewed_views.clear()
+                    event['codeSha256'] = hashlib.sha256(code.encode()).hexdigest()
+                    if not prepared_asset.get('imported'):
+                        execute(code, operation + '-attempt-' + str(turn) + '-import')
+                        prepared_asset['imported'] = True
+                    result = execute(EXPORT, operation + '-attempt-' + str(turn) + '-export')
+                    candidate = exported(); files.save(job_id, candidate)
+                    revision_sequence += 1; revision = revision_sequence; saved = scene_matches = True
+                    broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
+                    rendered = inspect(['hero', 'front', 'right'], '', operation + '-attempt-' + str(turn) + '-inspect')
+                    delivery = 'Generated and imported the textured Meshy component with its editable hierarchy.'
+                    if metadata.get('riggingFallback'):
+                        delivery = 'Optional rigging was unavailable; imported the valid textured base component.'
+                    elif metadata.get('animated'):
+                        delivery = 'Generated and imported the textured, rigged Meshy component with its walking animation.'
+                    event['result'] = delivery + ' ' + json.dumps(result)[:1000]
+                    prepared_asset['generated'] = True
+                    prepared_asset = asset_preview = None
+                elif action == 'inspect_resources':
                     result = execute(resource_inspection_code(step.get('objectName', '')), operation)
                     event['result'] = json.dumps(result)[:12000]
                 elif action in {'inspect_scene', 'inspect_object'}:
@@ -630,7 +730,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         events.append({'action': 'error', 'type': type(error).__name__, 'message': str(error)[:1500]})
         status, progress = 'partial' if saved else 'failed', 'Stopped because budget, availability, or execution limits prevented another safe step.'
     finally:
-        for client in [exchange,asset_exchange,polyhaven]:
+        for client in [exchange, asset_exchange, exchange_client, polyhaven]:
             if client is None: continue
             try: client.close()
             except Exception: pass  # Client cleanup must not skip compute shutdown.

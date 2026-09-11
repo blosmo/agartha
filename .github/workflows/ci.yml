@@ -66,6 +66,7 @@ jobs:
           "$blender" --background --factory-startup --disable-autoexec --python-exit-code 1 --python scripts/blender/verify_export_review.py
           "$blender" --background --factory-startup --python-exit-code 1 --python scripts/blender/verify_advanced.py
           "$blender" --background --factory-startup --python-exit-code 1 --python scripts/blender/verify_baking.py
+          "$blender" --background --factory-startup --disable-autoexec --python-exit-code 1 --python cloud/blender_mcp/verify_generated_components.py
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20

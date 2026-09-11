@@ -3,7 +3,7 @@
   "info": {
     "title": "3D for Agents",
     "version": "1.1.0",
-    "description": "Budgeted 3D modeling with an iterative Blender MCP agent, optional GPT Image 2.5 Flare design references, and direct Blender sessions. Check capabilities before creating a job. Stable identity and prepaid wallet; credit purchases are separate."
+    "description": "Budgeted 3D modeling with Astra planning, library-first Blender assembly and independent review. Optional Meshy 7 component generation fills reviewed gaps within the same total cap. Check capabilities before creating a job. Stable identity and prepaid wallet; credit purchases are separate."
   },
   "servers": [
     {
@@ -101,6 +101,31 @@
                       "type": "string",
                       "format": "uri-reference",
                       "description": "Downloadable canonical authoring toolkit; fetch with your client before starting the worker"
+                    },
+                    "managed": {
+                      "type": "object",
+                      "description": "Managed creation capability and bounded optional providers.",
+                      "properties": {
+                        "enabled": { "type": "boolean" },
+                        "workflowVersion": { "type": "integer", "const": 3 },
+                        "minimumBudgetCents": { "type": "integer" },
+                        "maximumBudgetCents": { "type": "integer" },
+                        "meshy": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": { "type": "boolean", "description": "Meshy may be requested only when true." },
+                            "model": { "type": "string", "const": "meshy-7" },
+                            "textures": { "type": "boolean", "const": true },
+                            "textureResolution": { "type": "string", "const": "2k" },
+                            "pbr": { "type": "boolean", "const": true },
+                            "maximumAssets": { "type": "integer", "minimum": 1, "maximum": 3 },
+                            "maximumAllowanceCents": { "type": "integer", "minimum": 1, "maximum": 1000 },
+                            "generationCents": { "type": "integer", "description": "Illustrative configured rate for one textured image-to-3D generation." },
+                            "riggingCents": { "type": "integer", "description": "Illustrative configured rate for optional rigging." },
+                            "billing": { "type": "string" }
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -1393,6 +1418,17 @@
                       "generate"
                     ],
                     "description": "generate requests one GPT Image 2.5 Flare four-view reference sheet. none explicitly opts out. For workflow version 3, omission resolves to generate only when managed.references.enabled is true and budgetCents is at least 500; otherwise it resolves to none. The resolved choice is persisted and reference generation stays inside the same total cap."
+                  },
+                  "meshyAllowance": {
+                    "type": "object",
+                    "description": "Optional Meshy 7 allowance. Accepted only when capabilities.managed.meshy.enabled is true and workflowVersion is 3. Its cents are reserved from budgetCents, so it never adds to the total job cap. Replay the exact same object after an uncertain response.",
+                    "additionalProperties": false,
+                    "required": ["budgetCents"],
+                    "properties": {
+                      "budgetCents": { "type": "integer", "minimum": 1, "maximum": 1000, "description": "Maximum Meshy spend in cents, inside budgetCents. Must cover at least capabilities.managed.meshy.generationCents and leave the compute reservation plus 100 cents for review." },
+                      "maxAssets": { "type": "integer", "minimum": 1, "maximum": 3, "default": 1 },
+                      "allowRigging": { "type": "boolean", "default": false, "description": "Permit optional humanoid rigging of an owned successful generation within the allowance." }
+                    }
                   }
                 }
               }
@@ -1417,7 +1453,7 @@
         "summary": "Observe a private managed job and cost settlement",
         "responses": {
           "200": {
-            "description": "Job state including status, progress, chargedAiCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. videoReady confirms a returned turnaround.mp4: two seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
+            "description": "Job state including status, progress, chargedAiCents, chargedMeshyCents, pendingAiCents, computeChargedCents, computeStatus, visuallyInspected and available artifacts. chargedMeshyCents is a component of chargedAiCents; never add it again. videoReady confirms a returned turnaround.mp4: two seconds, 512 pixels, 12 fps, 360 degrees, within the same approved budget. Missing video due to budget or render deadline yields partial status with a reason and other available files."
           },
           "400": {
             "description": "Invalid request"
@@ -1516,12 +1552,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "enum": [
-              "model.glb",
-              "model.blend",
-              "preview.png",
-              "turnaround.mp4"
-            ]
+            "pattern": "^(?:model\\.glb|model\\.blend|preview\\.png|turnaround\\.mp4|reference\\.jpg|review\\.json|generated-(?:image-to-3d|rigging)-[a-f0-9]{64}\\.glb)$",
+            "description": "Use an artifact name returned by the authenticated job response. generated-image-to-3d-* and generated-rigging-* are durable Meshy component snapshots, including late results retained after provider reconciliation."
           }
         }
       ],
