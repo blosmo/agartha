@@ -42,6 +42,26 @@ class ManagedTests(unittest.TestCase):
         finish = [call.kwargs for call in broker.ledger.call.call_args_list if call.args[0] == 'finishManagedJob'][0]
         self.assertEqual(finish['status'], 'cancelled')
 
+    def test_failed_checkpoint_does_not_claim_review_or_delivery(self):
+        broker, files = Mock(), Mock()
+        broker.ledger.call.side_effect = lambda name, **kw: {'claimed': True} if name == 'claimManagedJob' else {'reservationId': 'r', 'status': 'running'}
+        broker.call.side_effect = lambda token, reservation, request, operation, limit: {'result': {'content': [{'text': f"MANAGED_EXPORT_OK:executor:{request['id']}"}]}}
+        broker.download.side_effect = lambda token, reservation, name, limit: {'model.glb': b'glTF', 'model.blend': b'BLENDER', 'preview.png': b'png'}[name]
+        files.save.side_effect = OSError('Checkpoint could not be committed')
+        response = Mock()
+        response.content = b'{}'
+        response.json.return_value = {'summary': 'Build', 'code': 'import bpy', 'done': False}
+        with patch('cloud.blender_billing.managed.uuid.uuid4', return_value=Mock(hex='executor')), patch('cloud.blender_billing.managed.preview_image', return_value='data:image/jpeg;base64,AA=='), patch('cloud.blender_billing.managed.httpx.Client') as client:
+            client.return_value.__enter__.return_value.post.return_value = response
+            run_managed(broker, files, 'a'*64, 'job', Mock(), 'https://example.test', 'key')
+            self.assertTrue(all('image' not in call.kwargs['json'] for call in client.return_value.__enter__.return_value.post.call_args_list))
+        finish = [call.kwargs for call in broker.ledger.call.call_args_list if call.args[0] == 'finishManagedJob'][-1]
+        self.assertEqual(finish['status'], 'failed')
+        self.assertFalse(finish['artifactsReady'])
+        self.assertFalse(finish['visuallyInspected'])
+        self.assertNotIn('delivered', finish['progress'])
+        broker.stop.assert_called_once()
+
     def test_unauthorized_job_cannot_spawn_or_read_files(self):
         broker = Mock(); broker.ledger.call.side_effect = LedgerError(401)
         start, files = Mock(), Mock()

@@ -1,0 +1,11 @@
+# 3D for Agents
+
+Managed private Blender creation from a brief and one approved $1–$20 cap.
+
+- [Managed quickstart](./skill.md): Create, start, observe, cancel, recover, and download a reviewed job.
+- [OpenAPI](./openapi.json): Exact HTTP request and response contract.
+- [Modeling guidance](./modeling.md): Briefs, intended use, geometry, inspection, and delivery criteria.
+- [Direct Blender](./direct.md): Advanced paid Blender control through HTTP or MCP.
+- [Billing and constraints](../agents/blender-billing.md): Identity, MPP, Checkout paymentUrl, settlement, limits, and recovery.
+
+Generated references are the version-3 default only when enabled and the approved cap is at least $5. Send `referenceMode: "none"` to opt out. The cap does not increase automatically, and service review does not guarantee artistic quality.

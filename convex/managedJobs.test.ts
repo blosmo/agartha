@@ -17,7 +17,11 @@ async function setup() {
   return { t, actor };
 }
 
-beforeEach(() => vi.stubEnv("BLENDER_BILLING_ACTIVE", "true"));
+beforeEach(() => {
+  vi.stubEnv("BLENDER_BILLING_ACTIVE", "true");
+  vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_VERSION", "");
+  vi.stubEnv("AGARTHA_REFERENCE_MODELING_ENABLED", "");
+});
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 const api = anyApi.cloud.managedJobs;
@@ -25,6 +29,65 @@ const create = { token, jobId: "job", requestId: "request", brief: "Build a chai
 const inference = { jobId: "job", executorId: "worker", operationId: "op", maxCostCents: 50, payloadFingerprint: "hash" };
 async function running() { const result = await setup(); await result.t.mutation(api.createManagedJob, create); await result.t.mutation(api.claimManagedJob, { jobId: "job", executorId: "worker" }); return result; }
 describe("managed modeling ledger", () => {
+  it("pins new workflow defaults before reserving and preserves them on replay", async () => {
+    const { t } = await setup();
+    vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_VERSION", "3");
+    vi.stubEnv("AGARTHA_REFERENCE_MODELING_ENABLED", "true");
+    const request = { ...create, budgetCents: 500 };
+    const row = await t.mutation(api.createManagedJob, request);
+    expect(row).toMatchObject({ workflowVersion: 3, referenceMode: "generate", computeReservedCents: 165, reservedAiCents: 335 });
+    expect((await t.run(ctx => ctx.db.query("blenderSessionReservations").first()))?.reservedMinutes).toBe(30);
+    vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_VERSION", "");
+    vi.stubEnv("AGARTHA_REFERENCE_MODELING_ENABLED", "");
+    expect(await t.mutation(api.createManagedJob, { ...request, admissionEnabled: false, referenceAdmissionEnabled: false })).toEqual(row);
+    await expect(t.mutation(api.createManagedJob, { ...request, referenceMode: "none" })).rejects.toThrow("different payload");
+  });
+
+  it("rejects disabled new admissions before reserving any funds", async () => {
+    const disabled = await setup();
+    await expect(disabled.t.mutation(api.createManagedJob, { ...create, admissionEnabled: false })).rejects.toThrow("not available");
+    await expect(disabled.t.mutation(api.createManagedJob, { ...create, budgetCents: 500, referenceMode: "generate", admissionEnabled: true, referenceAdmissionEnabled: false })).rejects.toThrow("Reference-guided");
+    expect(await disabled.t.run(ctx => ctx.db.query("managedJobs").collect())).toEqual([]);
+    expect(await disabled.t.run(ctx => ctx.db.query("blenderSessionQuotes").collect())).toEqual([]);
+    expect(await disabled.t.query(anyApi.cloud.purchases.balance, { token, livemode: false })).toMatchObject({ availableCents: 500, heldCents: 0 });
+  });
+
+  it("honors explicit none and keeps v3 reference defaults within the approved cap", async () => {
+    vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_VERSION", "3");
+    vi.stubEnv("AGARTHA_REFERENCE_MODELING_ENABLED", "true");
+    const explicit = await setup();
+    expect(await explicit.t.mutation(api.createManagedJob, { ...create, budgetCents: 500, referenceMode: "none" })).toMatchObject({ workflowVersion: 3, referenceMode: "none", computeReservedCents: 165, reservedAiCents: 335 });
+    const small = await setup();
+    expect(await small.t.mutation(api.createManagedJob, create)).toMatchObject({ workflowVersion: 3, referenceMode: "none", computeReservedCents: 65, reservedAiCents: 135 });
+    vi.stubEnv("AGARTHA_REFERENCE_MODELING_ENABLED", "");
+    const disabled = await setup();
+    expect(await disabled.t.mutation(api.createManagedJob, { ...create, budgetCents: 500 })).toMatchObject({ workflowVersion: 3, referenceMode: "none", computeReservedCents: 165, reservedAiCents: 335 });
+  });
+
+  it("replays a legacy omitted choice unchanged after v3 activation", async () => {
+    const { t } = await setup();
+    const request = { ...create, budgetCents: 500 };
+    const legacy = await t.mutation(api.createManagedJob, request);
+    expect(legacy).toMatchObject({ referenceMode: "none", computeReservedCents: 65, reservedAiCents: 435 });
+    expect(legacy).not.toHaveProperty("workflowVersion");
+    vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_VERSION", "3");
+    vi.stubEnv("AGARTHA_REFERENCE_MODELING_ENABLED", "true");
+    expect(await t.mutation(api.createManagedJob, request)).toEqual(legacy);
+    await expect(t.mutation(api.createManagedJob, { ...request, referenceMode: "generate" })).rejects.toThrow("different payload");
+  });
+
+  it("activates v3 only for the configured initiating operator", async () => {
+    const operator = await setup();
+    vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID", operator.actor.agentId);
+    vi.stubEnv("AGARTHA_REFERENCE_MODELING_ENABLED", "true");
+    expect(await operator.t.mutation(api.createManagedJob, { ...create, budgetCents: 500 })).toMatchObject({ workflowVersion: 3, referenceMode: "generate" });
+
+    const other = await setup();
+    vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID", "agent-someone-else");
+    const legacy = await other.t.mutation(api.createManagedJob, { ...create, budgetCents: 500 });
+    expect(legacy).toMatchObject({ referenceMode: "none", computeReservedCents: 65 });
+    expect(legacy).not.toHaveProperty("workflowVersion");
+  });
   it('binds material-publication permission to job creation and defaults to private work',async()=>{
     const {t}=await setup();
     const row=await t.mutation(api.createManagedJob,{...create,referenceMode:'generate',budgetCents:500});
@@ -102,6 +165,38 @@ describe("managed modeling ledger", () => {
     expect(await t.query(anyApi.cloud.purchases.balance, { token, livemode: false })).toMatchObject({ availableCents: 490, heldCents: 0 });
     const ledger = await t.run(ctx => ctx.db.query("blenderLedger").collect());
     expect(ledger.reduce((sum, e) => sum + e.deltaCents, 0)).toBe(490);
+  });
+  it("accepts v3 strategy and review inference kinds", async () => {
+    vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_VERSION", "3");
+    const { t } = await running();
+    for (const [index, kind] of ["strategy", "review"].entries()) {
+      const operation = { ...inference, operationId: `op-${kind}`, payloadFingerprint: `hash-${kind}`, kind };
+      expect(await t.mutation(api.claimManagedInference, operation)).toMatchObject({ claimed: true });
+      await t.mutation(api.completeManagedInference, { jobId: "job", executorId: "worker", operationId: operation.operationId, chargeCents: index + 1 });
+    }
+  });
+  it("rejects strategy and review inference kinds for legacy rows", async () => {
+    const { t } = await running();
+    for (const kind of ["strategy", "review"]) {
+      await expect(t.mutation(api.claimManagedInference, { ...inference, operationId: `legacy-${kind}`, kind })).rejects.toThrow("version 3");
+    }
+  });
+
+  it("requires durable independent acceptance before v3 completion", async () => {
+    vi.stubEnv("AGARTHA_MANAGED_WORKFLOW_VERSION", "3");
+    const first = await running();
+    await first.t.mutation(api.recordManagedCheckpoint, { jobId: "job", executorId: "worker" });
+    await expect(first.t.mutation(api.recordManagedAcceptance, { jobId: "job", executorId: "worker" })).rejects.toThrow("quality approval");
+    await first.t.mutation(api.finishManagedJob, { jobId: "job", executorId: "worker", status: "completed", progress: "Modeler says done", visuallyInspected: true });
+    expect(await first.t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ status: "partial", visuallyInspected: false, artifactsReady: true });
+
+    const accepted = await running();
+    await accepted.t.mutation(api.recordManagedCheckpoint, { jobId: "job", executorId: "worker" });
+    await accepted.t.mutation(api.recordManagedAcceptance, { jobId: "job", executorId: "worker", qualityApproved: true });
+    await accepted.t.mutation(api.finishManagedJob, { jobId: "job", executorId: "worker", status: "completed", progress: "Critic approved", visuallyInspected: false });
+    expect(await accepted.t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ status: "completed", visuallyInspected: true });
+    await accepted.t.mutation(api.recordManagedCheckpoint, { jobId: "job", executorId: "worker" });
+    expect(await accepted.t.query(api.getManagedJob, { token, jobId: "job" })).toMatchObject({ visuallyInspected: false });
   });
   it("retains ambiguous usage without charging the maximum and reconciles later", async () => {
     const { t } = await running(); await t.mutation(api.claimManagedInference, inference);
