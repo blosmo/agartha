@@ -1,6 +1,6 @@
 # Managed elephant comparison: 2026-09-10
 
-This comparison records one legacy managed job and two version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
+This comparison records one legacy managed job and three version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
 
 ## Exact brief
 
@@ -40,9 +40,18 @@ The exact rejected response was not recoverable from the retained trace. An offl
 - The retained trace recorded HTTP 502 with the message that exactly one structured result was required, plus `tools=0` and `finish=length`. This records the missing structured tool call; it does not establish that 4,096 reasoning tokens were spent.
 - Only `reference.jpg` was available. It is a design target, not a produced model. There is no GLB, editable Blender source, or model preview from this attempt.
 
-The deployed strategy path still used Chat Completions with a required function call. OpenAI's official [reasoning-model guidance](https://developers.openai.com/api/docs/guides/reasoning) states that GPT-6 Astra function calling requires the Responses API and is unsupported through Chat Completions. This identifies an endpoint compatibility defect in the integration. The subsequent correction migrates all managed Astra function calls to Responses while preserving the model, token ceilings, reasoning effort and budget reserve. It validates completed function-call output, settles known usage once, and leaves missing or all-zero usage unresolved. Mocked provider, billing and gateway regressions pass, but no later paid run has verified this correction or established improved model quality.
+The deployed strategy path still used Chat Completions with a required function call. OpenAI's official [reasoning-model guidance](https://developers.openai.com/api/docs/guides/reasoning) states that GPT-6 Astra function calling requires the Responses API and is unsupported through Chat Completions. This identifies an endpoint compatibility defect in the integration. The subsequent correction migrates all managed Astra function calls to Responses while preserving the model, token ceilings, reasoning effort and budget reserve. It validates completed function-call output, settles known usage once, and leaves missing or all-zero usage unresolved. Mocked provider, billing and gateway regressions pass, but the next paid run still failed before producing geometry.
 
-There is no successful improved model to compare. All three authorized dispatches are used. Their combined service-ledger charge was 124 cents: 95 cents for the legacy baseline, 21 cents for version-3 attempt 1, and 8 cents for version-3 attempt 2. Version 3 remains unproven by a successful improved model. No further paid run is authorized; technical validation and reference-image quality alone do not establish an improvement in model quality.
+## Version-3 attempt 3
+
+- Job: `29ce7bca-4d56-4a33-ae3d-dfdf40e037fa`, started once on 2026-09-11 using the corrected Responses path.
+- Final state: `failed` before worker launch, compute `failed`, only a generated reference available.
+- Known charge: 8 cents. Another 59 cents remains reserved for unresolved inference usage. This is a maximum liability, not a confirmed charge or a released hold.
+- The strategy trace reports `status=incomplete, reason=max_output_tokens` and `inference_usage_reconciliation`. Reliable usage was unavailable. No uncertain operation was replayed.
+
+The next bounded tuning increases planner and reviewer output ceilings from 4,096 to 8,192 tokens, uses medium reasoning effort for these two stages, and protects 125 cents for final review. Modeling retains its existing settings and budget adjustment. Preflight checks reject planning that would consume the review reserve. Focused budget and request tests pass; real model quality remains unverified.
+
+There is no successful improved model to compare. Four dispatches have produced 132 cents of known service charges and 59 cents of unresolved maximum liability, totaling 191 cents of accounted exposure. Further private verification is authorized within the original 1,000-cent cumulative ceiling, with each new job capped at 500 cents. Unknown charges remain included until reconciled. Version 3 remains disabled as the public default pending a successful model and export review.
 
 ## Reproduction and evidence
 

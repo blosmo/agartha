@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { BillingHttpError } from '../billing/ledgerClient.js';
 import type { StudioImage } from './studio.js';
 
-export const REVIEW_RESERVE_CENTS = 100;
+export const REVIEW_RESERVE_CENTS = 125;
 export const STRATEGY_MAX_BYTES = 12_000;
 export const QUALITY_CRITERIA = ['silhouette', 'proportions', 'construction', 'materials', 'presentation'] as const;
 type Criterion = typeof QUALITY_CRITERIA[number];
@@ -103,9 +103,10 @@ export function qualityRequest(input: QualityInput) {
   for (const image of images) content.push({ type: 'input_text', text: image.label }, { type: 'input_image', image_url: image.image, detail: 'high' });
   // UTF-8 bytes overbound text tokens; 8192 tokens per bounded image overbounds vision.
   const inputTokens = Buffer.byteLength(system + context + JSON.stringify(tool)) + 2048 + images.length * 8192;
-  const outputTokens = 4096;
+  const outputTokens = 8192;
   const maxCostCents = Math.ceil(inputTokens / 1000 + outputTokens / 200);
-  if (!Number.isSafeInteger(input.remainingCents) || maxCostCents > input.remainingCents || review && maxCostCents > REVIEW_RESERVE_CENTS) throw new BillingHttpError(409, 'Insufficient budget for independent quality review.');
-  const body = { model: 'openai/gpt-6-astra', input: [{ type: 'message', role: 'system', content: [{ type: 'input_text', text: system }] }, { type: 'message', role: 'user', content }], tools: [tool], tool_choice: { type: 'function', name: tool.name }, parallel_tool_calls: false, max_output_tokens: outputTokens, reasoning: { effort: 'high' }, store: false, stream: false };
+  const requiredCents = maxCostCents + (review ? 0 : REVIEW_RESERVE_CENTS);
+  if (!Number.isSafeInteger(input.remainingCents) || requiredCents > input.remainingCents || review && maxCostCents > REVIEW_RESERVE_CENTS) throw new BillingHttpError(409, 'Insufficient budget for independent quality review.');
+  const body = { model: 'openai/gpt-6-astra', input: [{ type: 'message', role: 'system', content: [{ type: 'input_text', text: system }] }, { type: 'message', role: 'user', content }], tools: [tool], tool_choice: { type: 'function', name: tool.name }, parallel_tool_calls: false, max_output_tokens: outputTokens, reasoning: { effort: 'medium' }, store: false, stream: false };
   return { body, maxCostCents, fingerprint: createHash('sha256').update(JSON.stringify(body)).digest('hex') };
 }
