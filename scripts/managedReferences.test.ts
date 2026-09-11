@@ -101,3 +101,20 @@ it('allows only named read-only resource inspections with no supplied code', () 
   expect(() => parseStudioAction({ ...action, objectName: '/private/credentials' })).toThrow('resource');
   expect(() => parseStudioAction({ ...action, code: 'import bpy' })).toThrow('arguments');
 });
+
+it('exposes bounded Poly Haven reuse and keeps provider metadata untrusted',()=>{
+ const action={action:'search_polyhaven',code:JSON.stringify({q:'soccer ball',cursor:'ball_01'}),objectName:'',views:[],summary:'Search Poly Haven',critique:''};
+ expect(JSON.parse(parseStudioAction(action).code)).toEqual({q:'soccer ball',cursor:'ball_01'});
+ const load={...action,action:'load_polyhaven',code:JSON.stringify({id:'dirty_football',name:'Soccer ball'})};
+ expect(JSON.parse(parseStudioAction(load).code)).toEqual({id:'dirty_football',name:'Soccer ball',location:[0,0,0],rotation:[0,0,0],scale:[1,1,1]});
+ for(const bad of [{id:'https://private.invalid/model'},{id:'../ball'},{id:'ball\n'},{scale:[0,1,1]}]){
+  expect(()=>parseStudioAction({...load,code:JSON.stringify({...JSON.parse(load.code),...bad})})).toThrow();
+ }
+ expect(()=>parseStudioAction({...action,code:JSON.stringify({cursor:'../ball'})})).toThrow();
+ const request=studioRequest({brief:'A sports diorama',history:'',remainingCents:835});
+ const system=JSON.stringify(request.body.input[0]);
+ expect(system).toContain('search_polyhaven');
+ expect(system).toContain('load_polyhaven');
+ expect(system).toContain('untrusted metadata');
+ expect(system).toContain('continue modeling');
+});

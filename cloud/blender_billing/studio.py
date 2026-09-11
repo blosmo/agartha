@@ -105,6 +105,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     from .material_exchange import MaterialExchange
     exchange = None
     asset_exchange = None
+    polyhaven = None
     prepared_asset = None
     asset_preview = None
     published_assets = 0
@@ -123,6 +124,13 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             from .asset_exchange import AssetExchange
             asset_exchange = AssetExchange(inference_url, broker.ledger.base, token)
         return asset_exchange
+
+    def polyhaven_assets():
+        nonlocal polyhaven
+        if polyhaven is None:
+            from .polyhaven import PolyHaven
+            polyhaven = PolyHaven(check_active=current)
+        return polyhaven
 
     def current() -> dict[str, Any]:
         value = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
@@ -145,7 +153,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         recent = []
         for event in events[-6:]:
             detail = {key: value for key, value in event.items() if key not in {'time', 'sourceMetadata'}}
-            if event['action'] in {'search_assets', 'search_materials', 'search_templates', 'inspect_template'} and isinstance(detail.get('result'), str):
+            if event['action'] in {'search_assets', 'search_polyhaven', 'search_materials', 'search_templates', 'inspect_template'} and isinstance(detail.get('result'), str):
                 # Avoid double-escaping metadata, and retain identifiers as structured data.
                 try: detail['result'] = json.loads(detail['result'])
                 except json.JSONDecodeError: pass
@@ -342,7 +350,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             if scene_matches:
                 reviewed_views.update(image['label'].removeprefix('render-') for image in visible_model_views)
             action = step.get('action')
-            if action not in {'inspect_scene', 'inspect_resources', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
+            if action not in {'inspect_scene', 'inspect_resources', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'search_polyhaven', 'load_polyhaven', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
             event = {'turn': turn, 'action': action, 'candidateRevision': revision, 'summary': str(step.get('summary', ''))[:1000], 'critique': str(step.get('critique', ''))[:2000], 'inspectedViews': sorted(reviewed_views), 'time': int(time.time())}
             events.append(event)
             operation = f'{executor}-tool-{turn}'
@@ -373,6 +381,13 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['result']=json.dumps(result,ensure_ascii=False)
                     trace(); history = workflow_history()
                     continue
+                if action == 'search_polyhaven':
+                    parameters = json.loads(step.get('code', '{}'))
+                    result = polyhaven_assets().search(parameters.get('q', ''), parameters.get('cursor'))
+                    event['result'] = json.dumps(result, ensure_ascii=False)
+                    trace()
+                    history = workflow_history()
+                    continue
                 if action == 'search_assets':
                     parameters = json.loads(step.get('code', '{}'))
                     result = shared_assets().search(parameters.get('q',''),parameters.get('cursor'),parameters.get('parentId'))
@@ -402,7 +417,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     if action == 'inspect_object': arguments['object_name'] = step['objectName']
                     result = mcp(name, arguments, operation)
                     event['result'] = json.dumps(result)[:5000]
-                elif action in {'edit','load_material','load_asset','build_template'}:
+                elif action in {'edit','load_material','load_asset','load_polyhaven','build_template'}:
                     if action == 'build_template':
                         parameters=json.loads(step['code'])
                         entry=shared_assets().template(parameters['id'])
@@ -411,6 +426,17 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         code="import bpy,sys,json\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.asset_templates import build_template\nfrom cloud.blender_mcp.components import assembly_manifest\n"
                         code+="root=build_template(**json.loads("+repr(payload)+"))\nroot.location="+repr(parameters['location'])+"\nroot.rotation_euler="+repr(parameters['rotation'])+"\nroot.scale="+repr(parameters['scale'])+"\nbpy.context.view_layer.update()\nprint(json.dumps(assembly_manifest()))"
                         event['templateId']=entry['id'];event['templateParameters']=parameters.get('parameters',{})
+                    elif action == 'load_polyhaven':
+                        parameters = json.loads(step['code'])
+                        allowance = min(60, remaining_seconds(broker.owned(token, reservation)) - DELIVERY_RESERVE_SECONDS - 5)
+                        entry, payload = polyhaven_assets().load(parameters['id'], timeout_seconds=allowance)
+                        name = broker.upload_material(token, reservation, payload, operation + '-upload')
+                        transform = {key: parameters[key] for key in ['location', 'rotation', 'scale']}
+                        code = "import sys,json,hashlib\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.components import import_polyhaven,assembly_manifest\n"
+                        code += "path='/workspace/artifacts/" + name + "'\nassert hashlib.sha256(open(path,'rb').read()).hexdigest()==" + repr(entry['modelId'].removeprefix('model-')) + "\n"
+                        code += "root=import_polyhaven(path," + repr(parameters['name']) + ",asset_id=" + repr(entry['id']) + ",attribution=" + repr(entry['attribution']) + ",**json.loads(" + repr(json.dumps(transform)) + "))\nprint(json.dumps(assembly_manifest()))"
+                        event['sourceMetadata'] = entry
+                        heartbeat('Loaded a model from Poly Haven; checking its appearance.')
                     elif action == 'load_asset':
                         parameters = json.loads(step['code'])
                         entry, payload = shared_assets().load(parameters['id'])
@@ -583,7 +609,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['result'] = 'Restored the accepted scene and rendered it for comparison.'
             except ValueError as error:
                 event['error'] = str(error)[:2500]
-                if action in {'edit','load_material','load_asset','build_template'}: rendered = []; reviewed_views.clear()
+                if action in {'edit','load_material','load_asset','load_polyhaven','build_template'}: rendered = []; reviewed_views.clear()
             trace()
             history = workflow_history()
         else:
@@ -594,7 +620,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         events.append({'action': 'error', 'type': type(error).__name__, 'message': str(error)[:1500]})
         status, progress = 'partial' if saved else 'failed', 'Stopped because budget, availability, or execution limits prevented another safe step.'
     finally:
-        for client in [exchange,asset_exchange]:
+        for client in [exchange,asset_exchange,polyhaven]:
             if client is None: continue
             try: client.close()
             except Exception: pass  # Client cleanup must not skip compute shutdown.
