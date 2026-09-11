@@ -77,6 +77,7 @@ export async function runInference(input: StepInput, ledger: LedgerCall, credent
   const calls = Array.isArray(data.output) ? data.output.filter((item: any) => item?.type === 'function_call') : [];
   const quality = input.protocol === 3 && (input.kind === 'strategy' || input.kind === 'review');
   const invalid = (message: string, code: string) => new BillingHttpError(502, `${message} (tools=${calls.length}, status=${status}, reason=${reason})`, code);
+  if (status === 'incomplete' && reason === 'max_output_tokens' && input.protocol === 3 && (input.kind ?? 'modeling') === 'modeling') throw invalid('The modeling output reached its limit; no action executed. Return a smaller focused edit.', 'inference_output_incomplete');
   if (status === 'incomplete') throw invalid('Inference stopped before completing its structured result.', 'inference_incomplete');
   if (status !== 'completed') throw invalid('Inference did not complete successfully.', 'inference_response_status');
   if (calls.length !== 1) throw invalid('Inference must return exactly one structured result.', quality ? 'quality_tool_count' : 'inference_tool_count');
@@ -106,7 +107,14 @@ export async function runInference(input: StepInput, ledger: LedgerCall, credent
   }
   if (input.protocol === 2 || input.protocol === 3) {
     if (call.name !== 'blender_action') throw new BillingHttpError(502, 'Model did not return a Blender action.');
-    return parseStudioAction(step);
+    try { return parseStudioAction(step); }
+    catch (error) {
+      if (error instanceof BillingHttpError && error.status === 502) {
+        // This signal is emitted only after completed generation and acknowledged billing.
+        throw new BillingHttpError(502, error.message, 'inference_action_invalid');
+      }
+      throw error;
+    }
   }
   if (call.name !== 'modeling_step' || !step || typeof step.code !== 'string' || Buffer.byteLength(step.code) > 32_000 || typeof step.summary !== 'string' || typeof step.done !== 'boolean') throw new BillingHttpError(502, 'Model returned an invalid edit.');
   return { code: step.code, summary: step.summary.slice(0, 1000), done: step.done };

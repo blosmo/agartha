@@ -88,27 +88,60 @@ class MeshyExchange:
         save(operation, payload, metadata)
         if rigging:
             rig_operation = operation + '-rig'
-            initial = self.inference(rig_operation, 'meshy-start', stage='rigging', parentOperationId=operation, heightMeters=height_meters)
-            result = self.wait(rig_operation, initial)
-            # Use the rigged rest model. Custom animation selection remains a separate operation.
-            payload = self.download(result['result']['modelUrl'])
-            if not validate_generated_glb(payload).get('skins'):
-                raise ValueError('The generated character has no skin or armature binding.')
-            metadata = {**metadata, 'generationTaskId': metadata['taskId'], 'taskId': result.get('taskId'), 'rigged': True, 'sha256': hashlib.sha256(payload).hexdigest()}
-            save(rig_operation, payload, metadata)
+            base_payload, base_metadata = payload, metadata
+            try:
+                initial = self.inference(rig_operation, 'meshy-start', stage='rigging', parentOperationId=operation, heightMeters=height_meters)
+                result = self.wait(rig_operation, initial)
+                rigged = self.download(result['result']['modelUrl'])
+                if not validate_generated_glb(rigged).get('skins'):
+                    raise ValueError('The generated character has no skin or armature binding.')
+                payload = rigged
+                animated = False
+                if result['result'].get('walkingUrl'):
+                    try:
+                        walking = self.download(result['result']['walkingUrl'])
+                        walking_document = validate_generated_glb(walking)
+                        if not walking_document.get('skins') or not walking_document.get('animations'):
+                            raise ValueError('The generated walking model has no skin or animation.')
+                        payload, animated = walking, True
+                    except ValueError:
+                        pass  # The validated rigged rest model remains useful.
+                metadata = {**base_metadata, 'generationTaskId': base_metadata['taskId'], 'taskId': result.get('taskId'), 'rigged': True, 'animated': animated, 'sha256': hashlib.sha256(payload).hexdigest()}
+                save(rig_operation, payload, metadata)
+            except ValueError:
+                # Optional rigging must not strand a valid paid textured base.
+                payload, metadata = base_payload, {**base_metadata, 'riggingFallback': 'base-model'}
         return payload, metadata
 
     def close(self):
         self.client.close()
 
 
-def reconcile_meshy(broker: Any, inference_url: str, broker_key: str) -> None:
-    """Only poll already-created tasks; recovery never dispatches a paid generation."""
+def reconcile_meshy(broker: Any, files: Any, inference_url: str, broker_key: str) -> None:
+    """Poll known tasks and retain a successful late artifact without new spend."""
     rows = broker.ledger.call('listPendingMeshyOperations')
     with httpx.Client(timeout=8, follow_redirects=False) as client:
         for row in rows:
             try:
                 response = client.post(inference_url, headers={'x-agartha-broker-key': broker_key}, json={'protocol': 3, 'kind': 'meshy-poll', **{key: row[key] for key in ['jobId', 'executorId', 'operationId']}})
+                response.raise_for_status()
+                outcome = response.json()
                 response.close()
+                result = outcome.get('result') if isinstance(outcome, dict) else None
+                if outcome.get('status') != 'succeeded' or not isinstance(result, dict) or result.get('status') != 'succeeded':
+                    continue
+                urls = [result.get('walkingUrl'), result.get('modelUrl')] if row.get('meshStage') == 'rigging' else [result.get('modelUrl')]
+                exchange = MeshyExchange(lambda *_args, **_kwargs: {}, lambda _message: None, time.time, client=client)
+                payload = None
+                for url in urls:
+                    if not url: continue
+                    try:
+                        payload = exchange.download(url)
+                        break
+                    except ValueError:
+                        continue
+                if payload is None: continue
+                name = files.save_recovered_component(row['jobId'], row['operationId'], payload, {'provider': 'meshy', 'taskId': outcome.get('taskId'), 'stage': row.get('meshStage')})
+                broker.ledger.call('recordManagedMeshyArtifact', jobId=row['jobId'], executorId=row['executorId'], operationId=row['operationId'], recovered=True, artifactName=name)
             except Exception:
                 pass  # The same known task remains pending for the next recovery pass.

@@ -9,6 +9,7 @@ from .managed import ManagedFiles, run_managed, recover_managed_files
 from .durable_storage import StorageCoordinator
 from .http import create_http_app
 from .ledger import LedgerError
+from .test_meshy_exchange import textured_glb
 from starlette.testclient import TestClient
 
 class ManagedTests(unittest.TestCase):
@@ -26,6 +27,16 @@ class ManagedTests(unittest.TestCase):
             with self.assertRaises(ValueError): files.read('one', '../model.glb')
             with patch('cloud.blender_billing.managed.time.time', return_value=10**12):
                 with self.assertRaises(ValueError): files.read('one', 'model.glb')
+
+    def test_recovered_component_is_private_bounded_and_addressed_by_operation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files = ManagedFiles(Path(directory), StorageCoordinator(), lambda: None)
+            payload = textured_glb()
+            name = files.save_recovered_component('one', 'meshy-operation', payload, {'provider': 'meshy'})
+            self.assertRegex(name, r'^recovered-[a-f0-9]{64}\.glb$')
+            self.assertEqual(files.read('one', name), payload)
+            with self.assertRaises(ValueError):
+                files.save_recovered_component('one', '../other', payload, {})
 
     def test_duplicate_claim_never_runs_inference_or_compute(self):
         broker = Mock(); broker.ledger.call.return_value = {'claimed': False}

@@ -144,6 +144,12 @@ def imported_objects(root: bpy.types.Object) -> list[bpy.types.Object]:
     return [obj for obj in root.children_recursive]
 
 
+def mesh_triangles(document: dict, name: str) -> int:
+    mesh = next(mesh for mesh in document.get("meshes", []) if str(mesh.get("name", "")).startswith(name))
+    accessors = document.get("accessors", [])
+    return sum(accessors[primitive["indices"]]["count"] // 3 for primitive in mesh.get("primitives", []))
+
+
 def main() -> None:
     clear_scene()
     with tempfile.TemporaryDirectory(prefix="agartha-glb-verify-") as directory:
@@ -192,7 +198,7 @@ def main() -> None:
         parts = imported_objects(imported)
         assert any(obj.type == "MESH" for obj in parts)
         imported_armature = next(obj for obj in parts if obj.type == "ARMATURE")
-        imported_mesh = next(obj for obj in parts if obj.type == "MESH")
+        imported_mesh = next(obj for obj in parts if obj.type == "MESH" and (obj.parent and obj.parent.type == "ARMATURE" or any(mod.type == "ARMATURE" for mod in obj.modifiers)))
         assert imported_armature.parent is imported or imported_armature.parent in parts
         assert imported_mesh.parent is imported_armature or imported_mesh.parent in parts
         assert imported_mesh.data.materials and imported_mesh.data.materials[0].node_tree.nodes.get("Image Texture")
@@ -202,6 +208,16 @@ def main() -> None:
 
         model = bpy.data.collections.get("AGARTHA_MODEL")
         assert model and imported.name in model.objects
+        bpy.ops.mesh.primitive_cube_add(size=0.5, location=(3, 0, 0.25))
+        static_mesh = bpy.context.object
+        static_mesh.name = "ManagedStaticArray"
+        static_mesh.data.name = "ManagedStaticArray"
+        for collection in list(static_mesh.users_collection):
+            collection.objects.unlink(static_mesh)
+        model.objects.link(static_mesh)
+        array = static_mesh.modifiers.new("ManagedStaticArrayCopies", "ARRAY")
+        array.count = 4
+        array.relative_offset_displace = (1.5, 0, 0)
         camera_data = bpy.data.cameras.new("FixtureCamera")
         camera = bpy.data.objects.new("FixtureCamera", camera_data)
         bpy.context.scene.collection.objects.link(camera)
@@ -219,6 +235,7 @@ def main() -> None:
         assert final_document.get("animations"), "managed export lost animation"
         assert final_document.get("images") and all("uri" not in item for item in final_document["images"]), "managed export lost embedded texture"
         assert any(primitive.get("targets") for mesh in final_document.get("meshes", []) for primitive in mesh.get("primitives", [])), "managed export lost shape-key targets"
+        assert mesh_triangles(final_document, "ManagedStaticArray") == 48, "managed export lost modifiers on an unrelated static mesh"
 
     print("GENERATED_COMPONENTS_BLENDER_ROUNDTRIP_OK")
 

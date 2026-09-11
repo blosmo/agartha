@@ -18,6 +18,7 @@ from .turnaround import render_turnaround, remaining_seconds, DELIVERY_RESERVE_S
 
 BASE_NAMES = {'model.glb', 'model.blend', 'preview.png'}
 NAMES = BASE_NAMES | {'turnaround.mp4', 'reference.jpg', 'review.json'}
+RECOVERED_COMPONENT = re.compile(r'recovered-[a-f0-9]{64}\.glb')
 FILE_LIMIT = 16 * 1024 * 1024
 EXPORT_CODE = """
 import bpy, os
@@ -40,7 +41,31 @@ bpy.ops.object.select_all(action='DESELECT')
 for obj in model.all_objects:
     if obj.type in {'MESH', 'ARMATURE', 'EMPTY'}: obj.select_set(True)
 bpy.context.view_layer.objects.active = meshes[0]
-bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_apply=not any(o.type == 'MESH' and o.data.shape_keys for o in meshes), export_animations=True, export_cameras=False, export_lights=False)
+# The glTF exporter has one global modifier switch. Preserve morph targets and
+# armature bindings, while temporarily baking modifiers on unrelated static
+# meshes so adding one generated character cannot drop geometry elsewhere.
+baked_meshes = []
+try:
+    for obj in meshes:
+        if obj.data.shape_keys or any(modifier.type == 'ARMATURE' for modifier in obj.modifiers) or not obj.modifiers:
+            continue
+        original = obj.data
+        modifier_state = [(modifier, modifier.show_viewport, modifier.show_render) for modifier in obj.modifiers]
+        baked = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph), preserve_all_data_layers=True, depsgraph=depsgraph)
+        baked.name = original.name
+        obj.data = baked
+        for modifier, _, _ in modifier_state:
+            modifier.show_viewport = False
+            modifier.show_render = False
+        baked_meshes.append((obj, original, baked, modifier_state))
+    bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_apply=False, export_animations=True, export_cameras=False, export_lights=False)
+finally:
+    for obj, original, baked, modifier_state in reversed(baked_meshes):
+        obj.data = original
+        for modifier, show_viewport, show_render in modifier_state:
+            modifier.show_viewport = show_viewport
+            modifier.show_render = show_render
+        bpy.data.meshes.remove(baked)
 scene = bpy.context.scene
 scene.render.engine = 'CYCLES'
 scene.cycles.device = 'CPU'
@@ -134,11 +159,15 @@ class ManagedFiles:
             self.commit()
 
     def read(self, job_id: str, name: str, authorize: Callable[[int], Any] | None = None) -> bytes:
-        if name not in NAMES:
+        recovered = bool(RECOVERED_COMPONENT.fullmatch(name))
+        if name not in NAMES and not recovered:
             raise ValueError('Unknown artifact.')
         with self.storage.transaction():
             directory = self.directory(job_id)
-            if name in {'reference.jpg', 'review.json'}:
+            if recovered:
+                metadata = json.loads((directory / (name + '.json')).read_text())
+                path = directory / name
+            elif name in {'reference.jpg', 'review.json'}:
                 meta = directory / ('review-meta.json' if name == 'review.json' else 'reference-meta.json')
                 if name == 'review.json' and not meta.exists(): meta = directory / 'reference-meta.json'
                 metadata = json.loads(meta.read_text())
@@ -164,6 +193,27 @@ class ManagedFiles:
                 if len(payload) != size:
                     raise ValueError('Artifact changed during download.')
                 return payload
+
+    def save_recovered_component(self, job_id: str, operation: str, payload: bytes, metadata: dict[str, Any]) -> str:
+        from .meshy_exchange import validate_generated_glb
+        validate_generated_glb(payload)
+        if not isinstance(operation, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', operation):
+            raise ValueError('Invalid recovered component.')
+        name = 'recovered-' + hashlib.sha256(operation.encode()).hexdigest() + '.glb'
+        descriptor = {**metadata, 'created': time.time(), 'sha256': hashlib.sha256(payload).hexdigest()}
+        encoded = json.dumps(descriptor).encode()
+        with self.storage.transaction():
+            directory = self.directory(job_id)
+            directory.mkdir(parents=True, exist_ok=True)
+            existing = list(directory.glob('recovered-*.glb'))
+            if len(existing) >= 6 and not (directory / name).exists():
+                raise ValueError('Recovered component storage limit reached.')
+            for suffix, content in [('', payload), ('.json', encoded)]:
+                temporary = directory / ('.' + name + suffix)
+                temporary.write_bytes(content)
+                os.replace(temporary, directory / (name + suffix))
+            self.commit()
+        return name
 
     def save_component(self, job_id: str, operation: str, payload: bytes, reference: bytes, metadata: dict[str, Any]) -> None:
         from .meshy_exchange import validate_generated_glb

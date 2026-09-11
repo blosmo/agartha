@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { referenceRequest, generateReference, REFERENCE_MODEL } from '../packages/modeling/references';
+import { qualityRequest } from '../packages/modeling/quality';
 import { studioRequest, parseStudioAction } from '../packages/modeling/studio';
 import type { LedgerCall } from '../packages/billing/ledgerClient';
+afterEach(() => vi.unstubAllEnvs());
 const input = { jobId: 'job', executorId: 'worker', operationId: 'worker-reference', brief: 'A coastal observatory', remainingCents: 835 };
 const ledger = () => vi.fn(async (name: string) => name === 'claimManagedInference' ? { claimed: true } : {});
 const image = Buffer.concat([Buffer.from([255,216,255]), Buffer.alloc(120)]).toString('base64');
@@ -93,4 +95,43 @@ it('validates reusable component discovery and bounded assembly transforms',()=>
  for(const changes of [{id:'https://private.invalid/file'},{scale:[1,0,1]},{rotation:[0,1e20,0]},{name:''}]){
   expect(()=>parseStudioAction({...load,code:JSON.stringify({...JSON.parse(load.code),...changes})})).toThrow('component parameters');
  }
+});
+
+it('allows only named read-only resource inspections with no supplied code', () => {
+  const action = { action: 'inspect_resources', code: '', objectName: 'advanced_kit', views: [], summary: 'Read toolkit help', critique: '' };
+  expect(parseStudioAction(action)).toEqual(action);
+  expect(() => parseStudioAction({ ...action, objectName: '/private/credentials' })).toThrow('resource');
+  expect(() => parseStudioAction({ ...action, code: 'import bpy' })).toThrow('arguments');
+});
+
+it('exposes bounded Poly Haven reuse and keeps provider metadata untrusted',()=>{
+ vi.stubEnv('BLENDER_POLYHAVEN_ENABLED','true');
+ const action={action:'search_polyhaven',code:JSON.stringify({q:'soccer ball',cursor:'ball_01'}),objectName:'',views:[],summary:'Search Poly Haven',critique:''};
+ expect(JSON.parse(parseStudioAction(action).code)).toEqual({q:'soccer ball',cursor:'ball_01'});
+ const load={...action,action:'load_polyhaven',code:JSON.stringify({id:'dirty_football',name:'Soccer ball'})};
+ expect(JSON.parse(parseStudioAction(load).code)).toEqual({id:'dirty_football',name:'Soccer ball',location:[0,0,0],rotation:[0,0,0],scale:[1,1,1]});
+ for(const bad of [{id:'https://private.invalid/model'},{id:'../ball'},{id:'ball\n'},{scale:[0,1,1]}]){
+  expect(()=>parseStudioAction({...load,code:JSON.stringify({...JSON.parse(load.code),...bad})})).toThrow();
+ }
+ expect(()=>parseStudioAction({...action,code:JSON.stringify({cursor:'../ball'})})).toThrow();
+ const request=studioRequest({brief:'A sports diorama',history:'',remainingCents:835});
+ const system=JSON.stringify(request.body.input[0]);
+ expect(system).toContain('search_polyhaven');
+ expect(system).toContain('load_polyhaven');
+ expect(system).toContain('untrusted metadata');
+ expect(system).toContain('continue modeling');
+});
+
+
+it('keeps Poly Haven actions and instructions disabled until cloud activation',()=>{
+ vi.stubEnv('BLENDER_POLYHAVEN_ENABLED','false');
+ const request=studioRequest({brief:'A sports diorama',history:'',remainingCents:835});
+ expect(JSON.stringify(request.body.tools)).not.toContain('polyhaven');
+ expect(JSON.stringify(request.body.input[0])).not.toContain('search_polyhaven');
+ const strategy=()=>qualityRequest({kind:'strategy',brief:'A soccer ball',remainingCents:835});
+ expect(JSON.stringify(strategy().body.input[0])).not.toContain('Poly Haven');
+ vi.stubEnv('BLENDER_POLYHAVEN_ENABLED','true');
+ expect(JSON.stringify(strategy().body.input[0])).toContain('Poly Haven');
+ vi.stubEnv('BLENDER_POLYHAVEN_ENABLED','false');
+ expect(()=>parseStudioAction({action:'search_polyhaven',code:'{"q":"ball"}',objectName:'',views:[],summary:'Search',critique:''})).toThrow('not enabled');
 });

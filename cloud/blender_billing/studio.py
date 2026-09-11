@@ -11,6 +11,8 @@ from typing import Any, Callable
 
 import httpx
 from .managed import BASE_NAMES, FILE_LIMIT, EXPORT_CODE, ManagedFiles, quality_review_valid
+from .modeling_images import modeler_images
+from .resource_inspection import resource_inspection_code
 from .review import VIEWS, render_view_code
 from .export_review import render_export_view_code
 from .turnaround import DELIVERY_RESERVE_SECONDS, remaining_seconds, render_turnaround
@@ -31,6 +33,10 @@ FINAL_RENDER = 'import bpy\n' + FINAL_EXPORT[FINAL_EXPORT.index('scene = bpy.con
 
 class InferenceProtocolError(RuntimeError):
     """Unusable inference results stop execution rather than inviting candidate repair."""
+
+
+class CorrectableModelResponse(ValueError):
+    """A billed response produced no executable action and may be corrected."""
 
 
 class ReviewBudgetReserved(RuntimeError):
@@ -94,6 +100,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     status, progress = 'failed', 'The reference-guided job could not complete.'
     history = 'Inspect the persistent scene, then build a strong blockout matching the reference. Work through Blender tools and use rendered evidence to guide each stage.'
     reference_cost = 0
+    invalid_actions = 0
     component_sharing = row.get('shareComponents')
     sharing_enabled = row.get('shareMaterials') is True
     history += ' Component publication: '+json.dumps(component_sharing or 'disabled')+'.'
@@ -102,6 +109,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     exchange = None
     exchange_client = None
     asset_exchange = None
+    polyhaven = None
     prepared_asset = None
     asset_preview = None
     published_assets = 0
@@ -136,6 +144,13 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             asset_exchange = AssetExchange(inference_url, broker.ledger.base, token)
         return asset_exchange
 
+    def polyhaven_assets():
+        nonlocal polyhaven
+        if polyhaven is None:
+            from .polyhaven import PolyHaven
+            polyhaven = PolyHaven(check_active=current)
+        return polyhaven
+
     def current() -> dict[str, Any]:
         value = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
         if value.get('cancelled') or value.get('cancelRequested') or value['status'] == 'cancelled': raise InterruptedError('Cancelled')
@@ -151,6 +166,45 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             files.save_review(job_id, {'protocol': 3, 'strategy': strategy, 'reviews': reviews, 'jobId': job_id, 'referenceModel': REFERENCE_MODEL if reference_saved else None, 'referenceCostCents': reference_cost, 'model': 'openai/gpt-6-astra', 'acceptedRevision': accepted_revision, 'candidateRevision': revision, 'actions': events})
         elif reference_saved:
             files.save_review(job_id, {'protocol': 2, 'jobId': job_id, 'referenceModel': REFERENCE_MODEL, 'referenceCostCents': reference_cost, 'model': 'openai/gpt-6-astra', 'acceptedRevision': accepted_revision, 'candidateRevision': revision, 'quality': {'reviewer': 'independent', 'scope': 'Blender renders', 'reviews': list(legacy_reviews.values()), 'stopReason': stop_reason}, 'actions': events})
+
+    def workflow_history() -> str:
+        header = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}. Component publication: {json.dumps(component_sharing or "disabled")}.\n'
+        recent = []
+        for event in events[-6:]:
+            detail = {key: value for key, value in event.items() if key not in {'time', 'sourceMetadata'}}
+            if event['action'] in {'search_assets', 'search_polyhaven', 'search_materials', 'search_templates', 'inspect_template'} and isinstance(detail.get('result'), str):
+                # Avoid double-escaping metadata, and retain identifiers as structured data.
+                try: detail['result'] = json.loads(detail['result'])
+                except json.JSONDecodeError: pass
+            recent.append(detail)
+
+        def serialized() -> str:
+            return header + json.dumps(recent, ensure_ascii=False)
+
+        if len(serialized().encode()) > 15000:
+            for detail in recent:
+                result = detail.get('result')
+                if isinstance(result, dict) and isinstance(result.get('entries'), list):
+                    for entry in result['entries']:
+                        entry.pop('description', None)
+                        if isinstance(entry.get('name'), str): entry['name'] = entry['name'][:40]
+            for detail in recent[:-1]:
+                if len(serialized().encode()) <= 15000: break
+                detail.pop('result', None)  # Retain the fact and summary of earlier inspection.
+        if len(serialized().encode()) > 15000:
+            for detail in recent:
+                for key in ['critique', 'summary', 'error']:
+                    if isinstance(detail.get(key), str): detail[key] = detail[key].encode()[:500].decode(errors='ignore')
+            result = recent[-1].get('result')
+            if isinstance(result, dict) and isinstance(result.get('entries'), list):
+                recent[-1]['result'] = {'entries': [{'id': entry['id']} for entry in result['entries']], 'cursor': result.get('cursor')}
+        while len(serialized().encode()) > 15000:
+            # Non-catalog tool output may be shortened, never a catalog's IDs or cursor.
+            value = recent[-1].get('result')
+            if not isinstance(value, str) or not value:
+                raise ValueError('Workflow history exceeds its structured context limit.')
+            recent[-1]['result'] = value[:len(value) // 2]
+        return serialized()
 
     def inference(operation: str, kind: str, **payload: Any) -> dict[str, Any]:
         current()
@@ -179,6 +233,8 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     if not isinstance(result, dict): raise InferenceProtocolError('Inference response must be an object.')
                     if quality and kind == 'modeling' and response.status_code == 409:
                         if result.get('code') == 'quality_review_reserved': raise ReviewBudgetReserved('Modeling allowance is reserved for final review.')
+                    if quality and kind == 'modeling' and response.status_code == 502 and result.get('code') in {'inference_action_invalid', 'inference_output_incomplete'}:
+                        raise CorrectableModelResponse(str(result.get('error', 'Invalid Blender action.'))[:500])
                     if quality and response.status_code >= 400:
                         details = {'status': response.status_code, 'kind': kind, 'operationId': operation}
                         for key, limit in [('error', 500), ('code', 100)]:
@@ -255,6 +311,23 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor, **({'qualityApproved': True} if quality else {}))
         accepted_review = verdict
 
+    def finish_with_review(reason: str) -> None:
+        nonlocal status, progress
+        status, progress = ('partial' if saved else 'failed'), 'Modeling stopped to preserve independent review allowance.'
+        if accepted_current and scene_matches:
+            status, progress = 'completed', 'Delivered the independently accepted model within the budget.'
+        elif saved and scene_matches:
+            event = {'action': 'service_review', 'candidateRevision': revision, 'reason': reason}
+            events.append(event)
+            try:
+                accept_candidate(executor + '-budget-accept', independent_review(executor + '-budget-review'))
+                status, progress = 'completed', 'The final exported candidate passed independent review within the budget.'
+                event['result'] = progress
+            except ValueError as error:
+                event['error'] = str(error)[:2500]
+                progress = 'The final candidate did not pass independent review; retained available files.'
+            trace()
+
     try:
         if row.get('referenceMode') == 'generate':
             heartbeat('Generating a four-view design reference with GPT Image 2.5 Flare.')
@@ -282,30 +355,27 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             publication_preview = asset_preview or material_preview
             visible_model_views = [image for image in rendered if not publication_preview or image['label'] != publication_preview['label']]
             try:
-                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), **({'meshy': meshy_context} if meshy_context else {}), history=history.encode()[-15000:].decode(errors='ignore'), images=references + visible_model_views + ([publication_preview] if publication_preview else []))
+                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), **({'meshy': meshy_context} if meshy_context else {}), history=history, images=modeler_images(references, visible_model_views, publication_preview) if quality else references + visible_model_views + ([publication_preview] if publication_preview else []))
+            except CorrectableModelResponse as error:
+                current()
+                invalid_actions += 1
+                events.append({'turn': turn, 'action': 'invalid_action', 'error': str(error), 'result': 'No Blender action was executed. Return one corrected action with valid arguments.', 'candidateRevision': revision})
+                trace(); history = workflow_history()
+                if invalid_actions >= 3:
+                    finish_with_review('modeling_correction_limit')
+                    break
+                continue
             except ReviewBudgetReserved:
                 current()
-                status, progress = 'partial' if saved else 'failed', 'Modeling stopped to preserve independent review allowance.'
-                if accepted_current and scene_matches:
-                    status, progress = 'completed', 'Delivered the independently accepted model within the budget.'
-                elif saved and scene_matches:
-                    event = {'action': 'service_review', 'candidateRevision': revision, 'reason': 'modeling_budget_reserved'}
-                    events.append(event)
-                    try:
-                        accept_candidate(executor + '-budget-accept', independent_review(executor + '-budget-review'))
-                        status, progress = 'completed', 'The final exported candidate passed independent review within the budget.'
-                        event['result'] = progress
-                    except ValueError as error:
-                        event['error'] = str(error)[:2500]
-                        progress = 'The final candidate did not pass independent review; retained available files.'
-                    trace()
+                finish_with_review('modeling_budget_reserved')
                 break
+            invalid_actions = 0
             if asset_preview and prepared_asset: prepared_asset['reviewed'] = True
             if material_preview and prepared_material: prepared_material['reviewed'] = True
             if scene_matches:
                 reviewed_views.update(image['label'].removeprefix('render-') for image in visible_model_views)
             action = step.get('action')
-            if action not in {'prepare_generated_asset', 'generate_asset', 'inspect_scene', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
+            if action not in {'prepare_generated_asset', 'generate_asset', 'inspect_scene', 'inspect_resources', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'search_polyhaven', 'load_polyhaven', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
             event = {'turn': turn, 'action': action, 'candidateRevision': revision, 'summary': str(step.get('summary', ''))[:1000], 'critique': str(step.get('critique', ''))[:2000], 'inspectedViews': sorted(reviewed_views), 'time': int(time.time())}
             events.append(event)
             operation = f'{executor}-tool-{turn}'
@@ -334,7 +404,14 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                                 if 'values' in spec: controls[key]['choiceCount']=len(spec['values'])
                             result={'id':entry['id'],'name':entry['name'],'controls':controls,'license':entry['license'],'attribution':entry['attribution'],'inspectControl':'Call inspect_template with parameter to see every option.'}
                     event['result']=json.dumps(result,ensure_ascii=False)
-                    trace();history=f'Candidate revision {revision}. Current candidate accepted: {accepted_current}.\n'+json.dumps([event],ensure_ascii=False)
+                    trace(); history = workflow_history()
+                    continue
+                if action == 'search_polyhaven':
+                    parameters = json.loads(step.get('code', '{}'))
+                    result = polyhaven_assets().search(parameters.get('q', ''), parameters.get('cursor'))
+                    event['result'] = json.dumps(result, ensure_ascii=False)
+                    trace()
+                    history = workflow_history()
                     continue
                 if action == 'search_assets':
                     parameters = json.loads(step.get('code', '{}'))
@@ -342,7 +419,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     compact = {'entries':[{'id':entry['id'],'name':entry['metadata']['name'].encode()[:100].decode(errors='ignore'),'description':entry['metadata'].get('description','').encode()[:80].decode(errors='ignore')} for entry in result['entries']], 'cursor':result.get('cursor')}
                     event['result'] = json.dumps(compact,ensure_ascii=False)
                     trace()
-                    history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current candidate accepted: {accepted_current}.\n'+json.dumps([event],ensure_ascii=False)
+                    history = workflow_history()
                     continue
                 if action == 'search_materials':
                     parameters = json.loads(step.get('code', '{}'))
@@ -350,7 +427,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     compact = {'entries':[{'id':entry['id'],'name':entry['name'].encode()[:100].decode(errors='ignore'),'tileSize':entry['tileSize'],'description':entry['description'].encode()[:80].decode(errors='ignore')} for entry in result['entries']], 'cursor':result.get('cursor')}
                     event['result'] = json.dumps(compact,ensure_ascii=False)
                     trace()
-                    history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}. Component publication: {json.dumps(component_sharing or 'disabled')}.\n'+json.dumps(events[-3:],ensure_ascii=False)
+                    history = workflow_history()
                     continue
                 if action == 'prepare_generated_asset':
                     if not meshy_enabled: raise ValueError('Meshy is not enabled for this managed job.')
@@ -402,8 +479,11 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         payload, metadata = prepared_asset['payload'], prepared_asset['metadata']
                     else:
                         exchange_client = MeshyExchange(inference, heartbeat, lambda: deadline)
+                        def save_generated_component(save_operation, save_payload, save_metadata):
+                            files.save_component(job_id, save_operation, save_payload, prepared_asset['reference'], {**save_metadata, 'operationId': operation, 'referenceSha256': hashlib.sha256(prepared_asset['reference']).hexdigest(), 'componentName': prepared_asset['name'], 'transform': {key: prepared_asset[key] for key in ['location', 'rotation', 'scale']}})
+                            broker.ledger.call('recordManagedMeshyArtifact', jobId=job_id, executorId=executor, operationId=save_operation, recovered=False)
                         try:
-                            payload, metadata = exchange_client.generate(operation, 'data:image/jpeg;base64,' + base64.b64encode(prepared_asset['reference']).decode(), rigging=prepared_asset['rigging'], height_meters=prepared_asset['heightMeters'], save=lambda save_operation, save_payload, save_metadata: files.save_component(job_id, save_operation, save_payload, prepared_asset['reference'], {**save_metadata, 'operationId': operation, 'referenceSha256': hashlib.sha256(prepared_asset['reference']).hexdigest(), 'componentName': prepared_asset['name'], 'transform': {key: prepared_asset[key] for key in ['location', 'rotation', 'scale']}}))
+                            payload, metadata = exchange_client.generate(operation, 'data:image/jpeg;base64,' + base64.b64encode(prepared_asset['reference']).decode(), rigging=prepared_asset['rigging'], height_meters=prepared_asset['heightMeters'], save=save_generated_component)
                         except InterruptedError: raise
                         except Exception as error: raise ValueError(str(error)[:2000]) from error
                         prepared_asset['payload'], prepared_asset['metadata'] = payload, metadata
@@ -425,16 +505,24 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     revision_sequence += 1; revision = revision_sequence; saved = scene_matches = True
                     broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
                     rendered = inspect(['hero', 'front', 'right'], '', operation + '-attempt-' + str(turn) + '-inspect')
-                    event['result'] = 'Generated and imported the textured Meshy component with its editable hierarchy. ' + json.dumps(result)[:1000]
+                    delivery = 'Generated and imported the textured Meshy component with its editable hierarchy.'
+                    if metadata.get('riggingFallback'):
+                        delivery = 'Optional rigging was unavailable; imported the valid textured base component.'
+                    elif metadata.get('animated'):
+                        delivery = 'Generated and imported the textured, rigged Meshy component with its walking animation.'
+                    event['result'] = delivery + ' ' + json.dumps(result)[:1000]
                     prepared_asset['generated'] = True
                     prepared_asset = asset_preview = None
+                elif action == 'inspect_resources':
+                    result = execute(resource_inspection_code(step.get('objectName', '')), operation)
+                    event['result'] = json.dumps(result)[:12000]
                 elif action in {'inspect_scene', 'inspect_object'}:
                     name = 'get_scene_info' if action == 'inspect_scene' else 'get_object_info'
                     arguments = {'user_prompt': row['brief'][:1000]}
                     if action == 'inspect_object': arguments['object_name'] = step['objectName']
                     result = mcp(name, arguments, operation)
                     event['result'] = json.dumps(result)[:5000]
-                elif action in {'edit','load_material','load_asset','build_template'}:
+                elif action in {'edit','load_material','load_asset','load_polyhaven','build_template'}:
                     if action == 'build_template':
                         parameters=json.loads(step['code'])
                         entry=shared_assets().template(parameters['id'])
@@ -443,6 +531,17 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         code="import bpy,sys,json\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.asset_templates import build_template\nfrom cloud.blender_mcp.components import assembly_manifest\n"
                         code+="root=build_template(**json.loads("+repr(payload)+"))\nroot.location="+repr(parameters['location'])+"\nroot.rotation_euler="+repr(parameters['rotation'])+"\nroot.scale="+repr(parameters['scale'])+"\nbpy.context.view_layer.update()\nprint(json.dumps(assembly_manifest()))"
                         event['templateId']=entry['id'];event['templateParameters']=parameters.get('parameters',{})
+                    elif action == 'load_polyhaven':
+                        parameters = json.loads(step['code'])
+                        allowance = min(60, remaining_seconds(broker.owned(token, reservation)) - DELIVERY_RESERVE_SECONDS - 5)
+                        entry, payload = polyhaven_assets().load(parameters['id'], timeout_seconds=allowance)
+                        name = broker.upload_material(token, reservation, payload, operation + '-upload')
+                        transform = {key: parameters[key] for key in ['location', 'rotation', 'scale']}
+                        code = "import sys,json,hashlib\nsys.path.insert(0,'/opt/agartha-blender')\nfrom cloud.blender_mcp.components import import_polyhaven,assembly_manifest\n"
+                        code += "path='/workspace/artifacts/" + name + "'\nassert hashlib.sha256(open(path,'rb').read()).hexdigest()==" + repr(entry['modelId'].removeprefix('model-')) + "\n"
+                        code += "root=import_polyhaven(path," + repr(parameters['name']) + ",asset_id=" + repr(entry['id']) + ",attribution=" + repr(entry['attribution']) + ",**json.loads(" + repr(json.dumps(transform)) + "))\nprint(json.dumps(assembly_manifest()))"
+                        event['sourceMetadata'] = entry
+                        heartbeat('Loaded a model from Poly Haven; checking its appearance.')
                     elif action == 'load_asset':
                         parameters = json.loads(step['code'])
                         entry, payload = shared_assets().load(parameters['id'])
@@ -615,19 +714,21 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['result'] = 'Restored the accepted scene and rendered it for comparison.'
             except ValueError as error:
                 event['error'] = str(error)[:2500]
-                if action in {'edit','load_material','load_asset','build_template'}: rendered = []; reviewed_views.clear()
+                if action in {'edit','load_material','load_asset','load_polyhaven','build_template'}: rendered = []; reviewed_views.clear()
             trace()
-            recent = [{key: value for key, value in item.items() if key != 'time'} for item in events[-6:]]
-            history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}. Component publication: {json.dumps(component_sharing or 'disabled')}.\n' + json.dumps(recent,ensure_ascii=False)
+            history = workflow_history()
         else:
-            status, progress = 'partial' if saved else 'failed', 'Action limit reached; preserved available files.'
+            if quality:
+                finish_with_review('modeling_action_limit')
+            else:
+                status, progress = 'partial' if saved else 'failed', 'Action limit reached; preserved available files.'
     except InterruptedError:
         status, progress = 'cancelled', 'Stopped at your request or because the job is no longer active.'
     except Exception as error:
         events.append({'action': 'error', 'type': type(error).__name__, 'message': str(error)[:1500]})
         status, progress = 'partial' if saved else 'failed', 'Stopped because budget, availability, or execution limits prevented another safe step.'
     finally:
-        for client in [exchange, asset_exchange, exchange_client]:
+        for client in [exchange, asset_exchange, exchange_client, polyhaven]:
             if client is None: continue
             try: client.close()
             except Exception: pass  # Client cleanup must not skip compute shutdown.

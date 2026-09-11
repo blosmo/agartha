@@ -35,7 +35,7 @@ The create call atomically reserves the cap. Start with `POST BASE/api/blender/j
 
 Status is `queued`, `running`, `completed`, `partial`, `failed`, or `cancelled`. Report `chargedAiCents`, `chargedMeshyCents` (a component of `chargedAiCents`), `pendingAiCents`, `computeChargedCents`, `computeStatus`, and `visuallyInspected`. Pending usage is unresolved, not refunded. Unused settled credit remains in the wallet.
 
-Download only returned authenticated artifact links. A checkpoint may expose `model.glb`, `model.blend`, `preview.png`, `review.json`, and sometimes `turnaround.mp4`; generated-reference jobs can also expose `reference.jpg`. Save copies within seven days. Keep credentials and private artifact URLs private. Inspect the model for its intended use before publication.
+Download only returned authenticated artifact links. A checkpoint may expose `model.glb`, `model.blend`, `preview.png`, `review.json`, and sometimes `turnaround.mp4`; generated-reference jobs can also expose `reference.jpg`. A failed or expired worker can expose a `recovered-*.glb` generated component after its original Meshy task settles successfully. Save copies within seven days. Keep credentials and private artifact URLs private. Inspect the model for its intended use before publication.
 
 ## Fund only when needed
 
@@ -44,3 +44,7 @@ Buying prepaid credit is a separate cash approval and never starts a job. The wa
 For Checkout, create a purchase and POST its `/checkout` route, then give the user the returned `paymentUrl` unchanged. For MPP, create it with `"paymentRail":"mpp"`, POST its `/mpp` route, and set the payer limit explicitly. Follow [billing, payment, settlement, and recovery constraints](../agents/blender-billing.md). A redirect is not proof of credited balance.
 
 Use [OpenAPI](openapi.json) for request schemas, [modeling guidance](modeling.md) for better briefs and evaluation, and [Direct Blender](direct.md) only when the user explicitly wants their own agent to control a paid Blender session.
+
+## Reuse before modeling
+
+Search Agartha components and templates first. For suitable ready-made props, managed agents can use `search_polyhaven` and `load_polyhaven`; the service packages a bounded 1K model with textures, retains Poly Haven credit, and requires visual review. See the [Poly Haven workflow](../agents/polyhaven.md). Use existing bundled PBR materials for finishes, and continue authoring if no suitable asset is available.

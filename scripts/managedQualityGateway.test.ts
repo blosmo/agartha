@@ -68,6 +68,25 @@ describe('persisted managed quality gateway protocol', () => {
       expect(res.end).toHaveBeenCalledTimes(1);
     }
   });
+  it('marks an invalid modeling action as correctable only after known usage settles', async () => {
+    const action = { action: 'search_templates', code: '', objectName: '', views: [], summary: 'Search', critique: '' };
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ status: 'completed', usage: { input_tokens: 1000, output_tokens: 200 }, output: [{ type: 'function_call', status: 'completed', name: 'blender_action', arguments: JSON.stringify(action) }] }));
+    vi.stubGlobal('fetch', fetcher); const res = response();
+    await managedInference(request({ ...body, kind: 'modeling', strategy, history: 'Begin', images: [] } as any) as any, res as any);
+    expect(res.statusCode).toBe(502);
+    expect(JSON.parse(res.end.mock.calls[0][0])).toMatchObject({ code: 'inference_action_invalid', error: expect.stringContaining('search_templates') });
+    expect(state.ledger).toHaveBeenLastCalledWith('completeManagedInference', expect.objectContaining({ chargeCents: 2 }));
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('allows correction of token-limited modeling only when its usage is known', async () => {
+    for (const [usage, expectedStatus, code] of [[{ input_tokens: 1000, output_tokens: 200 }, 502, 'inference_output_incomplete'], [undefined, 503, 'inference_usage_reconciliation']] as const) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, usage, output: [{ type: 'function_call', name: 'blender_action', arguments: '{incomplete' }] })));
+      const res = response();
+      await managedInference(request({ ...body, kind: 'modeling', strategy, history: 'Begin', images: [] } as any) as any, res as any);
+      expect(res.statusCode).toBe(expectedStatus);
+      expect(JSON.parse(res.end.mock.calls[0][0])).toMatchObject({ code });
+    }
+  });
   it('rejects v3 downgrades and legacy upgrades before provider dispatch', async () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
     for (const [version, protocol] of [[3, 2], [3, undefined], [undefined, 3], [2, 3], [3, 4]]) {

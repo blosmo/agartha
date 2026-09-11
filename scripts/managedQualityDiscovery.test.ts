@@ -30,6 +30,15 @@ describe('managed quality discovery', () => {
     expect(body.artifacts.map((artifact: { name: string }) => artifact.name)).toEqual(['model.glb', 'model.blend', 'preview.png']);
   });
 
+  it('publishes only validated late Meshy recovery artifacts', async () => {
+    const res = response();
+    const valid = 'recovered-' + 'a'.repeat(64) + '.glb';
+    const ledger = vi.fn(async () => ({ jobId: 'job', recoveredMeshyArtifacts: [valid, '../private.glb', 'recovered-short.glb'] }));
+    await managedJobs({ method: 'GET' } as BillingRequest, res as never, 'jobs/job', 'a'.repeat(64), ledger as LedgerCall, false);
+    const body = JSON.parse(res.end.mock.calls[0][0]);
+    expect(body.artifacts).toEqual([{ name: valid, url: `/api/blender/jobs/job/artifacts/${valid}` }]);
+  });
+
   it('routes only the Compute hostname discovery files before generic redirects', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8'));
     const redirects = config.redirects as Array<{ source: string; destination: string; has?: Array<{ type: string; value: string }> }>;

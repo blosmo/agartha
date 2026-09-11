@@ -1,6 +1,6 @@
 # Managed elephant comparison: 2026-09-10
 
-This comparison records one legacy managed job and two version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
+This comparison records one legacy managed job and five version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
 
 ## Exact brief
 
@@ -40,9 +40,53 @@ The exact rejected response was not recoverable from the retained trace. An offl
 - The retained trace recorded HTTP 502 with the message that exactly one structured result was required, plus `tools=0` and `finish=length`. This records the missing structured tool call; it does not establish that 4,096 reasoning tokens were spent.
 - Only `reference.jpg` was available. It is a design target, not a produced model. There is no GLB, editable Blender source, or model preview from this attempt.
 
-The deployed strategy path still used Chat Completions with a required function call. OpenAI's official [reasoning-model guidance](https://developers.openai.com/api/docs/guides/reasoning) states that GPT-6 Astra function calling requires the Responses API and is unsupported through Chat Completions. This identifies an endpoint compatibility defect in the integration. The subsequent correction migrates all managed Astra function calls to Responses while preserving the model, token ceilings, reasoning effort and budget reserve. It validates completed function-call output, settles known usage once, and leaves missing or all-zero usage unresolved. Mocked provider, billing and gateway regressions pass, but no later paid run has verified this correction or established improved model quality.
+The deployed strategy path still used Chat Completions with a required function call. OpenAI's official [reasoning-model guidance](https://developers.openai.com/api/docs/guides/reasoning) states that GPT-6 Astra function calling requires the Responses API and is unsupported through Chat Completions. This identifies an endpoint compatibility defect in the integration. The subsequent correction migrates all managed Astra function calls to Responses while preserving the model, token ceilings, reasoning effort and budget reserve. It validates completed function-call output, settles known usage once, and leaves missing or all-zero usage unresolved. Mocked provider, billing and gateway regressions pass, but the next paid run still failed before producing geometry.
 
-There is no successful improved model to compare. All three authorized dispatches are used. Their combined service-ledger charge was 124 cents: 95 cents for the legacy baseline, 21 cents for version-3 attempt 1, and 8 cents for version-3 attempt 2. Version 3 remains unproven by a successful improved model. No further paid run is authorized; technical validation and reference-image quality alone do not establish an improvement in model quality.
+## Version-3 attempt 3
+
+- Job: `29ce7bca-4d56-4a33-ae3d-dfdf40e037fa`, started once on 2026-09-11 using the corrected Responses path.
+- Final state: `failed` before worker launch, compute `failed`, only a generated reference available.
+- Known charge: 8 cents. Another 59 cents remains reserved for unresolved inference usage. This is a maximum liability, not a confirmed charge or a released hold.
+- The strategy trace reports `status=incomplete, reason=max_output_tokens` and `inference_usage_reconciliation`. Reliable usage was unavailable. No uncertain operation was replayed.
+
+The next bounded tuning increases planner and reviewer output ceilings from 4,096 to 8,192 tokens, uses medium reasoning effort for these two stages, and protects 125 cents for final review. Modeling retains its existing settings and budget adjustment. Preflight checks reject planning that would consume the review reserve. Focused budget and request tests pass; real model quality remains unverified.
+
+## Version-3 attempt 4
+
+- Job: `0db1386f-5515-4203-847f-20fc69215642`, started once on 2026-09-11 using the 8,192-token, medium-effort planner.
+- Reviewed source `7f8d5c5`, merged as `c13c099` in PR #57; deployed as `dpl_Ca5mqn4f6HTLojMGcaC79XVVjEPV`.
+- Final state: `failed` before worker launch, compute `failed`, no strategy or geometry revision. Only `reference.jpg` exists as a model artifact.
+- Known charge: 8 cents for the reference. Another 79 cents remains reserved for unresolved inference usage.
+- The private trace again reports `status=incomplete, reason=max_output_tokens` and `inference_usage_reconciliation`.
+- AI Gateway generation `gen_01M280X9EZPJP3D36NT5AABY30` began at 10:41:14.207 UTC, returned HTTP 200 in 1.69 seconds (provider response time 1.61 seconds), and explicitly reported no usage. The dashboard displayed $0.0000, which is not sufficient evidence to release the service hold.
+
+Increasing the ceiling and reducing reasoning effort did not resolve the failure. The quick, usage-less response does not establish actual reasoning-token exhaustion. The request matches the documented Responses format; the available evidence does not identify a further safe parameter correction. Paid retries stopped pending a reliable provider response or a more specific diagnosis. Temporary operator overrides were removed without releasing the unresolved holds. No successful improved model is available, and public version 3 remains disabled.
+
+At that point, five dispatches had produced 140 cents of known service charges and 138 cents of unresolved maximum liability, totaling 278 cents of accounted exposure. Further private verification is authorized within the original 1,000-cent cumulative ceiling, with each new job capped at 500 cents. Unknown charges remain included until reconciled. Version 3 remains disabled as the public default pending a successful model and export review.
+
+## Controlled provider diagnosis and schema correction
+
+Seven small probes used the same Astra gateway, separate durable operation labels, and the original cumulative budget. Text output and minimal loose/strict function calls succeeded. The exact planner without images failed with all-zero usage in 1.947 seconds; changing only strict mode to false also failed in 1.745 seconds. Removing all optional schema constraints completed but violated local length limits.
+
+Removing **only the string regex pattern** from the original planner schema completed in 17.855 seconds with 576 input tokens and 559 output tokens. The 2,061-byte strategy passed `parseStrategy`. Strict mode, string length limits, array limits, model, prompt, reasoning effort, and output ceiling were unchanged. This isolates the repeated whitespace regex as the trigger in this provider path. It does not imply that every regex is unsupported.
+
+The fix removes that pattern from planner and critic schemas and retains local whitespace, Unicode, length, field, and byte validation. A regression test failed before the change and passed afterward. The seven probes account for 140 cents conservatively: 20 cents of rounded, padded metered exposure and 120 cents retained for ambiguous requests. Together with the five jobs, total accounted exposure is 418 cents before another full run. Full model delivery and public activation still require verification.
+
+## Model action recovery
+
+Full managed verification now passes planning and launches Blender. The next failure exposed a separate control-flow defect: a completed but invalid modeling action ended the job rather than allowing a bounded correction. An edit used only for resource discovery also triggered automatic export before geometry existed, and asset searches replaced previous inspection history.
+
+The follow-up fixes distinguish a completed, billed but invalid modeling action from uncertain inference. The modeler may issue up to two consecutive corrective requests under fresh operation IDs. Invalid actions never execute, while uncertain and reviewer failures still stop. Search results preserve recent inspection history and structured identifiers within the serialized context bound. The tool description names every operation requiring JSON parameters. A fixed read-only resource action supplies toolkit signatures and installed catalogs without requiring model export.
+
+Regression tests reproduce the recovery and history faults. Actual Blender checks confirm toolkit inspection does not change the scene. Private run identifiers, billing receipts and spending details remain in the operator's verification report.
+
+## Modeler context and bounded output recovery
+
+A full modeling attempt exposed an input-budget bottleneck: four reference images plus three exported views consumed enough conservative input allowance to reduce a late modeling action to 2,000 output tokens. Packing the same views into two labeled sheets raises that allowance to 10,200 tokens under the same per-operation cap. Detail views remain separate, and the independent critic still receives original full views.
+
+The gateway now permits bounded correction of an incomplete modeling response only after known usage has been settled. Incomplete code never executes. Unknown usage still stops. When the action or correction limit is reached, a saved candidate may use the protected review reserve, with the same independent acceptance and artifact-binding checks.
+
+Validation passed 60 focused TypeScript tests and 72 Python tests, script type checking, and code review. Actual packed reference and exported-model sheets were inspected for readable labels and views. This verifies the context fix, not final model quality; the inspected candidate remains a blockout.
 
 ## Reproduction and evidence
 

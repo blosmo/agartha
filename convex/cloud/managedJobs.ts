@@ -187,7 +187,9 @@ export const claimManagedInference = internalMutation({ args: { jobId: v.string(
     if (!row.meshyAllowance || row.meshyAdmissionEnabled !== true || row.workflowVersion !== 3) throw new Error("Asset references are not available for this job.");
     const references = (await Promise.all(['claimed', 'completed', 'unresolved'].map(state => ctx.db.query('managedInferenceOperations').withIndex('by_job_state', q => q.eq('jobId', row.jobId).eq('state', state as 'claimed' | 'completed' | 'unresolved')).collect()))).flat();
     if (row.reservedAiCents - row.chargedAiCents - row.releasedAiCents - args.maxCostCents < 100) throw new Error("Asset references must retain 100 cents for review.");
-    if (references.filter(operation => operation.kind === 'asset-reference').length >= row.meshyAllowance.maxAssets) throw new Error("Asset reference allowance exhausted.");
+    // Each generated asset gets one bounded replacement target. Reference
+    // attempts do not consume the separately advertised generated-asset count.
+    if (references.filter(operation => operation.kind === 'asset-reference').length >= row.meshyAllowance.maxAssets * 2) throw new Error("Asset reference allowance exhausted.");
   }
   if (args.kind === "meshy") {
     if (!row.meshyAllowance || row.meshyAdmissionEnabled !== true || row.workflowVersion !== 3 || !row.meshyRate || !args.meshStage) throw new Error("Meshy generation is not available for this job.");
@@ -243,7 +245,7 @@ export const getManagedMeshyOperation = internalQuery({
     const row = await job(ctx, args.jobId);
     const op = await ctx.db.query('managedInferenceOperations').withIndex('by_operation', q => q.eq('operationId', args.operationId)).unique();
     if (!op || op.jobId !== row.jobId || op.executorId !== args.executorId || row.executorId !== args.executorId || op.kind !== 'meshy') return null;
-    return { operationId: op.operationId, jobId: op.jobId, meshTaskId: op.meshTaskId, meshStage: op.meshStage, meshParentOperationId: op.meshParentOperationId, meshResult: op.meshResult, payloadFingerprint: op.payloadFingerprint, maxCostCents: op.maxCostCents, status: op.meshResult?.status ?? (op.state === 'completed' ? 'failed' : 'pending') };
+    return { operationId: op.operationId, jobId: op.jobId, meshTaskId: op.meshTaskId, meshStage: op.meshStage, meshParentOperationId: op.meshParentOperationId, meshResult: op.meshResult, meshArtifactReady: op.meshArtifactReady, payloadFingerprint: op.payloadFingerprint, maxCostCents: op.maxCostCents, status: op.meshResult?.status ?? (op.state === 'completed' ? 'failed' : 'pending') };
   },
 });
 
@@ -256,8 +258,8 @@ export const listPendingMeshyOperations = internalMutation({
     const pending = [];
     for (const operation of candidates) {
       await ctx.db.patch(operation._id, { meshLastPollAt: Date.now() });
-      if (operation.kind === 'meshy' && operation.meshTaskId && operation.state !== 'completed') {
-        pending.push({ jobId: operation.jobId, executorId: operation.executorId, operationId: operation.operationId });
+      if (operation.kind === 'meshy' && operation.meshTaskId && (operation.state !== 'completed' || operation.meshResult?.status === 'succeeded' && !operation.meshArtifactReady)) {
+        pending.push({ jobId: operation.jobId, executorId: operation.executorId, operationId: operation.operationId, meshStage: operation.meshStage });
       } else await ctx.db.patch(operation._id, { needsMeshyPoll: false });
     }
     return pending;
@@ -300,8 +302,26 @@ export const completeManagedMeshyTask = internalMutation({
     await ctx.db.patch(wallet._id, { heldCents: wallet.heldCents - args.chargeCents - refund, availableCents: wallet.availableCents + refund, frozen: wallet.availableCents + refund < 0 || wallet.openDisputes > 0 });
     await entry(ctx, row, `operation:${op.operationId}:release`, 'release', refund);
     await ctx.db.patch(row._id, { chargedAiCents: row.chargedAiCents + args.chargeCents, chargedMeshyCents: (row.chargedMeshyCents ?? 0) + args.chargeCents, pendingAiCents: 0, releasedAiCents: row.releasedAiCents + refund, updatedAt: Date.now() });
-    await ctx.db.patch(op._id, { state: 'completed', chargeCents: args.chargeCents, meshResult: args.result, needsMeshyPoll: false, completedAt: Date.now() });
+    await ctx.db.patch(op._id, { state: 'completed', chargeCents: args.chargeCents, meshResult: args.result, needsMeshyPoll: args.result.status === 'succeeded', completedAt: Date.now() });
     return { state: 'completed', reused: false, chargeCents: args.chargeCents };
+  },
+});
+
+export const recordManagedMeshyArtifact = internalMutation({
+  args: { jobId: v.string(), executorId: v.string(), operationId: v.string(), recovered: v.boolean(), artifactName: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const row = await job(ctx, args.jobId);
+    const op = await ctx.db.query('managedInferenceOperations').withIndex('by_operation', q => q.eq('operationId', args.operationId)).unique();
+    if (!op || op.jobId !== row.jobId || op.executorId !== args.executorId || row.executorId !== args.executorId || op.kind !== 'meshy' || op.state !== 'completed' || op.meshResult?.status !== 'succeeded') throw new Error('Stale Meshy artifact.');
+    if (args.recovered && (!args.artifactName || !/^recovered-[a-f0-9]{64}\.glb$/.test(args.artifactName))) throw new Error('Recovered Meshy artifact name is invalid.');
+    const recovered = row.recoveredMeshyArtifacts ?? [];
+    if (args.recovered && !recovered.includes(args.artifactName!)) {
+      if (recovered.length >= 6) throw new Error('Recovered Meshy artifact allowance exhausted.');
+      recovered.push(args.artifactName!);
+      await ctx.db.patch(row._id, { recoveredMeshyArtifacts: recovered, updatedAt: Date.now() });
+    }
+    await ctx.db.patch(op._id, { meshArtifactReady: true, needsMeshyPoll: false });
+    return { meshArtifactReady: true, recovered: args.recovered };
   },
 });
 export const finishManagedJob = internalMutation({

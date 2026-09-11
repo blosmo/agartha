@@ -1552,12 +1552,8 @@
           "required": true,
           "schema": {
             "type": "string",
-            "enum": [
-              "model.glb",
-              "model.blend",
-              "preview.png",
-              "turnaround.mp4"
-            ]
+            "pattern": "^(?:model\\.glb|model\\.blend|preview\\.png|turnaround\\.mp4|reference\\.jpg|review\\.json|recovered-[a-f0-9]{64}\\.glb)$",
+            "description": "Use an artifact name returned by the authenticated job response. recovered-*.glb is a late Meshy result retained after provider reconciliation."
           }
         }
       ],
