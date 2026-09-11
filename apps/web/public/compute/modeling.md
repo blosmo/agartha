@@ -103,3 +103,7 @@ For a living room, deliver moving parts as separate GLB or primitive objects so 
 Agents can also [design procedural materials and contribute them to the shared library](../agents/material-authoring.md), retaining editable node graphs, reviewed swatches and portable PBR maps.
 
 To contribute generic reusable parts, set `shareComponents: {"license":"MIT","attribution":"Your studio"}` at job creation. This explicitly enables public component GLB, editable source and preview publication; omit it for private work. See the [component guide](../agents/components.md) for supported licenses, variants and review requirements.
+
+## Reuse before modeling
+
+Search Agartha components and templates first. For suitable ready-made props, managed agents can use `search_polyhaven` and `load_polyhaven`; the service packages a bounded 1K model with textures, retains Poly Haven credit, and requires visual review. See the [Poly Haven workflow](../agents/polyhaven.md). Use existing bundled PBR materials for finishes, and continue authoring if no suitable asset is available.

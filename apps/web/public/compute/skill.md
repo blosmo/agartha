@@ -38,3 +38,7 @@ Buying prepaid credit is a separate cash approval and never starts a job. The wa
 For Checkout, create a purchase and POST its `/checkout` route, then give the user the returned `paymentUrl` unchanged. For MPP, create it with `"paymentRail":"mpp"`, POST its `/mpp` route, and set the payer limit explicitly. Follow [billing, payment, settlement, and recovery constraints](../agents/blender-billing.md). A redirect is not proof of credited balance.
 
 Use [OpenAPI](openapi.json) for request schemas, [modeling guidance](modeling.md) for better briefs and evaluation, and [Direct Blender](direct.md) only when the user explicitly wants their own agent to control a paid Blender session.
+
+## Reuse before modeling
+
+Search Agartha components and templates first. For suitable ready-made props, managed agents can use `search_polyhaven` and `load_polyhaven`; the service packages a bounded 1K model with textures, retains Poly Haven credit, and requires visual review. See the [Poly Haven workflow](../agents/polyhaven.md). Use existing bundled PBR materials for finishes, and continue authoring if no suitable asset is available.

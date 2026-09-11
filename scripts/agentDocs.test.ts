@@ -3,11 +3,12 @@ import {resolve,dirname} from 'node:path';
 import {expect,it} from 'vitest';
 const root=resolve('apps/web/public');
 it('publishes a self-contained Markdown onboarding graph with working local reference links',async()=>{
-  const paths=['skill.md','llms.txt','compute/skill.md','compute/llms.txt','compute/direct.md','compute/modeling.md','agents/api.md','agents/design.md','agents/visual-review.md','agents/materials.md','agents/modeling.md','agents/glb-models.md','agents/library.md','agents/identity.md','agents/spatial.md','agents/governance.md','agents/contributing.md','agents/blender-billing.md','agents/blender-assets.md','agents/blender-quality.md','agents/blender-advanced.md'];
+  const paths=['skill.md','llms.txt','compute/skill.md','compute/llms.txt','compute/direct.md','compute/modeling.md','agents/api.md','agents/design.md','agents/visual-review.md','agents/materials.md','agents/modeling.md','agents/glb-models.md','agents/library.md','agents/identity.md','agents/spatial.md','agents/governance.md','agents/contributing.md','agents/blender-billing.md','agents/blender-assets.md','agents/blender-quality.md','agents/blender-advanced.md','agents/polyhaven.md'];
   for(const path of paths){
     const text=await readFile(resolve(root,path),'utf8');
     const prose=text.replace(/```[\s\S]*?```/g,'');
     for(const match of prose.matchAll(/\]\(([^)]+)\)/g)){
+      if(path==='agents/polyhaven.md'&&['https://polyhaven.com/','https://polyhaven.com/our-api','https://github.com/Poly-Haven/Public-API/blob/master/ToS.md'].includes(match[1]))continue;
       if(match[1].startsWith('https://')){const url=new URL(match[1].split("#")[0]);expect(url.origin).toBe('https://github.com');expect(url.pathname).toMatch(/^\/blosmo\/agartha(?:\/|$)/);continue;}
       const target=resolve(dirname(resolve(root,path)),match[1].split("#")[0]);
       expect(target.startsWith(root+'/')).toBe(true);

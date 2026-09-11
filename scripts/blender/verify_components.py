@@ -4,7 +4,7 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
-from cloud.blender_mcp.components import create_component,duplicate_component,export_component,import_component,assembly_manifest,component_sources,mark_published_component
+from cloud.blender_mcp.components import create_component,duplicate_component,export_component,import_component,assembly_manifest,component_sources,mark_published_component,import_polyhaven
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.mesh.primitive_cube_add(location=(5,0,1))
 part=bpy.context.object
@@ -87,6 +87,17 @@ if bpy.data.objects.get(root_name): bpy.data.objects[root_name].name='Preexistin
 collision=import_component(files['glb'],root_name,bundle_id='bundle-'+'b'*64)
 assert collision.name==root_name and len(collision.children)==1
 
+# External provenance survives reuse and an independently reopened editable source.
+external=import_polyhaven(files['glb'],'Poly Haven fixture',asset_id='test_fixture',attribution='Powered by Poly Haven; Fixture artist')
+external_source=json.loads(external['agarthaExternalSource'])
+import hashlib
+assert external_source['modelId']=='model-'+hashlib.sha256(Path(files['glb']).read_bytes()).hexdigest()
+assert external_source['attribution']=='Powered by Poly Haven; Fixture artist'
+external_copy=duplicate_component(external,'External duplicate')
+assert external_copy['agarthaExternalSource']==external['agarthaExternalSource']
+assert next(row for row in assembly_manifest()['components'] if row['name']==external.name)['externalSource']==external_source
+external_files=export_component(external,output/'external')
+
 # Failed imports cannot remove existing scene geometry.
 bad=output/'bad.glb';bad.write_bytes(b'glTF-invalid')
 try: import_component(str(bad),'Bad',bundle_id='bundle-'+'a'*64)
@@ -99,3 +110,8 @@ assert not any('PRIVATE' in t.name for t in bpy.data.texts)
 assert len([o for o in bpy.context.scene.objects if o.type=='MESH'])==1
 assert any(o.modifiers.get('Editable bevel') for o in bpy.context.scene.objects)
 print('COMPONENT_CHECK_PASSED',json.dumps(files))
+
+bpy.ops.wm.open_mainfile(filepath=external_files['source'],load_ui=False,use_scripts=False)
+assert any(json.loads(obj.get('agarthaExternalSource','null'))==external_source for obj in bpy.context.scene.objects)
+assert json.loads(bpy.context.scene['agarthaComponent'])['externalSource']==external_source
+print('POLYHAVEN_COMPONENT_PROVENANCE_OK')
