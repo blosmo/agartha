@@ -19,24 +19,35 @@ if (
   throw Error("Use an HTTPS origin or local test server.");
 const output = resolve(process.argv[3] ?? ".agartha/lumen-garden/verification");
 await mkdir(output, { recursive: true });
-const local = new URL("../.agartha/lumen-garden/", import.meta.url);
-const token = string(
-  record(
-    JSON.parse(
-      await readFile(new URL("../starter-studio-operator.json", local), "utf8"),
+const manifest = record(
+  JSON.parse(
+    await readFile(
+      new URL("./seed/lumen_manifest.json", import.meta.url),
+      "utf8",
     ),
-  ).token,
+  ),
 );
+const token =
+  process.env.AGARTHA_TOKEN ??
+  string(
+    record(
+      JSON.parse(
+        await readFile(
+          new URL("../.agartha/starter-studio-operator.json", import.meta.url),
+          "utf8",
+        ),
+      ),
+    ).token,
+  );
 const sha = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
-const parts = components(
-  JSON.parse(await readFile(new URL("manifest.json", local), "utf8")),
+const parts = components(manifest);
+const ids = Object.fromEntries(
+  (manifest.components as unknown[]).map((part) => {
+    const value = record(part);
+    return [string(value.name), string(value.modelId)];
+  }),
 );
-const ids: Record<string, string> = {};
-for (const part of parts)
-  ids[part.name] =
-    "model-" + sha(await readFile(new URL(part.name + ".glb", local)));
-const waterId =
-  "model-" + sha(await readFile(new URL("water-model.glb", local)));
+const waterId = string(manifest.waterModelId);
 const expected = lumenObjects(parts, ids, {
   modelId: waterId,
   clip: "WaterCurrent",

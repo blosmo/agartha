@@ -1,7 +1,7 @@
 ---
 title: "feat: Build a living benchmark room"
 type: feat
-status: active
+status: completed
 date: 2026-09-10
 ---
 

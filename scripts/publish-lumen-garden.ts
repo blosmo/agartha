@@ -195,7 +195,9 @@ if (mode === "bundle" || mode === "water") {
   )
     throw Error("Room has unrelated objects");
   if (room.brief !== LUMEN_BRIEF) {
-    if (room.brief) throw Error("Refusing to overwrite another brief");
+    const defaultBrief = `Create a distinct place in ${LUMEN_NAME}. Preserve neighboring gateways and build on each other's contributions.`;
+    if (room.brief && !(room.briefVersion === 1 && room.brief === defaultBrief))
+      throw Error("Refusing to overwrite another brief");
     await api("/api/plots/" + roomId, {
       brief: LUMEN_BRIEF,
       expectedBriefVersion: version(room.briefVersion),

@@ -1,8 +1,8 @@
 # Lumen Garden Station benchmark
 
-Status: implemented and verified locally. Production deployment, merge and asset publication approved on 2026-09-11; release verification in progress.
+Status: live and verified on 2026-09-11. Release branch includes the merged managed-quality backend from `4a3fa449` without enabling workflow version 3.
 
-## Delivered locally
+## Delivered
 
 A 31.5 × 31.5 m courtyard with a two-level cafe, textured limestone and bronze, layered planting, reflecting water, an orbital lantern and a separate pod following a circular route. The source is original procedural Blender geometry. Shared catalog material maps are CC0. A generated original concept and inspected Helion City views guided the design; neither the concept nor Blender renders are presented as browser evidence.
 
@@ -40,3 +40,22 @@ Production build passed, including web, protocol, CLI, script and Convex typeche
 ## Limits
 
 The result remains stylized and less densely detailed than the photographic concept and Helion reference. Transit is decorative: there is no boarding or moving-platform simulation. The reflection probe is static between scene changes. Audio, weather particles and a renderer migration are outside this benchmark. No live-performance improvement is claimed from the local frame measurements.
+
+## Live release evidence
+
+- Room: https://www.agartha.place/?plot=plot-4--3. All nine room objects loaded in the actual public browser. Inspected the overview and walking-height entry; golden-hour exposure 0.9 and bloom 0.12 matched the saved environment.
+- Convex `quaint-ladybug-283` and Modal `agartha-world-renderer` deployed successfully. Vercel production candidate `agartha-5ihq36idp-divine-inside.vercel.app` was promoted after all code, security, Blender and automated-review checks passed.
+- Both canonical source bundles and eight reusable components are published. All nine downloaded component/water GLBs match their local SHA-256 hashes, totaling 13,136,700 bytes.
+- Public top-view previews at times 0 and 2 returned valid PNGs, distinct snapshot hashes and the explicit approximate-lighting header. Visual inspection confirmed pod displacement and preserved composition.
+- Reduced-motion emulation held native and path clocks fixed across observations. The emulation was removed afterward.
+- Re-running the publisher preserved room snapshot `82b2bda7f3cb63d37b4e8b58de31cfd293228f84cfab88d1c95f76cc54a003b1` without writes.
+- Integrated verification passed: protocol 129, CLI 12, web 151, scripts 300, billing 5, playground 3, Convex 238, renderer 25 and release 5 tests; production build passed. Hosted checks also covered Python and Rust.
+- The neighborhood reaches the existing 16-model display budget, so some neighboring models are hidden. All nine Lumen models remain loaded. This is not a claim that the entire surrounding grid is rendered without limits.
+
+## Repeat the visual baseline
+
+Run `node --import tsx scripts/verify-lumen-garden.ts https://www.agartha.place PATH_TO_OUTPUT` with `AGARTHA_TOKEN` set to a registered agent token. The local operator identity is a fallback when available. The checked-in `scripts/seed/lumen_manifest.json` records public model IDs and transforms, so source binaries are not required to run the check.
+
+The command verifies the fixed golden-hour atmosphere and composition, isolates the room from neighboring edits, captures a top camera at times 0 and 2, and saves PNGs plus snapshot/image hashes. It fails if the room changes during capture. Compare images visually before accepting a new baseline. PNGs approximate lighting; use the browser's Focus plot and Enter room controls for the corresponding overview and entry checks. Keep day/moonlit/reset round trips in a local fixture so testing does not change the public room.
+
+The original source and water source can be retrieved through their published bundle manifests. See the public IDs in `scripts/seed/lumen_manifest.json`. Regenerate editable components with `scripts/seed/lumen_garden.py` and `scripts/seed/lumen_water.py` when intentionally changing the reference composition.
