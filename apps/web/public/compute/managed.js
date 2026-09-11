@@ -8,7 +8,7 @@
   const jobKey = 'agartha-compute-job';
   const purchaseKey = 'agartha-compute-purchase';
   const terminal = new Set(['completed', 'partial', 'failed', 'cancelled']);
-  let token, job, capabilities, busy = false, timer;
+  let token, job, capabilities, busy = false, timer, referenceTouched = false;
   function error(err) { el('error').textContent = err.message || 'Request failed. Retry the same job to recover its status.'; }
   async function api(path, body, authenticated = true) {
     const response = await fetch(path, { method: body === undefined ? 'GET' : 'POST', headers: { ...(authenticated ? { Authorization: `Bearer ${token}` } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), cache: 'no-store', signal: AbortSignal.timeout(30000) });
@@ -55,6 +55,7 @@
       capabilities = data.managed;
       el('reference-option').hidden = capabilities?.references?.enabled !== true;
       el('references').disabled = Boolean(job) || capabilities?.references?.enabled !== true;
+      if (!job && !referenceTouched) el('references').checked = capabilities?.defaultReferenceMode === 'generate';
       referenceHelp();
       el('availability').textContent = capabilities?.enabled === true ? 'Ready to create.' : 'Creation is unavailable. Select Use your agent to continue.';
       el('submit').disabled = capabilities?.enabled !== true || Boolean(job) || busy;
@@ -64,7 +65,7 @@
   function referenceHelp() {
     el('budget-help').textContent = capabilities?.references?.enabled === true && el('references').checked ? '$5–$20 for references, Astra and Blender. Pay for usage; keep unused credits.' : '$1–$20 for Astra and Blender. Pay for usage; keep unused credits.';
   }
-  el('references').addEventListener('change', referenceHelp);
+  el('references').addEventListener('change', () => { referenceTouched = true; referenceHelp(); });
   function savedJob() { localStorage.setItem(jobKey, JSON.stringify(job)); }
   const quality = document.createElement('div');
   quality.hidden = true; quality.setAttribute('aria-live', 'polite');
@@ -77,16 +78,33 @@
       if (job?.jobId !== jobId) return;
       quality.replaceChildren(); quality.hidden = false;
       const line = text => { const p = document.createElement('p'); p.textContent = text; quality.append(p); };
-      const reviews = Array.isArray(report.quality?.reviews) ? report.quality.reviews : [];
-      const accepted = reviews.find(review => review.candidateRevision === report.acceptedRevision);
-      line(accepted?.verdict === 'ready' ? 'An accepted checkpoint passed independent review of its Blender views.' : 'No independently accepted checkpoint is recorded.');
-      const latest = reviews.at(-1);
-      if (latest) {
-        line(`Reviewed candidate ${latest.candidateRevision}: ${latest.score}/10. ${latest.summary}`);
-        for (const correction of latest.corrections || []) line(`${correction.evidence} Next: ${correction.change}`);
+      if (report.protocol === 3) {
+        const reviews = Array.isArray(report.reviews) ? report.reviews : [];
+        const reviewed = reviews.filter(review => review?.status === 'reviewed' && review.verdict && typeof review.verdict === 'object');
+        const accepted = reviewed.find(review => review.candidateRevision === report.acceptedRevision && review.verdict.accepted === true);
+        line(accepted ? 'An accepted exported GLB passed independent review.' : 'No independently accepted exported GLB is recorded.');
+        const latest = reviewed.at(-1);
+        if (latest) {
+          line(`Reviewed exported candidate ${latest.candidateRevision}: ${latest.verdict.accepted === true ? 'accepted' : 'changes required'}.`);
+          if (latest.verdict.accepted === true) {
+            for (const [criterion, result] of Object.entries(latest.verdict.criteria || {})) if (result?.pass === true && typeof result.evidence === 'string') line(`${criterion}: ${result.evidence}`);
+          } else {
+            for (const defect of latest.verdict.defects || []) if (typeof defect?.description === 'string') line(`${defect.severity || 'defect'} · ${defect.criterion || 'review'}: ${defect.description}`);
+          }
+        } else if (reviews.length) line('The latest exported candidate review did not produce a usable verdict.');
+        line('This review covers the export-bound GLB rendered in an isolated neutral scene. Inspect the downloaded GLB in your intended viewer.');
+      } else {
+        const reviews = Array.isArray(report.quality?.reviews) ? report.quality.reviews : [];
+        const accepted = reviews.find(review => review.candidateRevision === report.acceptedRevision);
+        line(accepted?.verdict === 'ready' ? 'An accepted checkpoint passed independent review of its Blender views.' : 'No independently accepted checkpoint is recorded.');
+        const latest = reviews.at(-1);
+        if (latest) {
+          line(`Reviewed candidate ${latest.candidateRevision}: ${latest.score}/10. ${latest.summary}`);
+          for (const correction of latest.corrections || []) line(`${correction.evidence} Next: ${correction.change}`);
+        }
+        if (report.quality?.stopReason) line(report.quality.stopReason);
+        line('This review covers Blender renders. Inspect the downloaded GLB in your intended viewer.');
       }
-      if (report.quality?.stopReason) line(report.quality.stopReason);
-      line('This review covers Blender renders. Inspect the downloaded GLB in your intended viewer.');
     } catch (err) { if (job?.jobId === jobId) error(err); } finally { button.disabled = false; }
   }
   async function download(name, button) {
@@ -101,11 +119,14 @@
   }
   function render(data) {
     const done = terminal.has(data.status);
+    if (data.referenceMode === 'generate' || data.referenceMode === 'none') el('references').checked = data.referenceMode === 'generate';
     el('job').hidden = false;
     el('progress').textContent = `${data.status || 'Request saved'}${typeof data.progress === 'string' ? ` — ${data.progress}` : ''}${done && typeof data.reason === 'string' && data.reason !== data.progress ? ` — ${data.reason}` : ''}`;
     const charged = (data.chargedAiCents || 0) + (data.computeChargedCents || 0);
     el('cost').textContent = `${money(charged)} charged of ${money(job.budgetCents)} cap. ${money(data.pendingAiCents || 0)} AI usage pending reconciliation.${data.computeStatus ? ` Compute: ${data.computeStatus}.` : ''}`;
-    el('inspection').textContent = data.visuallyInspected === true ? 'Astra inspected a preview. Review the downloaded model for your intended use.' : 'Visual inspection has not been confirmed.';
+    el('inspection').textContent = data.visuallyInspected === true
+      ? data.workflowVersion === 3 ? 'Independent visual review accepted this checkpoint. Review the downloaded model for your intended use.' : 'Astra inspected a preview. Review the downloaded model for your intended use.'
+      : data.workflowVersion === 3 ? 'Independent visual acceptance has not been confirmed.' : 'Visual inspection has not been confirmed.';
     el('cancel').hidden = done; el('new').hidden = !done; el('retry').hidden = done;
     el('artifacts').replaceChildren();
     for (const artifact of data.artifacts || []) {
@@ -162,10 +183,10 @@
     const brief = el('brief').value.trim(); const amount = el('budget').value.trim();
     if (new TextEncoder().encode(brief).length > 4000) { error(new Error('Shorten the model brief to fit the 4,000-byte limit.')); el('brief').focus(); return; }
     const cents = /^\d+(?:\.\d{1,2})?$/.test(amount) ? Math.round(Number(amount) * 100) : NaN;
-    const referenceMode = !el('references').disabled && el('references').checked ? 'generate' : 'none';
+    const referenceMode = !el('references').disabled && el('references').checked ? (capabilities?.defaultReferenceMode === 'generate' ? undefined : 'generate') : 'none';
     if (referenceMode === 'generate' && cents < 500) { error(new Error('Allow at least $5 for visual references, modeling, and rendering.')); return; }
     if (!brief || !Number.isSafeInteger(cents) || cents < (capabilities.minimumBudgetCents || 100) || cents > (capabilities.maximumBudgetCents || 2000)) { error(new Error('Enter a model brief and a total budget between $1 and $20.')); return; }
-    try { job = { jobId: crypto.randomUUID(), requestId: crypto.randomUUID(), brief, budgetCents: cents, referenceMode }; savedJob(); } catch (err) { job = null; error(err); return; }
+    try { job = { jobId: crypto.randomUUID(), requestId: crypto.randomUUID(), brief, budgetCents: cents, ...(referenceMode === undefined ? {} : { referenceMode }) }; savedJob(); } catch (err) { job = null; error(err); return; }
     el('brief').disabled = true; el('budget').disabled = true; el('references').disabled = true; start();
   });
   el('retry').addEventListener('click', start);
@@ -174,7 +195,7 @@
     el('cancel').disabled = true;
     try { await identity(); await api(`/api/blender/jobs/${encodeURIComponent(job.jobId)}/cancel`, {}); await poll(); } catch (err) { error(err); } finally { el('cancel').disabled = false; }
   });
-  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; quality.hidden = true; quality.replaceChildren(); el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('submit').disabled = capabilities?.enabled !== true; });
+  el('new').addEventListener('click', () => { clearTimeout(timer); localStorage.removeItem(jobKey); job = null; referenceTouched = false; el('references').checked = capabilities?.defaultReferenceMode === 'generate'; quality.hidden = true; quality.replaceChildren(); el('job').hidden = true; el('brief').disabled = false; el('budget').disabled = false; el('references').disabled = capabilities?.references?.enabled !== true; el('submit').disabled = capabilities?.enabled !== true; });
   el('check').addEventListener('click', check);
   el('connect').addEventListener('click', async () => { try { await identity(); await balance(); } catch (err) { error(err); } });
   let funding = false;
@@ -203,7 +224,7 @@
   try {
     token = localStorage.getItem(tokenKey);
     job = JSON.parse(localStorage.getItem(jobKey) || 'null');
-    if (job) { el('references').checked = job.referenceMode === 'generate'; el('brief').value = job.brief; el('budget').value = (job.budgetCents / 100).toFixed(2); el('brief').disabled = true; el('budget').disabled = true; el('job').hidden = false; poll(); }
+    if (job) { el('references').checked = job.referenceMode === 'generate' || job.referenceMode === undefined && job.budgetCents >= 500; el('brief').value = job.brief; el('budget').value = (job.budgetCents / 100).toFixed(2); el('brief').disabled = true; el('budget').disabled = true; el('job').hidden = false; poll(); }
     if (token) balance().catch(error);
   } catch (err) { error(err); }
   check();

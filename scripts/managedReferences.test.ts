@@ -65,9 +65,9 @@ describe('reference-guided Blender actions', () => {
   });
   it('labels design targets separately from high-detail render evidence', () => {
     const request = studioRequest({ brief: input.brief, history: 'Inspect candidate one', remainingCents: 835, images: [{ label: 'reference-front', image: 'data:image/jpeg;base64,AA==' }, { label: 'render-front', image: 'data:image/jpeg;base64,AA==' }] });
-    expect(request.body.tools[0].function.name).toBe('blender_action');
-    expect(request.body.reasoning_effort).toBe('high');
-    expect(request.body.messages[1].content).toEqual(expect.arrayContaining([{ type: 'text', text: 'reference-front' }, { type: 'text', text: 'render-front' }, { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,AA==', detail: 'high' } }]));
+    expect(request.body.tools[0].name).toBe('blender_action');
+    expect(request.body.reasoning.effort).toBe('high');
+    expect(request.body.input[1].content).toEqual(expect.arrayContaining([{ type: 'input_text', text: 'reference-front' }, { type: 'input_text', text: 'render-front' }, { type: 'input_image', image_url: 'data:image/jpeg;base64,AA==', detail: 'high' }]));
     expect(request.maxCostCents).toBeLessThanOrEqual(835);
   });
   it('rejects arbitrary URLs, duplicate labels and mismatched action arguments', () => {

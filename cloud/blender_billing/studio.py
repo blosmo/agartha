@@ -9,8 +9,9 @@ import time
 from typing import Any, Callable
 
 import httpx
-from .managed import BASE_NAMES, FILE_LIMIT, EXPORT_CODE, ManagedFiles
+from .managed import BASE_NAMES, FILE_LIMIT, EXPORT_CODE, ManagedFiles, quality_review_valid
 from .review import VIEWS, render_view_code
+from .export_review import render_export_view_code
 from .turnaround import DELIVERY_RESERVE_SECONDS, remaining_seconds, render_turnaround
 
 REFERENCE_MODEL = 'openai/gpt-image-2.5-flare'
@@ -21,6 +22,17 @@ INFERENCE_TIMEOUT_SECONDS = 240
 TOOL_RESPONSE_BYTES = 1_000_000
 EXPORT = EXPORT_CODE
 FINAL_EXPORT = EXPORT.replace('scene.cycles.samples = 32', 'scene.cycles.samples = 64').replace('scene.cycles.time_limit = 10.0', 'scene.cycles.time_limit = 25.0').replace('scene.cycles.adaptive_threshold = 0.05', 'scene.cycles.adaptive_threshold = 0.025').replace('scene.render.resolution_x = 512', 'scene.render.resolution_x = 1024').replace('scene.render.resolution_y = 512', 'scene.render.resolution_y = 1024')
+
+# Render-only delivery cannot export or replace independently reviewed geometry.
+FINAL_RENDER = 'import bpy\n' + FINAL_EXPORT[FINAL_EXPORT.index('scene = bpy.context.scene'):].replace("bpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend', compress=False)", '')
+
+
+class InferenceProtocolError(RuntimeError):
+    """Unusable inference results stop execution rather than inviting candidate repair."""
+
+
+class ReviewBudgetReserved(RuntimeError):
+    """The gateway declined modeling before dispatch to preserve critic allowance."""
 
 
 def image_data(payload: bytes, *, crop: tuple[int, int, int, int] | None = None) -> str:
@@ -61,12 +73,17 @@ def validate_review(value: Any) -> dict[str, Any]:
 def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, executor: str,
                row: dict[str, Any], monitor: Callable[[str], None], inference_url: str, broker_key: str) -> None:
     reservation = row['reservationId']
+    quality = row.get('workflowVersion') == 3
+    strategy = None
+    reviews: list[dict[str, Any]] = []
+    accepted_review = None
     running = saved = scene_matches = accepted_current = video_saved = False
     reference_saved = False
     accepted_revision: int | None = None
     revision = 0
-    candidate_count = 0
-    reviews: dict[int, dict[str, Any]] = {}
+    # Restores change the current candidate, never the allocation counter.
+    revision_sequence = 0
+    legacy_reviews: dict[int, dict[str, Any]] = {}
     stop_reason: str | None = None
     reviewed_views: set[str] = set()
     rendered: list[dict[str, str]] = []
@@ -103,7 +120,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
 
     def current() -> dict[str, Any]:
         value = broker.ledger.call('getManagedJobForBroker', jobId=job_id)
-        if value.get('cancelled') or value['status'] == 'cancelled': raise InterruptedError('Cancelled')
+        if value.get('cancelled') or value.get('cancelRequested') or value['status'] == 'cancelled': raise InterruptedError('Cancelled')
         if value['status'] != 'running': raise RuntimeError('Job is no longer active.')
         return value
 
@@ -112,8 +129,10 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         if not value.get('active'): raise InterruptedError('Job is no longer active.')
 
     def trace() -> None:
-        if reference_saved:
-            files.save_review(job_id, {'protocol': 2, 'jobId': job_id, 'referenceModel': REFERENCE_MODEL, 'referenceCostCents': reference_cost, 'model': 'openai/gpt-6-astra', 'acceptedRevision': accepted_revision, 'candidateRevision': revision, 'quality': {'reviewer': 'independent', 'scope': 'Blender renders', 'reviews': list(reviews.values()), 'stopReason': stop_reason}, 'actions': events})
+        if quality:
+            files.save_review(job_id, {'protocol': 3, 'strategy': strategy, 'reviews': reviews, 'jobId': job_id, 'referenceModel': REFERENCE_MODEL if reference_saved else None, 'referenceCostCents': reference_cost, 'model': 'openai/gpt-6-astra', 'acceptedRevision': accepted_revision, 'candidateRevision': revision, 'actions': events})
+        elif reference_saved:
+            files.save_review(job_id, {'protocol': 2, 'jobId': job_id, 'referenceModel': REFERENCE_MODEL, 'referenceCostCents': reference_cost, 'model': 'openai/gpt-6-astra', 'acceptedRevision': accepted_revision, 'candidateRevision': revision, 'quality': {'reviewer': 'independent', 'scope': 'Blender renders', 'reviews': list(legacy_reviews.values()), 'stopReason': stop_reason}, 'actions': events})
 
     def inference(operation: str, kind: str, **payload: Any) -> dict[str, Any]:
         current()
@@ -126,18 +145,29 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         thread = threading.Thread(target=maintain, daemon=True)
         thread.start()
         try:
-            request = {'protocol': 2, 'kind': kind, 'jobId': job_id, 'executorId': executor, 'operationId': operation, **payload}
+            request = {'protocol': 3 if quality else 2, 'kind': kind, 'jobId': job_id, 'executorId': executor, 'operationId': operation, **payload}
             # Single dispatch, with the same durable budget fence as text inference.
             with httpx.Client(timeout=INFERENCE_TIMEOUT_SECONDS, follow_redirects=False) as client:
                 with client.stream('POST', inference_url, json=request, headers={'x-agartha-broker-key': broker_key}) as response:
-                    response.raise_for_status()
                     chunks = bytearray()
                     limit = 4_000_000 if kind == 'reference' else 100_000
                     for chunk in response.iter_bytes():
                         chunks.extend(chunk)
-                        if len(chunks) > limit: raise ValueError('Inference response exceeds its limit.')
-                    result = json.loads(chunks)
-            if kind != 'reference': current()
+                        if len(chunks) > limit: raise InferenceProtocolError('Inference response exceeds its limit.')
+                    try:
+                        result = json.loads(chunks)
+                    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                        raise InferenceProtocolError('Inference response is not usable JSON.') from error
+                    if not isinstance(result, dict): raise InferenceProtocolError('Inference response must be an object.')
+                    if quality and kind == 'modeling' and response.status_code == 409:
+                        if result.get('code') == 'quality_review_reserved': raise ReviewBudgetReserved('Modeling allowance is reserved for final review.')
+                    if quality and response.status_code >= 400:
+                        details = {'status': response.status_code, 'kind': kind, 'operationId': operation}
+                        for key, limit in [('error', 500), ('code', 100)]:
+                            if isinstance(result.get(key), str): details[key] = result[key][:limit]
+                        raise InferenceProtocolError('Inference request failed: ' + json.dumps(details, ensure_ascii=False))
+                    response.raise_for_status()
+            current()
             return result
         finally:
             done.set(); thread.join(timeout=1)
@@ -170,17 +200,61 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             observations.append({'label': 'render-' + view, 'image': image_data(payload)})
         return observations
 
+    def independent_review(operation: str) -> dict[str, Any]:
+        digest = hashlib.sha256(files.read(job_id, 'model.glb')).hexdigest()
+        if any(review['candidateRevision'] == revision or review['glbSha256'] == digest for review in reviews):
+            raise ValueError('This candidate was already reviewed or attempted. Revise the exported model before another paid review.')
+        attempt = {'candidateRevision': revision, 'glbSha256': digest, 'status': 'attempted'}
+        reviews.append(attempt); trace()  # Durable before any paid critic dispatch.
+        evidence = []
+        for view in ['hero', 'front', 'right']:
+            heartbeat('Reviewing the exported model: ' + view + '.')
+            execute(render_export_view_code(view), operation + '-quality-' + view)
+            evidence.append({'label': 'export-' + view, 'image': image_data(broker.download(token, reservation, 'review_' + view + '.png', 4_000_000))})
+        worker_glb = broker.download(token, reservation, 'model.glb', FILE_LIMIT)
+        if hashlib.sha256(worker_glb).hexdigest() != digest: raise ValueError('Candidate changed during exported model inspection.')
+        verdict = inference(f'{executor}-review-{revision}', 'review', strategy=strategy, candidateRevision=revision, glbSha256=digest, images=references + evidence)
+        current()
+        if not quality_review_valid(verdict, digest, revision):
+            raise InferenceProtocolError('Critic returned an invalid or unbound quality verdict.')
+        attempt.update({'status': 'reviewed', 'verdict': verdict}); trace()
+        if not verdict['accepted']:
+            details = {'defects': verdict.get('defects'), 'criteria': verdict.get('criteria')}
+            raise ValueError('Independent review rejected this candidate. Repair these defects before another acceptance request: ' + json.dumps(details, ensure_ascii=False)[:10000])
+        return verdict
+
+    def accept_candidate(operation: str, verdict: dict[str, Any] | None = None) -> None:
+        nonlocal accepted_revision, accepted_current, accepted_review
+        current()
+        if quality:
+            for name in ['model.glb', 'model.blend']:
+                worker = broker.download(token, reservation, name, FILE_LIMIT)
+                if hashlib.sha256(worker).digest() != hashlib.sha256(files.read(job_id, name)).digest():
+                    raise ValueError('Candidate changed after independent review.')
+        execute("import shutil\nshutil.copyfile('/workspace/artifacts/model.blend', '/workspace/artifacts/accepted.blend')\nshutil.copyfile('/workspace/artifacts/model.glb', '/workspace/artifacts/accepted.glb')", operation)
+        current()
+        files.accept(job_id, **({'quality_review': verdict} if quality else {})); accepted_revision = revision; accepted_current = True
+        broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor, **({'qualityApproved': True} if quality else {}))
+        accepted_review = verdict
+
     try:
-        heartbeat('Generating a four-view design reference with GPT Image 2.5 Flare.')
-        reference = inference(executor + '-reference', 'reference')
-        if reference.get('model') != REFERENCE_MODEL or not isinstance(reference.get('image'), str) or not reference['image'].startswith('data:image/jpeg;base64,'):
-            raise ValueError('Invalid reference generation result.')
-        payload = base64.b64decode(reference['image'].split(',', 1)[1], validate=True)
-        files.save_reference(job_id, payload, REFERENCE_MODEL)
-        reference_saved = True; reference_cost = reference.get('chargeCents', 0)
-        references = reference_views(payload)
-        trace()
-        broker.ledger.call('recordManagedReference', jobId=job_id, executorId=executor)
+        if row.get('referenceMode') == 'generate':
+            heartbeat('Generating a four-view design reference with GPT Image 2.5 Flare.')
+            reference = inference(executor + '-reference', 'reference')
+            if reference.get('model') != REFERENCE_MODEL or not isinstance(reference.get('image'), str) or not reference['image'].startswith('data:image/jpeg;base64,'):
+                raise ValueError('Invalid reference generation result.')
+            payload = base64.b64decode(reference['image'].split(',', 1)[1], validate=True)
+            files.save_reference(job_id, payload, REFERENCE_MODEL)
+            reference_saved = True; reference_cost = reference.get('chargeCents', 0)
+            references = reference_views(payload)
+            trace()
+            broker.ledger.call('recordManagedReference', jobId=job_id, executorId=executor)
+        if quality:
+            heartbeat('Planning geometry and independent acceptance checks.')
+            planned = inference(executor + '-strategy', 'strategy', images=references)
+            strategy = planned.get('strategy')
+            if not isinstance(strategy, dict) or len(json.dumps(strategy, ensure_ascii=False, separators=(',', ':')).encode('utf-8')) > 12000: raise ValueError('Invalid service strategy.')
+            trace()
         for turn in range(MAX_ACTIONS):
             current()
             if saved and running and remaining_seconds(broker.owned(token, reservation)) <= DELIVERY_RESERVE_SECONDS:
@@ -189,7 +263,25 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             heartbeat('Reviewing references and deciding the next Blender action.')
             publication_preview = asset_preview or material_preview
             visible_model_views = [image for image in rendered if not publication_preview or image['label'] != publication_preview['label']]
-            step = inference(f'{executor}-studio-{turn}', 'modeling', history=history.encode()[-15000:].decode(errors='ignore'), images=references + visible_model_views + ([publication_preview] if publication_preview else []))
+            try:
+                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), history=history.encode()[-15000:].decode(errors='ignore'), images=references + visible_model_views + ([publication_preview] if publication_preview else []))
+            except ReviewBudgetReserved:
+                current()
+                status, progress = 'partial' if saved else 'failed', 'Modeling stopped to preserve independent review allowance.'
+                if accepted_current and scene_matches:
+                    status, progress = 'completed', 'Delivered the independently accepted model within the budget.'
+                elif saved and scene_matches:
+                    event = {'action': 'service_review', 'candidateRevision': revision, 'reason': 'modeling_budget_reserved'}
+                    events.append(event)
+                    try:
+                        accept_candidate(executor + '-budget-accept', independent_review(executor + '-budget-review'))
+                        status, progress = 'completed', 'The final exported candidate passed independent review within the budget.'
+                        event['result'] = progress
+                    except ValueError as error:
+                        event['error'] = str(error)[:2500]
+                        progress = 'The final candidate did not pass independent review; retained available files.'
+                    trace()
+                break
             if asset_preview and prepared_asset: prepared_asset['reviewed'] = True
             if material_preview and prepared_material: prepared_material['reviewed'] = True
             if scene_matches:
@@ -295,7 +387,8 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     event['codeSha256'] = hashlib.sha256(code.encode()).hexdigest()
                     result = execute(code + '\n' + EXPORT, operation)
                     candidate = exported(); files.save(job_id, candidate)
-                    candidate_count += 1; revision = candidate_count; saved = scene_matches = True
+                    revision_sequence += 1
+                    revision = revision_sequence; saved = scene_matches = True
                     broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
                     # Every edit produces actual evidence; the next action can request more.
                     rendered = inspect(['hero', 'front', 'right'], '', operation + '-inspect')
@@ -305,40 +398,44 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     rendered = inspect(step.get('views', []), step.get('objectName', ''), operation)
                     event['result'] = 'Rendered requested inspection views without changing the model or hero camera.'
                 elif action == 'accept':
-                    if not scene_matches or len(reviewed_views) < 2 or not event['critique'].strip(): raise ValueError('Acceptance requires the current candidate, two inspected views, and a concrete visual critique.')
-                    if revision not in reviews:
-                        if len(reviews) >= MAX_REVIEWS:
-                            stop_reason = 'Review limit reached; preserved available files.'
-                            status, progress = 'partial', stop_reason
-                            break
-                        heartbeat('An independent reviewer is checking proportions, structure and materials.')
-                        # Whole-model views only; publication swatches are never evidence for acceptance.
-                        if len([image for image in rendered if image['label'] != 'render-detail']) < 2:
-                            rendered = inspect(['hero', 'front', 'right'], '', operation + '-review')
-                        if remaining_seconds(broker.owned(token, reservation)) <= INFERENCE_TIMEOUT_SECONDS + DELIVERY_RESERVE_SECONDS:
-                            stop_reason = 'Stopped before independent review to preserve delivery time.'
-                            status, progress = 'partial', stop_reason
-                            break
-                        review = validate_review(inference(f'{executor}-review-{revision}', 'critique', images=references + rendered))
-                        reviews[revision] = {**review, 'candidateRevision': revision}
-                    review = reviews[revision]
-                    event['independentReview'] = review
-                    if review['verdict'] != 'ready':
-                        rejected = [item for item in reviews.values() if item['verdict'] == 'revise']
-                        recent = rejected[-3:]
-                        stalled = len(recent) == 3 and recent[-1]['score'] <= recent[0]['score'] and all(item['corrections'][0]['issueId'] == recent[0]['corrections'][0]['issueId'] for item in recent)
-                        if stalled or len(reviews) >= MAX_REVIEWS:
-                            stop_reason = 'Stopped after repeated reviews found no improvement.' if stalled else 'Review limit reached with unresolved corrections.'
-                            status, progress = 'partial', stop_reason
-                            event['result'] = stop_reason
-                            break
-                        repeated = len(rejected) >= 2 and rejected[-1]['score'] <= rejected[-2]['score'] and rejected[-1]['corrections'][0]['issueId'] == rejected[-2]['corrections'][0]['issueId']
-                        strategy = ' Change the construction approach before refining details.' if repeated else ''
-                        raise ValueError('Independent review requests corrections: ' + json.dumps(review, ensure_ascii=False) + strategy)
-                    execute("import shutil\nshutil.copyfile('/workspace/artifacts/model.blend', '/workspace/artifacts/accepted.blend')", operation)
-                    files.accept(job_id); accepted_revision = revision; accepted_current = True
-                    broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor)
-                    event['result'] = 'Accepted the checkpoint after independent visual review.'
+                    if not scene_matches or not quality and (len(reviewed_views) < 2 or not event['critique'].strip()): raise ValueError('Acceptance requires the current candidate, two inspected views, and a concrete visual critique.')
+                    if quality:
+                        accept_candidate(operation, independent_review(operation))
+                        event['result'] = 'Accepted the independently reviewed exported model.'
+                    else:
+                        if revision not in legacy_reviews:
+                            if len(legacy_reviews) >= MAX_REVIEWS:
+                                stop_reason = 'Review limit reached; preserved available files.'
+                                status, progress = 'partial', stop_reason
+                                break
+                            heartbeat('An independent reviewer is checking proportions, structure and materials.')
+                            # Whole-model views only; publication swatches are never evidence for acceptance.
+                            if len([image for image in rendered if image['label'] != 'render-detail']) < 2:
+                                rendered = inspect(['hero', 'front', 'right'], '', operation + '-review')
+                            if remaining_seconds(broker.owned(token, reservation)) <= INFERENCE_TIMEOUT_SECONDS + DELIVERY_RESERVE_SECONDS:
+                                stop_reason = 'Stopped before independent review to preserve delivery time.'
+                                status, progress = 'partial', stop_reason
+                                break
+                            review = validate_review(inference(f'{executor}-review-{revision}', 'critique', images=references + rendered))
+                            legacy_reviews[revision] = {**review, 'candidateRevision': revision}
+                        review = legacy_reviews[revision]
+                        event['independentReview'] = review
+                        if review['verdict'] != 'ready':
+                            rejected = [item for item in legacy_reviews.values() if item['verdict'] == 'revise']
+                            recent = rejected[-3:]
+                            stalled = len(recent) == 3 and recent[-1]['score'] <= recent[0]['score'] and all(item['corrections'][0]['issueId'] == recent[0]['corrections'][0]['issueId'] for item in recent)
+                            if stalled or len(legacy_reviews) >= MAX_REVIEWS:
+                                stop_reason = 'Stopped after repeated reviews found no improvement.' if stalled else 'Review limit reached with unresolved corrections.'
+                                status, progress = 'partial', stop_reason
+                                event['result'] = stop_reason
+                                break
+                            repeated = len(rejected) >= 2 and rejected[-1]['score'] <= rejected[-2]['score'] and rejected[-1]['corrections'][0]['issueId'] == rejected[-2]['corrections'][0]['issueId']
+                            strategy_hint = ' Change the construction approach before refining details.' if repeated else ''
+                            raise ValueError('Independent review requests corrections: ' + json.dumps(review, ensure_ascii=False) + strategy_hint)
+                        execute("import shutil\nshutil.copyfile('/workspace/artifacts/model.blend', '/workspace/artifacts/accepted.blend')", operation)
+                        files.accept(job_id); accepted_revision = revision; accepted_current = True
+                        broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor)
+                        event['result'] = 'Accepted the checkpoint after independent visual review.'
                 elif action == 'prepare_asset':
                     if not component_sharing: raise ValueError('Component publication was not enabled with a license for this job.')
                     if not accepted_current or not scene_matches: raise ValueError('Accept and inspect the scene before contributing components.')
@@ -375,7 +472,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         prepared_asset['counted']=True
                     event['result']='Published reusable component: '+json.dumps({key:result[key] for key in ['id','modelId','metadata','source','preview']})
                     trace()  # Record permanent publication even if checkpoint annotation fails.
-                    code="import bpy,shutil\nfrom cloud.blender_mcp.components import mark_published_component\nroot=bpy.data.objects.get("+repr(prepared_asset['rootName'])+")\nassert root and root.get('agarthaComponent'), 'Component root changed.'\nmark_published_component(root,"+repr(result['id'])+")\nbpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend',check_existing=False)\nshutil.copyfile('/workspace/artifacts/model.blend','/workspace/artifacts/accepted.blend')"
+                    code="import bpy,shutil\nfrom cloud.blender_mcp.components import mark_published_component\nroot=bpy.data.objects.get("+repr(prepared_asset['rootName'])+")\nassert root and root.get('agarthaComponent'), 'Component root changed.'\nmark_published_component(root,"+repr(result['id'])+")\nbpy.ops.wm.save_as_mainfile(filepath='/workspace/artifacts/model.blend',check_existing=False,compress=False)\nshutil.copyfile('/workspace/artifacts/model.blend','/workspace/artifacts/accepted.blend')"
                     execute(code,operation+'-provenance')
                     updated={name:files.read(job_id,name) for name in BASE_NAMES}
                     updated['model.blend']=broker.download(token,reservation,'model.blend',FILE_LIMIT)
@@ -414,11 +511,17 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     scene_matches = accepted_current = False
                     prepared_asset = asset_preview = None
                     prepared_material = material_preview = None
-                    execute("import bpy\nbpy.ops.wm.open_mainfile(filepath='/workspace/artifacts/accepted.blend', load_ui=False)\n" + EXPORT, operation)
+                    if quality:
+                        accepted_review = files.accepted_quality(job_id)
+                        worker_glb = broker.download(token, reservation, 'accepted.glb', FILE_LIMIT)
+                        if hashlib.sha256(worker_glb).hexdigest() != accepted_review['glbSha256']: raise ValueError('The worker accepted GLB changed.')
+                    restore_code = ("import shutil\nshutil.copyfile('/workspace/artifacts/accepted.glb','/workspace/artifacts/model.glb')\nshutil.copyfile('/workspace/artifacts/accepted.blend','/workspace/artifacts/model.blend')\n" + FINAL_RENDER) if quality else EXPORT
+                    execute("import bpy\nbpy.ops.wm.open_mainfile(filepath='/workspace/artifacts/accepted.blend', load_ui=False)\n" + restore_code, operation)
                     files.restore_accepted(job_id); revision = accepted_revision
                     scene_matches = accepted_current = True; reviewed_views.clear()
                     rendered = inspect(['hero', 'front', 'right'], '', operation + '-inspect')
-                    broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor)
+                    current()
+                    broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor, **({'qualityApproved': True} if quality else {}))
                     event['result'] = 'Restored the accepted scene and rendered it for comparison.'
             except ValueError as error:
                 event['error'] = str(error)[:2500]
@@ -441,20 +544,33 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         delivered_inspected = accepted_current
         try:
             if saved and accepted_revision is not None and not accepted_current:
+                if quality: files.accepted_quality(job_id)
                 files.restore_accepted(job_id)
+                # Restore trusted ledger acceptance after a later candidate invalidated it.
+                if status != 'cancelled':
+                    current()
+                    broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor, **({'qualityApproved': True} if quality else {}))
                 delivered_inspected = True
                 scene_matches = False
                 progress += ' Retained the last accepted model.'
             if saved and accepted_current and scene_matches and status != 'cancelled':
                 try:
                     heartbeat('Rendering the accepted model for delivery.')
-                    execute(FINAL_EXPORT, executor + '-final-render')
-                    files.save(job_id, exported()); files.accept(job_id)
+                    execute(FINAL_RENDER, executor + '-final-render')
+                    current()
+                    delivered = {name: files.read_accepted(job_id, name) for name in BASE_NAMES}
+                    delivered['preview.png'] = broker.download(token, reservation, 'preview.png', FILE_LIMIT)
+                    image_data(delivered['preview.png'])
+                    files.save(job_id, delivered); files.accept(job_id, **({'quality_review': accepted_review} if quality else {}))
                     broker.ledger.call('recordManagedCheckpoint', jobId=job_id, executorId=executor)
-                    broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor)
+                    current()
+                    broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor, **({'qualityApproved': True} if quality else {}))
+                except InterruptedError:
+                    status, progress = 'cancelled', 'Stopped at your request; retained the accepted checkpoint.'
                 except Exception:
                     progress += ' Retained the accepted checkpoint at its existing render resolution.'
                 try:
+                    if status == 'cancelled': raise InterruptedError('Cancelled')
                     video = render_turnaround(broker, token, reservation, heartbeat)
                     files.add_video(job_id, video); video_saved = True
                     broker.ledger.call('recordManagedVideo', jobId=job_id, executorId=executor)

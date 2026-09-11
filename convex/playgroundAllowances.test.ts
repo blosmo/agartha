@@ -69,6 +69,14 @@ describe('bounded agent allowances', () => {
     await t.mutation(api.revoke, { ...sponsor, allowanceId: grant.allowanceId, requestId: 'revoke' });
     expect(await t.query(anyApi.cloud.purchases.balance, sponsor)).toMatchObject({ availableCents: 2420 });
   });
+  it('uses the initiating allowance recipient for operator-only v3 activation', async () => {
+    const { t, agent, grant } = await allowance();
+    vi.stubEnv('AGARTHA_MANAGED_WORKFLOW_OPERATOR_AGENT_ID', agent.agentId);
+    const { jobId } = await t.mutation(api.createJob, { ...recipient, allowanceId: grant.allowanceId, requestId: 'operator-v3', brief: 'Build a reviewed chair', budgetCents: 500 });
+    const row = await t.query(jobs.getManagedJobForBroker, { jobId });
+    expect(row).toMatchObject({ workflowVersion: 3, referenceMode: 'none', initiatingAgentId: agent.agentId });
+    expect(row.agentId).not.toBe(agent.agentId);
+  });
   it('rejects foreign use, onward allocation and spending beyond the remaining allowance', async () => {
     const { t, grant } = await allowance();
     const jobArgs = { allowanceId: grant.allowanceId, requestId: 'job', brief: 'Build a chair', budgetCents: 700 };

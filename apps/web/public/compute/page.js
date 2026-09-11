@@ -23,7 +23,7 @@ function budgetCents(value) {
   if (!/^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/.test(value)) return null;
   const [whole, fraction = ''] = value.split('.');
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
-  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+  return Number.isSafeInteger(cents) ? cents : null;
 }
 function updatePlan({ showErrors = false } = {}) {
   const briefMessage = brief.value.trim() ? '' : 'Describe the model you want to create.';
@@ -34,9 +34,9 @@ function updatePlan({ showErrors = false } = {}) {
   briefError.hidden = !showBriefError;
   const cents = budgetCents(budget.value);
   const error = cents === null
-    ? 'Enter a positive USD amount with no more than two decimal places.'
-    : cents < pricing.minimumCents
-      ? `Allow at least ${money(pricing.minimumCents)} for the ${verified ? 'current' : 'published'} minimum compute charge, plus model and review costs.`
+    ? 'Enter a USD amount with no more than two decimal places.'
+    : cents < 100 || cents > 2000
+      ? 'Enter a managed job budget from $1.00 to $20.00.'
       : '';
   budget.setCustomValidity(error);
   const showBudgetError = Boolean(error) && (showErrors || touched.has(budget));
@@ -49,21 +49,20 @@ function updatePlan({ showErrors = false } = {}) {
     promptElement.textContent = error || 'Describe a model to prepare your agent instructions.';
     return false;
   }
-  const pricingNote = verified
-    ? `Current compute pricing: ${money(pricing.minimumCents)} for the first ${pricing.minimumMinutes} running minutes, then ${money(pricing.priceCentsPerMinute)} per additional begun minute. Sessions reserve ${pricing.minimumMinutes}–${pricing.maximumMinutes} minutes; get fresh quotes before reserving.`
-    : `Live compute pricing is unverified. Check ${location.origin}/api/blender/pricing before planning paid work.`;
-  promptElement.textContent = `Read ${location.origin}/compute/skill.md and its modeling guide.
+  promptElement.textContent = `Read ${location.origin}/compute/skill.md and use its managed creation workflow.
 Task: ${brief.value.trim()}
 Intended use: ${intendedUse.value}
-Maximum TOTAL task usage budget: ${money(cents)} USD, including compute, model inference and review. This is a ceiling, not a spending target.
+Maximum managed job budget: ${money(cents)} USD, including service Astra, generated references when used, independent review and Blender compute. This service cap is a hard ceiling, not a spending target. Any fee charged by your outside agent platform is separate; disclose and bound it within the user's broader spending authorization.
 
-Before spending, define acceptance criteria for this use and propose the best achievable scope within the budget. Estimate and bound all usage costs, reserving enough for inspection, validation, export and cleanup. If model or review costs cannot be measured and capped, disclose the unknown costs and resolve the budget scope with me before spending; do not promise a total cap you cannot enforce.
-${pricingNote}
-Show me the plan, compute quotes and any required prepaid credit purchase; wait for my approval. A credit purchase is separate upfront cash outlay, possibly larger than task usage, and needs explicit approval. Unused credits stay in the wallet; do not double count funding as usage.
+Use the managed service for Blender execution and delivery. Check managed.workflowVersion in capabilities: version 3 adds a separate modeling plan and independent review of the exported GLB. Report the workflow actually available; do not claim independent acceptance without a recorded review. Do not write or run Blender code yourself unless I explicitly switch to Direct Blender. Define observable acceptance criteria and propose the best achievable scope. If this exact brief and cap have not yet been approved, ask once before creating the paid job. After exact approval, continue without asking again for the same job.
 
-Build a blockout, inspect actual previews, and fix the highest-impact affordable defects. Keep the best checkpoint and compare revisions against it. When model costs can be bounded, use a fresh independent reviewer with the brief and actual views, without the builder's explanations; prioritize up to three evidenced corrections. If two reviews repeat the same defect without improvement, change the construction approach; stop if the next review still shows no progress. Stop early when acceptance criteria are met or further edits are unlikely to help. Stop iterating while enough budget remains to validate, export and close; never spend the full cap just because it is available.
-Download the GLB, PNG preview and editable BLEND before stopping. Validate for the intended use and disclose any unsupported format or unverified requirement. Confirm shutdown and settlement.
-Deliver files, what you checked, remaining defects, actual compute/model/review costs, any unknown costs, and why you stopped. Report unspent budget only when total costs are known. Ask before any additional spending or publication.`;
+Check GET ${location.origin}/api/blender/capabilities and require managed.enabled. Register or reuse one stable identity and check its balance. Save unique jobId and requestId plus the exact request payload before POSTing to /api/blender/jobs. Put the task and intended use in brief and send the approved amount as budgetCents. Omit referenceMode to use the advertised default; send referenceMode "none" only when references are declined. Never increase the cap.
+
+Creating the job reserves its total cap. If the balance is insufficient, present the documented funding options; a credit purchase is a separate upfront cash outlay and needs separate approval. Buying credit never starts work. Reuse the same purchase ID after uncertainty and confirm credited balance.
+
+POST the returned job start route, then poll its status with bounded waits. After any uncertain create or start response, reuse the same IDs and exact payload and observe the existing job. Never create a replacement paid job. Cancel through its cancel route when requested.
+
+Download only returned authenticated artifacts, including available GLB, BLEND, preview, review trace, reference sheet or video. Report completed, partial, failed or cancelled status honestly; include actual charges, pending or unknown usage, independent acceptance state, remaining defects and unavailable files. A review is not a quality guarantee. Publication and additional spending require separate approval.`;
   return true;
 }
 function updateEstimate() {
@@ -183,9 +182,8 @@ async function checkPricing() {
   minutes.min = String(pricing.minimumMinutes);
   minutes.max = String(pricing.maximumMinutes);
   minutes.value = String(Math.max(pricing.minimumMinutes, Math.min(Number(minutes.value), pricing.maximumMinutes)));
-  document.querySelector('#price-description').textContent = `Compute: ${money(pricing.minimumCents)} for the first ${pricing.minimumMinutes} ${pricing.minimumMinutes === 1 ? 'minute' : 'minutes'}, then ${money(pricing.priceCentsPerMinute)} per started minute. Buy ${pricing.topUpCents.map(money).join(' or ')} in credits.`;
+  document.querySelector('#price-description').textContent = `Direct Blender compute: ${money(pricing.minimumCents)} for the first ${pricing.minimumMinutes} ${pricing.minimumMinutes === 1 ? 'minute' : 'minutes'}, then ${money(pricing.priceCentsPerMinute)} per started minute. Buy ${pricing.topUpCents.map(money).join(' or ')} in credits.`;
   updateEstimate();
-  if (budgetCents(budget.value) !== null && budgetCents(budget.value) < pricing.minimumCents) touched.add(budget);
   updatePlan();
 }
 retry.addEventListener('click', checkPricing);
