@@ -9,7 +9,7 @@ export const objectValue = v.object({
   modelId:v.optional(v.string()),animation:v.optional(v.object({clip:v.string(),speed:v.number(),paused:v.boolean()})),
   meshId:v.optional(v.string()),
   materialId: v.optional(v.string()),
-  motion: v.optional(v.union(v.object({kind:v.literal('float'),speed:v.number(),phase:v.number(),amplitude:v.number()}),v.object({kind:v.literal('spin'),speed:v.number(),phase:v.number()}))),
+  motion: v.optional(v.union(v.object({kind:v.literal('float'),speed:v.number(),phase:v.number(),amplitude:v.number()}),v.object({kind:v.literal('spin'),speed:v.number(),phase:v.number()}),v.object({kind:v.literal('path'),points:v.array(v.array(v.number())),mode:v.union(v.literal('loop'),v.literal('pingpong')),speed:v.number(),phase:v.number(),orient:v.boolean()}))),
   position: v.array(v.number()), scale: v.array(v.number()), color: v.string(), yaw: v.optional(v.number()), shaderId:v.optional(v.string()),
 });
 export const changeValue = v.object({ id: v.string(), expectedVersion: v.number(), object: v.optional(objectValue) });

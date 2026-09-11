@@ -21,13 +21,14 @@ export async function snapshot(ctx:Reader,world:Doc<'sceneWorlds'>,token?:string
   const modelCredits=await Promise.all([...new Set(visible.flatMap(row=>row.object?.modelId?[row.object.modelId]:[]))].map(async id=>{const model=publicModel(await modelById(ctx,id));return {id,name:model.name,...(model.source?{source:model.source}:{}),...(model.license?{license:model.license}:{}),...(model.attribution?{attribution:model.attribution}:{})};}));
   const member=actor?await ctx.db.query('sceneAgents').withIndex('by_agent',q=>q.eq('worldId',world.worldId).eq('agentId',actor.agentId)).unique():null;
   const governance=await discovery(ctx,`world:${externalId(world.worldId)}`,actor?.agentId);
-  const version=await digest(JSON.stringify({governance,name:world.name,lifecycle:world.lifecycleVersion??1,archived:world.archivedAt??null,brief:world.briefVersion,objects:visible.map(row=>[row.objectId,row.version]),events:events.map(e=>e._id)}));
-  return {schema:1 as const,id:externalId(world.worldId),name:world.name,brief:world.brief,briefVersion:world.briefVersion,revision:visible.reduce((sum,row)=>sum+row.version,world.briefVersion),version,cloud:true,placement:{x:world.plotX??0,z:world.plotZ??0,size:32 as const},
+  const environmentVersion=world.environmentVersion??0;
+  const version=await digest(JSON.stringify({governance,name:world.name,lifecycle:world.lifecycleVersion??1,archived:world.archivedAt??null,brief:world.briefVersion,...(environmentVersion>0||world.environment?{environment:world.environment??null,environmentVersion}:{}),objects:visible.map(row=>[row.objectId,row.version]),events:events.map(e=>e._id)}));
+  return {schema:1 as const,id:externalId(world.worldId),name:world.name,brief:world.brief,briefVersion:world.briefVersion,environment:world.environment,environmentVersion,revision:visible.reduce((sum,row)=>sum+row.version,world.briefVersion),version,cloud:true,placement:{x:world.plotX??0,z:world.plotZ??0,size:32 as const},
     location:roomLocation({x:world.plotX??0,z:world.plotZ??0}),lifecycleVersion:world.lifecycleVersion??1,archived:world.archivedAt!==undefined,
     objects:visible.filter(row=>row.object).map(row=>({...row.object!,author:row.author??row.owner,owner:row.owner})),modelCredits,objectVersions:Object.fromEntries(visible.map(row=>[row.objectId,row.version])),shaders:shaders.filter(s=>s!==null),hasMoreObjects:rows.length>maximum,
     governance,
     collaboration:{supported:true,owners:owners.map(({agentId,name})=>({agentId,name})),ownerVersion:world.ownerVersion??1,acceptanceAvailable:owners.length>0&&world.archivedAt===undefined,proposals:`/api/plots/${externalId(world.worldId)}/proposals`,events:`/api/plots/${externalId(world.worldId)}/proposal-events`,guide:'/agents/collaboration.md'},
-    permissions:{agentId:actor?.agentId??null,canEditBrief:Boolean(member?.canCurate&&!member.revoked&&world.archivedAt===undefined),canManageRoom:Boolean(member?.canCurate&&!member.revoked)},
+    permissions:{agentId:actor?.agentId??null,canEditBrief:Boolean(member?.canCurate&&!member.revoked&&world.archivedAt===undefined),canEditEnvironment:Boolean(member?.canCurate&&!member.revoked&&world.archivedAt===undefined),canManageRoom:Boolean(member?.canCurate&&!member.revoked)},
     events:events.map((event,index)=>({id:event._id,revision:events.length-index,author:event.author,message:event.message,summary:event.message,at:new Date(event.createdAt).toISOString()})),
   };
 }

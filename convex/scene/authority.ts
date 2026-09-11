@@ -9,6 +9,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from '../_generated/
 import { paginationOptsValidator } from 'convex/server';
 import { ConvexError, v } from 'convex/values';
 import { AGENT_OBJECT_QUOTA, MAX_BATCH, REQUESTS_PER_MINUTE, changeValue, credential, digest, fail, identifier, label, regionOf, validateObject, type SceneObject } from './model';
+import { parseRoomEnvironment, type RoomEnvironment } from '../../packages/protocol/src/roomEnvironment';
 
 type Reader = QueryCtx | MutationCtx;
 async function world(ctx: Reader, worldId: string) {
@@ -49,7 +50,7 @@ export const createWorld = mutation({
     }
     const tokenHash = await digest(args.curatorToken);
     if (await ctx.db.query('sceneAgents').withIndex('by_token',q=>q.eq('tokenHash',tokenHash)).unique()) fail('conflict','Use a new curator credential.');
-    await ctx.db.insert('sceneWorlds',{worldId:args.worldId,name:args.name,brief:args.brief,briefVersion:1,publicRead:args.publicRead,...(args.plot?{gridId:args.plot.gridId,plotX:args.plot.x,plotZ:args.plot.z}:{})});
+    await ctx.db.insert('sceneWorlds',{worldId:args.worldId,name:args.name,brief:args.brief,briefVersion:1,environmentVersion:0,publicRead:args.publicRead,...(args.plot?{gridId:args.plot.gridId,plotX:args.plot.x,plotZ:args.plot.z}:{})});
     await ctx.db.insert('sceneAgents',{worldId:args.worldId,agentId:'curator',name:'Curator',tokenHash,revoked:false,canCurate:true,expiresAt:Date.now()+30*86400000,liveObjects:0,objectsAllocated:0,windowStart:0,windowRequests:0});
     return {worldId:args.worldId};
   },
@@ -106,7 +107,7 @@ export const revoke = mutation({
 });
 export const metadata = query({args:{worldId:v.string(),token:v.optional(v.string())},handler:async(ctx,args)=>{
   const row=await canRead(ctx,args.worldId,args.token);
-  return {worldId:row.worldId,name:row.name,brief:row.brief,briefVersion:row.briefVersion,regionSize:32,maxBatch:MAX_BATCH,placement:placement(row)};
+  return {worldId:row.worldId,name:row.name,brief:row.brief,briefVersion:row.briefVersion,environment:row.environment,environmentVersion:row.environmentVersion??0,regionSize:32,maxBatch:MAX_BATCH,placement:placement(row)};
 }});
 export const objects = query({args:{worldId:v.string(),token:v.optional(v.string()),region:v.string(),paginationOpts:paginationOptsValidator},handler:async(ctx,args)=>{
   await canRead(ctx,args.worldId,args.token); region(args.region);
@@ -124,9 +125,9 @@ export const activity = query({args:{worldId:v.string(),token:v.optional(v.strin
   const rows=await ctx.db.query('sceneActivity').withIndex('by_region',q=>q.eq('worldId',args.worldId).eq('region',args.region)).order('desc').take(30);
   return rows.map(({author,message,requestId,createdAt})=>({author,message,requestId,createdAt}));
 }});
-type SceneEdit = { worldId:string; token:string; requestId:string; issuedAt:number; message:string; changes:Array<{id:string;expectedVersion:number;object?:SceneObject}> };
+type SceneEdit = { worldId:string; token:string; requestId:string; issuedAt:number; message:string; changes:Array<{id:string;expectedVersion:number;object?:SceneObject}>; environment?:unknown; expectedEnvironmentVersion?:number };
 export const edit = mutation({
-  args:{worldId:v.string(),token:v.string(),requestId:v.string(),issuedAt:v.number(),message:v.string(),changes:v.array(changeValue)},
+  args:{worldId:v.string(),token:v.string(),requestId:v.string(),issuedAt:v.number(),message:v.string(),changes:v.array(changeValue),environment:v.optional(v.any()),expectedEnvironmentVersion:v.optional(v.number())},
   handler:executeSceneEdit,
 });
 export async function executeSceneEdit(ctx:MutationCtx,args:SceneEdit,maxBatch=MAX_BATCH){
@@ -135,16 +136,35 @@ export async function executeSceneEdit(ctx:MutationCtx,args:SceneEdit,maxBatch=M
     identifier(args.requestId); label(args.message,300);
     const now=Date.now();
     if(!Number.isFinite(args.issuedAt)||args.issuedAt>now+60000||args.issuedAt<now-86400000) fail('expired','Edits must be issued within the last 24 hours.');
-    if(args.changes.length<1||args.changes.length>maxBatch) fail('invalid',`Submit 1–${maxBatch} objects per edit.`);
+    const hasEnvironment=args.environment!==undefined;
+    if((hasEnvironment&&args.changes.length>0)||(!hasEnvironment&&args.changes.length<1)||args.changes.length>maxBatch) fail('invalid',hasEnvironment?'Update the room environment separately from geometry.':`Submit 1–${maxBatch} objects per edit.`);
     if(new Set(args.changes.map(c=>c.id)).size!==args.changes.length) fail('invalid','Duplicate IDs in edit.');
+    let environment: RoomEnvironment|undefined;
+    if(hasEnvironment){
+      if(typeof args.expectedEnvironmentVersion!=='number'||!Number.isSafeInteger(args.expectedEnvironmentVersion)||args.expectedEnvironmentVersion<0) fail('invalid','Expected environment version must be a non-negative integer.');
+      if(!actor.canCurate) fail('forbidden','Only a curator may update the room environment.');
+      try { environment=parseRoomEnvironment(args.environment); } catch(error) { fail('invalid',error instanceof Error?error.message:'Invalid room environment.'); }
+    }
     // Canonical fields, never include the bearer credential in a receipt.
-    const payloadHash=await digest(JSON.stringify({issuedAt:args.issuedAt,message:args.message,changes:args.changes}));
+    const payloadHash=await digest(JSON.stringify({issuedAt:args.issuedAt,message:args.message,changes:args.changes,environment,expectedEnvironmentVersion:args.expectedEnvironmentVersion}));
     const receipt=await ctx.db.query('sceneReceipts').withIndex('by_request',q=>q.eq('worldId',args.worldId).eq('agentId',actor.agentId).eq('requestId',args.requestId)).unique();
-    if(receipt){if(receipt.payloadHash!==payloadHash) fail('conflict','Request ID was already used for a different edit.');return {requestId:args.requestId,changed:receipt.changed,replayed:true};}
+    if(receipt){if(receipt.payloadHash!==payloadHash) fail('conflict','Request ID was already used for a different edit.');return {requestId:args.requestId,changed:receipt.changed,replayed:true,...(hasEnvironment?{environment,environmentVersion:args.expectedEnvironmentVersion!+1}:{})};}
     const freshWindow=now-actor.windowStart>=60000;
-    const cost=Math.ceil(args.changes.length/MAX_BATCH);
+    const cost=hasEnvironment?1:Math.ceil(args.changes.length/MAX_BATCH);
     if((freshWindow?0:actor.windowRequests)+cost>REQUESTS_PER_MINUTE) throw new ConvexError({code:'rate_limited',message:'Agent edit limit reached.',retryAfter:Math.max(1,Math.ceil((actor.windowStart+60000-now)/1000))});
     const currentRules=await worldRules(ctx,args.worldId);
+    if(hasEnvironment){
+      const currentEnvironmentVersion=plotWorld.environmentVersion??0;
+      if(args.expectedEnvironmentVersion!==currentEnvironmentVersion) fail('conflict','The room environment changed.');
+      const nextVersion=currentEnvironmentVersion+1;
+      await Promise.all([
+        ctx.db.patch(plotWorld._id,{...(environment?{environment}:{environment:undefined}),environmentVersion:nextVersion}),
+        ctx.db.patch(actor._id,{windowStart:freshWindow?now:actor.windowStart,windowRequests:(freshWindow?0:actor.windowRequests)+cost}),
+        ctx.db.insert('sceneReceipts',{worldId:args.worldId,agentId:actor.agentId,requestId:args.requestId,payloadHash,changed:[],createdAt:now}),
+        ctx.db.insert('sceneActivity',{worldId:args.worldId,region:'0:0',agentId:actor.agentId,author:actor.name,message:args.message,requestId:args.requestId,createdAt:now}),
+      ]);
+      return {requestId:args.requestId,changed:[],replayed:false,environment,environmentVersion:nextVersion};
+    }
     for (const change of args.changes) {
       identifier(change.id);
       if (!Number.isSafeInteger(change.expectedVersion) || change.expectedVersion < 0) fail('invalid','Expected version must be a non-negative integer.');

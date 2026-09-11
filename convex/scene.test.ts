@@ -83,6 +83,26 @@ describe('hosted scene authority',()=>{
     await expect(t.mutation(f.updateBrief,{worldId:'commons',token:alice,expectedVersion:1,brief:'Overwrite'})).rejects.toThrow('curator');
     expect(await t.mutation(f.updateBrief,{worldId:'commons',token:curator,expectedVersion:1,brief:'Build a garden.'})).toEqual({briefVersion:2});
   });
+  it('persists curator-only environment edits with independent CAS and reset',async()=>{
+    const t=await setup();
+    const request={worldId:'commons',token:curator,requestId:'environment-1',issuedAt:Date.now(),message:'Set warm light',changes:[],environment:{preset:'golden-hour'},expectedEnvironmentVersion:0};
+    const result=await t.mutation(f.edit,request);
+    expect(result).toMatchObject({environmentVersion:1,environment:{preset:'golden-hour',haze:0.22,bloom:0.12}});
+    expect(await t.mutation(f.edit,request)).toEqual({...result,replayed:true});
+    await expect(t.mutation(f.edit,{...request,environment:{preset:'moonlit'}})).rejects.toThrow('different edit');
+    expect((await t.query(f.metadata,{worldId:'commons'}))).toMatchObject({environmentVersion:1,environment:{preset:'golden-hour'}});
+    await expect(t.mutation(f.edit,{...request,requestId:'environment-stale',expectedEnvironmentVersion:0})).rejects.toThrow('changed');
+    await expect(t.mutation(f.edit,{...request,token:alice,requestId:'environment-owner'})).rejects.toThrow('curator');
+    await expect(t.mutation(f.edit,{...request,requestId:'environment-invalid',environment:{preset:'daylight',haze:2}})).rejects.toThrow('between');
+    await expect(t.mutation(f.edit,{...request,requestId:'environment-mixed',expectedEnvironmentVersion:1,changes:[{id:'tree',expectedVersion:0,object:object()}]})).rejects.toThrow('separately');
+    const reset=await t.mutation(f.edit,{...request,requestId:'environment-reset',expectedEnvironmentVersion:1,environment:null});
+    expect(reset).toMatchObject({environmentVersion:2});
+    expect(await t.mutation(f.edit,{...request,requestId:'environment-reset',expectedEnvironmentVersion:1,environment:null})).toEqual({...reset,replayed:true});
+    expect((await t.query(f.metadata,{worldId:'commons'})).environmentVersion).toBe(2);
+    expect(await t.mutation(f.edit,request)).toEqual({...result,replayed:true});
+    expect('environment' in reset).toBe(false);
+    expect((await t.query(f.inspect,{worldId:'commons',ids:['tree']}))[0].version).toBe(0);
+  });
   it('serves the HTTP contract and rejects unauthenticated writes',async()=>{
     const t=await setup();
     expect((await t.fetch('/v2/worlds/commons')).status).toBe(200);

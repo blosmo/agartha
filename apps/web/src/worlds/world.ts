@@ -4,6 +4,7 @@ import { validateMaterialId } from '../../../../packages/protocol/src/materials'
 import { parseObjectMotion, type ObjectMotion } from '../../../../packages/protocol/src/objectMotion';
 import { MESH_ID, SHADER_ID, type SharedMesh, type SharedShader } from '../../../../packages/protocol/src/sharedLibrary';
 import { assertWithinPlot, type PlotPlacement } from '../../../../packages/protocol/src/plots';
+import { parseRoomEnvironment, type RoomEnvironment } from '../../../../packages/protocol/src/roomEnvironment';
 export type Vec3 = [number, number, number];
 export type Shape = 'box' | 'sphere' | 'cone' | 'cylinder' | 'mesh' | 'model';
 export interface WorldObject {
@@ -19,8 +20,10 @@ export interface SharedWorld {
   objectVersions?:Record<string,number>;
   briefVersion?:number;
   hasMoreObjects?:boolean;
-  permissions?:{agentId:string|null;canEditBrief:boolean};
+  permissions?:{agentId:string|null;canEditBrief:boolean;canEditEnvironment?:boolean};
   placement?: PlotPlacement;
+  environment?: RoomEnvironment;
+  environmentVersion?: number;
   shaders?: SharedShader[];
   meshes?: SharedMesh[];
   modelCredits?:Array<{id:string;name:string;source?:string;license?:string;attribution?:string}>;
@@ -28,9 +31,9 @@ export interface SharedWorld {
   objects: WorldObject[]; events: WorldEvent[];
 }
 export interface WorldEdit {
-  expectedVersions?:Record<string,number>; expectedBriefVersion?:number; requestId?:string; issuedAt?:number;
+  expectedVersions?:Record<string,number>; expectedBriefVersion?:number; expectedEnvironmentVersion?:number; requestId?:string; issuedAt?:number;
   baseRevision: number; author: string; message: string;
-  objects?: Omit<WorldObject, 'author'>[]; remove?: string[]; brief?: string;
+  objects?: Omit<WorldObject, 'author'>[]; remove?: string[]; brief?: string; environment?: Partial<RoomEnvironment> | null;
 }
 export class WorldError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -50,11 +53,22 @@ function vector(value: unknown, size: boolean): Vec3 {
 }
 export function applyWorldEdit(world: SharedWorld, input: unknown): SharedWorld {
   const edit = record(input);
-  if (edit.baseRevision !== world.revision) throw new WorldError('The world changed. Observe the latest revision and retry your edit.', 409);
+  if (edit.environment === undefined && edit.baseRevision !== world.revision) throw new WorldError('The world changed. Observe the latest revision and retry your edit.', 409);
   const author = text(edit.author, 'author', 60);
   const message = text(edit.message, 'message', 300);
   if (edit.objects !== undefined && (!Array.isArray(edit.objects) || edit.objects.length > 100)) throw new WorldError('Submit at most 100 objects per edit');
   if (edit.remove !== undefined && (!Array.isArray(edit.remove) || edit.remove.length > 100)) throw new WorldError('Remove at most 100 objects per edit');
+  const hasEnvironment=edit.environment!==undefined;
+  const hasObjectChanges=Array.isArray(edit.objects) && edit.objects.length>0;
+  const hasRemovals=Array.isArray(edit.remove) && edit.remove.length>0;
+  if(hasEnvironment && (hasObjectChanges || hasRemovals || edit.brief!==undefined)) throw new WorldError('Update the environment separately from brief and geometry');
+  let environment: RoomEnvironment|undefined;
+  if(hasEnvironment){
+    if(world.archived) throw new WorldError('This room is archived',403);
+    if(typeof edit.expectedEnvironmentVersion!=='number'||!Number.isSafeInteger(edit.expectedEnvironmentVersion)||edit.expectedEnvironmentVersion<0) throw new WorldError('Expected environment version must be a non-negative integer');
+    try { environment=parseRoomEnvironment(edit.environment); } catch(error) { throw new WorldError(error instanceof Error?error.message:'Invalid room environment'); }
+    if((world.environmentVersion??0)!==edit.expectedEnvironmentVersion) throw new WorldError('The room environment changed',409);
+  }
   const objects = ((edit.objects ?? []) as unknown[]).map(value => {
     const o = record(value);
     const id = text(o.id, 'object id', 80);
@@ -82,6 +96,10 @@ export function applyWorldEdit(world: SharedWorld, input: unknown): SharedWorld 
   if (remove.some(id => !world.objects.some(o => o.id === id))) throw new WorldError('Cannot remove an unknown object');
   if (remove.some(id => objects.some(o => o.id === id))) throw new WorldError('Cannot remove and replace the same object');
   const brief = edit.brief === undefined ? world.brief : text(edit.brief, 'brief', 1200);
+  if(hasEnvironment){
+    const revision=world.revision+1;
+    return { ...world, environment, environmentVersion:(world.environmentVersion??0)+1, revision, events: [{ revision, author, message, at: new Date().toISOString() }, ...world.events].slice(0, 100) };
+  }
   if (!objects.length && !remove.length && brief === world.brief) throw new WorldError('This edit has no changes');
   const replaced = new Set([...remove, ...objects.map(o => o.id)]);
   const next = [...world.objects.filter(o => !replaced.has(o.id)), ...objects];
@@ -92,7 +110,7 @@ export function applyWorldEdit(world: SharedWorld, input: unknown): SharedWorld 
 }
 export function createWorld(): SharedWorld {
   return {
-    schema: 1, id: 'the-commons', name: 'The Commons', revision: 0,
+    schema: 1, id: 'the-commons', name: 'The Commons', revision: 0, environmentVersion: 0,
     brief: 'Build a quiet island for curious minds. Bring together a forest, a gathering place, and paths that connect them. Leave room for the next agent’s ideas.',
     objects: [
       { id: 'island', name: 'Island foundation', shape: 'cylinder', position: [0,-1.2,0], scale: [25,2,25], color: '#667961', author: 'World seed' },

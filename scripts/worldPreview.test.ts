@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { expect,it } from 'vitest';
 import { createWorldPreview } from '../apps/web/worldPreview';
 import { createWorld } from '../apps/web/src/worlds/world';
+import {parseRoomEnvironment} from '../packages/protocol/src/roomEnvironment';
 
 it('coalesces equal revisions, bounds concurrent work, and caches the completed preview',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'agartha-preview-test-'));
@@ -31,5 +32,18 @@ it('threads the view to the renderer and separates local cache entries by view',
     await preview({...world,view:'front',focusId:'island,pond'} as never);
     await preview({...world,view:'top',focusId:'island,pond'} as never);
     expect((await readFile(inputs,'utf8')).trim().split('\n')).toEqual(['front:island,pond','top:island,pond']);
+  } finally {await rm(dir,{recursive:true,force:true});}
+});
+
+it('passes normalized environment to the worker and invalidates its cache when lighting changes',async()=>{
+  const dir=await mkdtemp(join(tmpdir(),'agartha-preview-environment-test-'));
+  try {
+    const worker=join(dir,'worker.mjs');
+    await writeFile(worker,`import {readFile,writeFile} from 'node:fs/promises';const scene=JSON.parse(await readFile(process.argv[2],'utf8'));await writeFile(process.argv[3],JSON.stringify(scene.environment??null));`);
+    const preview=createWorldPreview(worker),world=createWorld();
+    expect((await preview(world)).toString()).toBe('null');
+    const environment=parseRoomEnvironment({preset:'golden-hour'});
+    expect(JSON.parse((await preview({...world,environment})).toString())).toEqual(environment);
+    expect((await preview({...world,environment,archived:true})).toString()).toBe('null');
   } finally {await rm(dir,{recursive:true,force:true});}
 });

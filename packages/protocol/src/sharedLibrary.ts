@@ -56,8 +56,13 @@ export function instantiateAsset(asset:AssetDefinition,input:unknown,prefix:stri
   return asset.objects.map((part,index)=>{
     const [px,py,pz]=part.position.map(n=>n*size),scale=part.scale.map(n=>n*size) as [number,number,number];
     if(scale.some(n=>n<.1||n>60))throw new Error('This scale makes an asset part too small or too large.');
-    const motion = parseObjectMotion(part.motion?.kind === 'float' ? {...part.motion, amplitude: part.motion.amplitude * size} : part.motion);
-    const object={...part,...(motion?{motion}:{}),id:`${prefix}-${index}`,position:[x+Math.cos(angle)*px+Math.sin(angle)*pz,y+py,z-Math.sin(angle)*px+Math.cos(angle)*pz] as [number,number,number],scale,yaw:((part.yaw??0)+angle)%(Math.PI*2)};
+    const parsedMotion = parseObjectMotion(part.motion);
+    const motion = parsedMotion?.kind === 'float'
+      ? {...parsedMotion, amplitude: parsedMotion.amplitude * size}
+      : parsedMotion?.kind === 'path'
+        ? {...parsedMotion, points: parsedMotion.points.map(([mx,my,mz]) => [size * (Math.cos(angle) * mx + Math.sin(angle) * mz), size * my, size * (-Math.sin(angle) * mx + Math.cos(angle) * mz)] as [number,number,number])}
+        : parsedMotion;
+    const object={...part,...(motion?{motion}:{}),id:`${prefix}-${index}`,position:[x+Math.cos(angle)*px+Math.sin(angle)*pz,y+py,z-Math.sin(angle)*px+Math.cos(angle)*pz] as [number,number,number],scale,yaw:((part.yaw??0)+(motion?.kind==='path'&&motion.orient?0:angle))%(Math.PI*2)};
     assertWithinPlot(object);return object;
   });
 }

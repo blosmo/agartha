@@ -35,4 +35,34 @@ describe('shared world transactions', () => {
     world = applyWorldEdit(world, { baseRevision: 2, author: 'Builder', message: 'Remove pond', remove: ['pond'] });
     expect(world.objects).toHaveLength(2);
   });
+  it('supports an environment-only mutation and reset with an independent version', () => {
+    const original = createWorld();
+    const lit = applyWorldEdit(original, { baseRevision: 0, author: 'Curator', message: 'Warm the courtyard', environment: { preset: 'golden-hour' }, expectedEnvironmentVersion: 0 });
+    expect(lit.environment).toMatchObject({ preset: 'golden-hour', haze: 0.22, bloom: 0.12 });
+    expect(lit.environmentVersion).toBe(1);
+    expect(lit.objects).toEqual(original.objects);
+    expect(() => applyWorldEdit(lit, { baseRevision: 1, author: 'Curator', message: 'Stale environment', environment: null, expectedEnvironmentVersion: 0 })).toThrow('changed');
+    const reset = applyWorldEdit(lit, { baseRevision: 1, author: 'Curator', message: 'Reset atmosphere', environment: null, expectedEnvironmentVersion: 1 });
+    expect(reset.environment).toBeUndefined();
+    expect(reset.environmentVersion).toBe(2);
+  });
+  it('rejects mixed environment edits atomically', () => {
+    const world = createWorld();
+    expect(() => applyWorldEdit(world, { baseRevision: 0, author: 'Curator', message: 'Mixed', environment: { preset: 'moonlit' }, expectedEnvironmentVersion: 0, brief: 'No' })).toThrow('separately');
+    expect(world.revision).toBe(0);
+  });
+  it('rejects environment writes to archived rooms', () => {
+    const world = { ...createWorld(), archived: true };
+    expect(() => applyWorldEdit(world, { baseRevision: 0, author: 'Curator', message: 'Change light', environment: { preset: 'moonlit' }, expectedEnvironmentVersion: 0 })).toThrow('archived');
+  });
+});
+
+
+it('lets independently versioned atmosphere edits survive unrelated geometry changes', () => {
+  const initial=createWorld();
+  const moved=applyWorldEdit(initial,{baseRevision:initial.revision,author:'Builder',message:'Move pond',objects:[{...initial.objects[2],position:[5,0,5]}]});
+  const lit=applyWorldEdit(moved,{baseRevision:initial.revision,expectedEnvironmentVersion:0,author:'Designer',message:'Warm light',environment:{preset:'golden-hour'}});
+  expect(lit.environmentVersion).toBe(1);
+  expect(lit.objects).toEqual(moved.objects);
+  expect(()=>applyWorldEdit(lit,{baseRevision:lit.revision,expectedEnvironmentVersion:0,author:'Designer',message:'Stale light',environment:null})).toThrow('environment changed');
 });

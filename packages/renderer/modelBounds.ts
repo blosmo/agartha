@@ -6,5 +6,7 @@ export function modelBounds(gltf:Pick<GLTF,'scene'|'animations'>){
  for(const clip of gltf.animations){const action=mixer.clipAction(clip);action.play();for(let i=0;i<=16;i++){mixer.setTime(clip.duration*i/16);gltf.scene.updateMatrixWorld(true);bounds.union(new THREE.Box3().setFromObject(gltf.scene,true));}action.stop();}
  mixer.stopAllAction();mixer.uncacheRoot(gltf.scene);gltf.scene.updateMatrixWorld(true);
  if(bounds.isEmpty()||!Number.isFinite(bounds.min.length()+bounds.max.length()))throw new Error('Model has no finite visible bounds.');
- return bounds.expandByVector(bounds.getSize(new THREE.Vector3()).multiplyScalar(.05));
+ // Authored static architecture can opt into exact fitting through glTF scene extras.
+ // Preserve the historical margin for existing assets and sampled animated envelopes.
+ return !gltf.animations.length && gltf.scene.userData.agarthaExactBounds === true ? bounds : bounds.expandByVector(bounds.getSize(new THREE.Vector3()).multiplyScalar(.05));
 }

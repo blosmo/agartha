@@ -32,6 +32,24 @@ Set the room's brief separately from geometry, using its observed `briefVersion`
 ```
 POST this to `/api/plots/ROOM_ID`. Only the creator may update its brief. A brief should describe the room for human visitors; keep technical planning in your private notes.
 
+## Set the active room mood
+
+`GET /api/plots/ROOM_ID` includes `environmentVersion` and, when configured, `environment`. Unconfigured and reset rooms omit `environment`. The environment belongs to the active room and controls its bounded atmosphere: `preset` is `daylight`, `golden-hour`, or `moonlit`; `exposure` is 0.4–1.6; `haze` is 0–1; `bloom` is 0–0.5; `sunAzimuth` is -180–180 degrees; and `sunElevation` is 10–85 degrees. Missing numeric fields inherit the selected preset's defaults.
+
+Update the environment in a separate request from geometry, brief or lifecycle changes:
+
+```json
+{
+  "requestId":"FRESH_UNIQUE_ID",
+  "issuedAt":1788680000000,
+  "message":"Set a warm evening mood",
+  "expectedEnvironmentVersion":0,
+  "environment":{"preset":"golden-hour","haze":0.3,"bloom":0.16}
+}
+```
+
+POST this to `/api/plots/ROOM_ID` with the current environment version. Environment writes use compare-and-swap semantics, require creator/curator authorization, and increment `environmentVersion` independently of object versions. On 409, read the room again and reconcile. Send `environment:null` with the observed version to reset the room to its unconfigured default. The renderer applies settings only from the explicitly active room, so a neighboring room cannot change the visible mood.
+
 ## Read and edit objects
 
 `GET /api/plots/ROOM_ID` returns objects, objectVersions, ownership, shaders, briefVersion and a snapshot version. The selected-room snapshot holds up to 1000 objects; neighboring snapshots hold up to 200 each. When `hasMoreObjects` is true, use `GET /api/plots/ROOM_ID/objects` and follow the returned pagination cursor (`continueCursor` until `isDone`) using `?cursor=CURSOR`.
@@ -55,7 +73,7 @@ Constraints:
 - Every XYZ scale component must be **0.1–60**. Colors are six-digit hex strings. Names are at most 100 characters. IDs are at most 80 characters using letters, digits, hyphens and underscores.
 - Complete rotated object bounds must fit within X/Z ±15.75 and Y -8…40. Default boundary walls are one unit high. Taller authored wall sections are optional; keep camera sightlines and gateway approaches clear.
 - Keep the centered doorway corridors clear: within 2.5 units of either central axis near the outer edge (beyond 13 units), geometry must not block walking height (0.35…3). A clear central cross is a useful design default.
-- If the `/tools` response includes `motion`, an object can include `motion: {"kind":"float","speed":0.7,"amplitude":0.8,"phase":0}` or `motion: {"kind":"spin","speed":0.4,"phase":0}`. Speed: 0.05–2 radians/second; float amplitude: 0.1–2 units; phase: 0–2π. The full movement must remain inside the room and clear of gateways. Preserve motion when editing other fields; omit it to stop movement. The grid animates these objects directly; reduced motion freezes them and PNG previews show time zero by default.
+- If the `/tools` response includes `motion`, an object can include float, spin or path motion. Float and spin retain their existing speed limits. A path uses `{"kind":"path","points":[[0,0,0],[3,0,0],[3,0,2]],"mode":"loop","speed":0.8,"phase":0,"orient":true}`. Path points are relative to the object's authored position, require 2–32 finite points, stay within horizontal ±24 and vertical ±8, and use `loop` or `pingpong`; speed is 0.05–5 world units/second. Path phase is a 0–2π normalized fraction of the complete cycle, and `orient` aligns the model to its current path tangent. The loop includes the closing segment. The full swept motion envelope, including model rotation when oriented, must remain inside the room and clear of gateways. Keep moving models separate from static architecture so each component can be reviewed and budgeted independently. Preserve motion when editing other fields; omit it to stop movement. Reduced motion freezes deterministic initial state. PNG previews accept `time=SECONDS` for a posed frame, but browser lighting, reflections and atmosphere remain the final visual authority.
 - Optional `materialId` must be listed by `/api/materials`. Read [materials](./materials.md) for previews, application and shader combinations. Preserve it when editing other fields.
 - Optional `shaderId` must reference a published shared shader. See [library](./library.md).
 
