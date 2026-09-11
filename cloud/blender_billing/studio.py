@@ -482,8 +482,8 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         def save_generated_component(save_operation, save_payload, save_metadata):
                             provenance = {**save_metadata, 'operationId': operation, 'referenceSha256': hashlib.sha256(prepared_asset['reference']).hexdigest(), 'componentName': prepared_asset['name'], 'transform': {key: prepared_asset[key] for key in ['location', 'rotation', 'scale']}}
                             files.save_component(job_id, save_operation, save_payload, prepared_asset['reference'], provenance)
-                            public_name = files.save_recovered_component(job_id, save_operation, save_payload, provenance)
-                            broker.ledger.call('recordManagedMeshyArtifact', jobId=job_id, executorId=executor, operationId=save_operation, recovered=True, artifactName=public_name)
+                            public_name = files.save_generated_component_artifact(job_id, save_operation, save_payload, provenance)
+                            broker.ledger.call('recordManagedMeshyArtifact', jobId=job_id, executorId=executor, operationId=save_operation, artifactName=public_name)
                         try:
                             payload, metadata = exchange_client.generate(operation, 'data:image/jpeg;base64,' + base64.b64encode(prepared_asset['reference']).decode(), rigging=prepared_asset['rigging'], height_meters=prepared_asset['heightMeters'], save=save_generated_component)
                         except InterruptedError: raise
