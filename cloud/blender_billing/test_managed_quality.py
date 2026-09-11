@@ -104,6 +104,39 @@ class ManagedQualityTests(unittest.TestCase):
         self.assertNotIn('save_as_mainfile', code)
         self.assertIn('Candidate revision 0.', next(item for item in requests if item['operationId'] == 'worker-studio-1')['history'])
 
+    def test_modeler_sheets_do_not_replace_full_resolution_independent_evidence(self):
+        _, _, requests, _, finish, _ = self.fixture([action('edit', 'REVISION_A'), action('accept'), action('finish')], workflow_version=3, reference_mode='generate', quality_verdicts=[verdict()])
+        planning = next(item for item in requests if item['kind'] == 'strategy')
+        review = next(item for item in requests if item['kind'] == 'review')
+        modeler = [item for item in requests if item['kind'] == 'modeling'][1]
+        self.assertEqual([item['label'] for item in modeler['images']], ['reference-sheet', 'render-sheet'])
+        self.assertEqual(review['images'][:4], planning['images'])
+        self.assertEqual([item['label'] for item in review['images'][4:]], ['export-hero', 'export-front', 'export-right'])
+        self.assertEqual(finish['status'], 'completed')
+
+    def test_known_incomplete_edits_are_corrected_then_final_review_uses_the_saved_model(self):
+        failures = [httpx.Response(502, json={'code': 'inference_output_incomplete', 'error': 'No action executed. Return a smaller edit.'}, request=httpx.Request('POST', 'https://example.test/inference')) for _ in range(3)]
+        store, broker, requests, _, finish, _ = self.run_quality([action('edit', 'REVISION_A'), *failures], quality_verdicts=[verdict()])
+        self.assertEqual(finish['status'], 'completed')
+        self.assertEqual(sum(item['kind'] == 'review' for item in requests), 1)
+        self.assertEqual([item['operationId'] for item in requests if item['kind'] == 'modeling'], ['worker-studio-0', 'worker-studio-1', 'worker-studio-2', 'worker-studio-3'])
+        self.assertTrue(any(event.get('reason') == 'modeling_correction_limit' for event in json.loads(store.read('job', 'review.json'))['actions']))
+        self.assertFalse(any(call.args[3] in ['worker-tool-1', 'worker-tool-2', 'worker-tool-3'] for call in broker.call.call_args_list))
+
+    def test_failed_edit_does_not_send_a_stale_render_sheet(self):
+        _, _, requests, _, finish, _ = self.run_quality([action('edit', 'REVISION_A'), action('edit', 'BROKEN'), action('inspect_scene')])
+        modeling = [item for item in requests if item['kind'] == 'modeling']
+        self.assertEqual([item['label'] for item in modeling[1]['images']], ['render-sheet'])
+        self.assertEqual(modeling[2]['images'], [])
+        self.assertEqual(finish['status'], 'partial')
+
+    def test_action_limit_still_reviews_the_saved_candidate_once(self):
+        with patch('cloud.blender_billing.studio.MAX_ACTIONS', 2):
+            store, _, requests, _, finish, _ = self.run_quality([action('edit', 'REVISION_A'), action('inspect_scene')], quality_verdicts=[verdict()])
+        self.assertEqual(finish['status'], 'completed')
+        self.assertEqual(sum(item['kind'] == 'review' for item in requests), 1)
+        self.assertTrue(any(event.get('reason') == 'modeling_action_limit' for event in json.loads(store.read('job', 'review.json'))['actions']))
+
     def test_rejection_requires_changed_export_then_repair_can_pass(self):
         store,_,requests,_,finish,_=self.run_quality([action('edit','REVISION_A'),action('accept'),action('accept'),action('edit','REVISION_B'),action('accept'),action('finish')],quality_verdicts=[verdict(False),verdict()])
         critics=[item for item in requests if item['kind']=='review']

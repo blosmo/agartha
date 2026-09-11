@@ -80,6 +80,14 @@ The follow-up fixes distinguish a completed, billed but invalid modeling action 
 
 Regression tests reproduce the recovery and history faults. Actual Blender checks confirm toolkit inspection does not change the scene. Private run identifiers, billing receipts and spending details remain in the operator's verification report.
 
+## Modeler context and bounded output recovery
+
+A full modeling attempt exposed an input-budget bottleneck: four reference images plus three exported views consumed enough conservative input allowance to reduce a late modeling action to 2,000 output tokens. Packing the same views into two labeled sheets raises that allowance to 10,200 tokens under the same per-operation cap. Detail views remain separate, and the independent critic still receives original full views.
+
+The gateway now permits bounded correction of an incomplete modeling response only after known usage has been settled. Incomplete code never executes. Unknown usage still stops. When the action or correction limit is reached, a saved candidate may use the protected review reserve, with the same independent acceptance and artifact-binding checks.
+
+Validation passed 60 focused TypeScript tests and 72 Python tests, script type checking, and code review. Actual packed reference and exported-model sheets were inspected for readable labels and views. This verifies the context fix, not final model quality; the inspected candidate remains a blockout.
+
 ## Reproduction and evidence
 
 `scripts/managed-quality-benchmark.mjs` resumes pre-created jobs from a private manifest, with the bearer token supplied separately. It checks the stored brief, cap, version, and publication settings, records each start attempt before dispatch, refuses an uncertain second start, and bounds same-origin artifact downloads. One `status` command performs one bounded poll. Creation/funding remains an explicit operator action.

@@ -78,6 +78,15 @@ describe('persisted managed quality gateway protocol', () => {
     expect(state.ledger).toHaveBeenLastCalledWith('completeManagedInference', expect.objectContaining({ chargeCents: 2 }));
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+  it('allows correction of token-limited modeling only when its usage is known', async () => {
+    for (const [usage, expectedStatus, code] of [[{ input_tokens: 1000, output_tokens: 200 }, 502, 'inference_output_incomplete'], [undefined, 503, 'inference_usage_reconciliation']] as const) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, usage, output: [{ type: 'function_call', name: 'blender_action', arguments: '{incomplete' }] })));
+      const res = response();
+      await managedInference(request({ ...body, kind: 'modeling', strategy, history: 'Begin', images: [] } as any) as any, res as any);
+      expect(res.statusCode).toBe(expectedStatus);
+      expect(JSON.parse(res.end.mock.calls[0][0])).toMatchObject({ code });
+    }
+  });
   it('rejects v3 downgrades and legacy upgrades before provider dispatch', async () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
     for (const [version, protocol] of [[3, 2], [3, undefined], [undefined, 3], [2, 3], [3, 4]]) {
