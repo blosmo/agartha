@@ -74,6 +74,15 @@ describe('independent managed quality', () => {
     const unconstrained = inferenceRequest({ ...initial, kind: 'modeling', history: 'Begin', images: references });
     expect(unconstrained.body.max_output_tokens).toBe(12000);
   });
+  it('preserves edit output capacity by packing modeler views without changing the image bound', () => {
+    const reference = ['front', 'right', 'rear', 'hero'].map(view => ({ label: `reference-${view}`, image: images[0].image }));
+    const context = { ...input, kind: 'modeling' as const, remainingCents: 227, history: 'x'.repeat(14433) };
+    const separate = inferenceRequest({ ...context, images: [...reference, ...['hero', 'front', 'right'].map(view => ({ label: `render-${view}`, image: images[0].image }))] });
+    const packed = inferenceRequest({ ...context, images: ['reference-sheet', 'render-sheet'].map(label => ({ label, image: images[0].image })) });
+    expect(packed.body.max_output_tokens - separate.body.max_output_tokens).toBeGreaterThanOrEqual(8000);
+    expect(packed.maxCostCents + REVIEW_RESERVE_CENTS).toBeLessThanOrEqual(227);
+    expect(packed.body.reasoning.effort).toBe(separate.body.reasoning.effort);
+  });
   it('refuses a paid plan when its maximum charge would consume the final review reserve', async () => {
     const planning = { ...input, kind: 'strategy' as const, images: [] };
     const { maxCostCents } = inferenceRequest(planning);
