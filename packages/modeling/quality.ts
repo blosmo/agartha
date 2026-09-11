@@ -8,7 +8,8 @@ export const QUALITY_CRITERIA = ['silhouette', 'proportions', 'construction', 'm
 type Criterion = typeof QUALITY_CRITERIA[number];
 export type ModelingStrategy = { subjectClass: string; styleUse: string; geometryApproach: string; proportions: string[]; stages: string[]; acceptanceChecks: Record<Criterion, string> };
 export type QualityReview = { criteria: Record<Criterion, { pass: boolean; evidence: string }>; defects: Array<{ severity: 'blocker' | 'major' | 'minor'; criterion: Criterion; description: string }>; accepted: boolean };
-const textSchema = (minLength: number, maxLength: number) => ({ type: 'string', minLength, maxLength, pattern: '^\\S(?:[\\s\\S]*\\S)?$' });
+// Keep whitespace validation local: this regex constraint aborts Astra generation.
+const textSchema = (minLength: number, maxLength: number) => ({ type: 'string', minLength, maxLength });
 const boundedText = textSchema(30, 200); // At most 800 UTF-8 bytes for well-formed Unicode.
 const strategyText = {
   subjectClass: textSchema(3, 32), styleUse: textSchema(30, 140), geometryApproach: textSchema(30, 300),

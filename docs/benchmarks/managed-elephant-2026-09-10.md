@@ -1,6 +1,6 @@
 # Managed elephant comparison: 2026-09-10
 
-This comparison records one legacy managed job and three version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
+This comparison records one legacy managed job and four version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
 
 ## Exact brief
 
@@ -51,7 +51,26 @@ The deployed strategy path still used Chat Completions with a required function 
 
 The next bounded tuning increases planner and reviewer output ceilings from 4,096 to 8,192 tokens, uses medium reasoning effort for these two stages, and protects 125 cents for final review. Modeling retains its existing settings and budget adjustment. Preflight checks reject planning that would consume the review reserve. Focused budget and request tests pass; real model quality remains unverified.
 
-There is no successful improved model to compare. Four dispatches have produced 132 cents of known service charges and 59 cents of unresolved maximum liability, totaling 191 cents of accounted exposure. Further private verification is authorized within the original 1,000-cent cumulative ceiling, with each new job capped at 500 cents. Unknown charges remain included until reconciled. Version 3 remains disabled as the public default pending a successful model and export review.
+## Version-3 attempt 4
+
+- Job: `0db1386f-5515-4203-847f-20fc69215642`, started once on 2026-09-11 using the 8,192-token, medium-effort planner.
+- Reviewed source `7f8d5c5`, merged as `c13c099` in PR #57; deployed as `dpl_Ca5mqn4f6HTLojMGcaC79XVVjEPV`.
+- Final state: `failed` before worker launch, compute `failed`, no strategy or geometry revision. Only `reference.jpg` exists as a model artifact.
+- Known charge: 8 cents for the reference. Another 79 cents remains reserved for unresolved inference usage.
+- The private trace again reports `status=incomplete, reason=max_output_tokens` and `inference_usage_reconciliation`.
+- AI Gateway generation `gen_01M280X9EZPJP3D36NT5AABY30` began at 10:41:14.207 UTC, returned HTTP 200 in 1.69 seconds (provider response time 1.61 seconds), and explicitly reported no usage. The dashboard displayed $0.0000, which is not sufficient evidence to release the service hold.
+
+Increasing the ceiling and reducing reasoning effort did not resolve the failure. The quick, usage-less response does not establish actual reasoning-token exhaustion. The request matches the documented Responses format; the available evidence does not identify a further safe parameter correction. Paid retries stopped pending a reliable provider response or a more specific diagnosis. Temporary operator overrides were removed without releasing the unresolved holds. No successful improved model is available, and public version 3 remains disabled.
+
+Five dispatches have produced 140 cents of known service charges and 138 cents of unresolved maximum liability, totaling 278 cents of accounted exposure. Further private verification is authorized within the original 1,000-cent cumulative ceiling, with each new job capped at 500 cents. Unknown charges remain included until reconciled. Version 3 remains disabled as the public default pending a successful model and export review.
+
+## Controlled provider diagnosis and schema correction
+
+Seven small probes used the same Astra gateway, separate durable operation labels, and the original cumulative budget. Text output and minimal loose/strict function calls succeeded. The exact planner without images failed with all-zero usage in 1.947 seconds; changing only strict mode to false also failed in 1.745 seconds. Removing all optional schema constraints completed but violated local length limits.
+
+Removing **only the string regex pattern** from the original planner schema completed in 17.855 seconds with 576 input tokens and 559 output tokens. The 2,061-byte strategy passed `parseStrategy`. Strict mode, string length limits, array limits, model, prompt, reasoning effort, and output ceiling were unchanged. This isolates the repeated whitespace regex as the trigger in this provider path. It does not imply that every regex is unsupported.
+
+The fix removes that pattern from planner and critic schemas and retains local whitespace, Unicode, length, field, and byte validation. A regression test failed before the change and passed afterward. The seven probes account for 140 cents conservatively: 20 cents of rounded, padded metered exposure and 120 cents retained for ambiguous requests. Together with the five jobs, total accounted exposure is 418 cents before another full run. Full model delivery and public activation still require verification.
 
 ## Reproduction and evidence
 
