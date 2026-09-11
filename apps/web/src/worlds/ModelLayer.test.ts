@@ -60,3 +60,26 @@ it('shows the active room before a slow neighboring model finishes',async()=>{
  try{await vi.waitFor(()=>expect(layer.metrics.models).toBe(1),{timeout:500});}
  finally{release();await loading;layer.dispose();}
 });
+
+it('keeps boundary faces inside the clip planes with a bounded world-space tolerance',async()=>{
+ const bytes=glbFixture(json=>{delete json.animations;json.scenes[0].extras={agarthaExactBounds:true};});
+ vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,arrayBuffer:async()=>bytes.buffer})));
+ const layer=new ModelLayer(vi.fn());
+ try{
+  for(const yaw of [0,.7,2.1]){
+   await layer.set([{...placement({...object,animation:undefined,position:[8,.115,-12],scale:[31.5,.23,31.5],yaw}),offsetX:64,offsetZ:-64}]);
+   // Repeat updates to catch an accumulating offset as models move or rotate.
+   for(let frame=0;frame<3;frame++)layer.update(.016,frame*.016,false);
+   const root=layer.group.children[0];
+   let material:THREE.Material|undefined;
+   root.traverse(node=>{if(node instanceof THREE.Mesh)material=(Array.isArray(node.material)?node.material[0]:node.material);});
+   expect(material!.clipShadows).toBe(true);
+   const planes=material!.clippingPlanes!;expect(planes).toHaveLength(6);
+   planes.forEach((plane,i)=>{
+    const boundary=new THREE.Vector3();boundary.setComponent(Math.floor(i/2),i%2===0?-.5:.5);boundary.applyMatrix4(root.matrixWorld);
+    expect(plane.distanceToPoint(boundary)).toBeCloseTo(.001,7);
+    expect(plane.distanceToPoint(boundary.clone().addScaledVector(plane.normal,-.002))).toBeLessThan(0);
+   });
+  }
+ }finally{layer.dispose();}
+});
