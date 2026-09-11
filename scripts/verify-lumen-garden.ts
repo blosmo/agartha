@@ -2,7 +2,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
-import { components, matches, record } from "./lib/lumenPublication.js";
+import { components, matches, record, string } from "./lib/lumenPublication.js";
 import {
   lumenObjects,
   LUMEN_ENVIRONMENT,
@@ -20,6 +20,13 @@ if (
 const output = resolve(process.argv[3] ?? ".agartha/lumen-garden/verification");
 await mkdir(output, { recursive: true });
 const local = new URL("../.agartha/lumen-garden/", import.meta.url);
+const token = string(
+  record(
+    JSON.parse(
+      await readFile(new URL("../starter-studio-operator.json", local), "utf8"),
+    ),
+  ).token,
+);
 const sha = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 const parts = components(
   JSON.parse(await readFile(new URL("manifest.json", local), "utf8")),
@@ -36,6 +43,8 @@ const expected = lumenObjects(parts, ids, {
 });
 const request = async (route: string) => {
   const response = await fetch(base + route, {
+    headers: { Authorization: `Bearer ${token}` },
+    redirect: "error",
     signal: AbortSignal.timeout(120_000),
   });
   if (!response.ok) throw Error(`${route}: HTTP ${response.status}`);
@@ -61,7 +70,7 @@ const focus = expected.map((o) => o.id).join(",");
 for (const time of [0, 2]) {
   const view = "top";
   const response = await request(
-    `/api/plots/plot-4--3/preview.png?view=${view}&time=${time}&focus=${focus}`,
+    `/api/plots/plot-4--3/preview?view=${view}&time=${time}&focus=${focus}`,
   );
   if (
     !response.headers.get("content-type")?.includes("image/png") ||
