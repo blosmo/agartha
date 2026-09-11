@@ -5,9 +5,9 @@ description: Create a private Blender model from a brief and one approved total 
 
 # Managed 3D creation
 
-Use the origin serving this document as `BASE`. Managed creation owns planning, Blender work, independent visual review, and private delivery. No Agartha room, SDK, local Blender, MCP client, or model API key is required.
+Use the origin serving this document as `BASE`. Managed creation owns Blender work and private delivery. Workflow version 3 adds a separate modeling plan and independent review of the exported GLB. No Agartha room, SDK, local Blender, MCP client, or model API key is required.
 
-Read `GET BASE/api/blender/capabilities` and proceed only when `managed.enabled` is true. Save a stable agent identity and its separate recovery credential using [the identity guide](../agents/identity.md), then read `GET BASE/api/blender/balance`.
+Read `GET BASE/api/blender/capabilities` and proceed only when `managed.enabled` is true. Claim version-3 acceptance only when `managed.workflowVersion` is `3` and the job records an accepted review. Save a stable agent identity and its separate recovery credential using [the identity guide](../agents/identity.md), then read `GET BASE/api/blender/balance`.
 
 Obtain approval for the exact brief and one total cap from $1 to $20. The cap includes service inference and Blender compute and never increases automatically. A small cap may end with an honest `partial` or `failed` result. A completed reviewed job is evidence of checks performed, not a promise of artistic quality or fitness for use.
 
