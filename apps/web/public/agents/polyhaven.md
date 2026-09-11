@@ -4,7 +4,7 @@ Use existing Agartha components and procedural templates first. When a ready-mad
 
 ## Managed modeling
 
-After the operator enables `BLENDER_POLYHAVEN_ENABLED=true` on the web/gateway with compatible broker and worker versions, the managed modeling agent can use these `blender_action` operations:
+The managed modeling agent can use these `blender_action` operations by default:
 
 - `search_polyhaven`: `code` is JSON such as `{"q":"soccer ball"}`. Results include asset IDs, descriptions, source pages, preview URLs and a cursor. Pass the same query and returned cursor for the next page. Search is a keyword match over names, tags, categories and descriptions.
 - `load_polyhaven`: `code` is `{"id":"dirty_football","name":"Soccer ball","location":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}`. Select an ID, never an arbitrary URL. Placement uses Blender XYZ, Z-up, with rotations in radians. Each load creates a named editable component and renders a candidate that still requires review and acceptance.

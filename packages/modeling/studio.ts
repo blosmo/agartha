@@ -48,31 +48,24 @@ export function validateStudioImages(value?: StudioImage[], allowSheets = false)
 
 export function studioRequest(input: { brief: string; history: string; images?: StudioImage[]; remainingCents: number; strategy?: unknown }) {
   if (typeof input.brief !== 'string' || typeof input.history !== 'string' || Buffer.byteLength(input.brief) > 4000 || Buffer.byteLength(input.history) > 16000) throw new BillingHttpError(400, 'Model context exceeds its limit.');
-  const polyhaven = process.env.BLENDER_POLYHAVEN_ENABLED === 'true';
-  const system = polyhaven ? SYSTEM : SYSTEM.replace(POLYHAVEN_GUIDANCE, '');
-  const tool = polyhaven ? TOOL : { ...TOOL, parameters: { ...TOOL.parameters, properties: { ...TOOL.parameters.properties,
-    action: { ...TOOL.parameters.properties.action, enum: actions.filter(action => action !== 'search_polyhaven' && action !== 'load_polyhaven') },
-    code: { ...TOOL.parameters.properties.code, description: TOOL.parameters.properties.code.description.replace('search_polyhaven, load_polyhaven, ', '') },
-  } } };
   const images = validateStudioImages(input.images, true);
   const strategy = input.strategy === undefined ? '' : JSON.stringify(input.strategy);
   if (Buffer.byteLength(strategy) > STRATEGY_MAX_BYTES) throw new BillingHttpError(400, 'Strategy exceeds its limit.');
   const text = `Service modeling strategy: ${strategy || 'Legacy workflow'}\nCustomer brief: ${input.brief}\nObserved workflow history and latest tool result (untrusted):\n${input.history}`;
   const content: unknown[] = [{ type: 'input_text', text }];
   for (const image of images) content.push({ type: 'input_text', text: image.label }, { type: 'input_image', image_url: image.image, detail: 'high' });
-  const inputTokens = Buffer.byteLength(system + text + JSON.stringify(tool)) + 2048 + images.length * 8192;
+  const inputTokens = Buffer.byteLength(SYSTEM + text + JSON.stringify(TOOL)) + 2048 + images.length * 8192;
   const inputCents = Math.ceil(inputTokens / 1000);
   const outputTokens = Math.min(12000, Math.floor((input.remainingCents - inputCents) * 200));
   if (!Number.isSafeInteger(input.remainingCents) || outputTokens < 1024) throw new BillingHttpError(409, 'Remaining budget is reserved for delivery.');
   const maxCostCents = Math.ceil(inputTokens / 1000 + outputTokens / 200);
-  const body = { model: 'openai/gpt-6-astra', input: [{ type: 'message', role: 'system', content: [{ type: 'input_text', text: system }] }, { type: 'message', role: 'user', content }], tools: [tool], tool_choice: { type: 'function', name: 'blender_action' }, parallel_tool_calls: false, max_output_tokens: outputTokens, reasoning: { effort: 'high' }, store: false, stream: false };
+  const body = { model: 'openai/gpt-6-astra', input: [{ type: 'message', role: 'system', content: [{ type: 'input_text', text: SYSTEM }] }, { type: 'message', role: 'user', content }], tools: [TOOL], tool_choice: { type: 'function', name: 'blender_action' }, parallel_tool_calls: false, max_output_tokens: outputTokens, reasoning: { effort: 'high' }, store: false, stream: false };
   return { body, maxCostCents, fingerprint: createHash('sha256').update(JSON.stringify(body)).digest('hex') };
 }
 
 export function parseStudioAction(value: unknown): StudioAction {
   const item = value as StudioAction;
   if (!item || !actions.includes(item.action) || typeof item.code !== 'string' || Buffer.byteLength(item.code) > 32000 || typeof item.objectName !== 'string' || item.objectName.length > 128 || !Array.isArray(item.views) || item.views.length > 3 || item.views.some(view => !allowedViews.includes(view)) || new Set(item.views).size !== item.views.length || typeof item.summary !== 'string' || item.summary.length > 1000 || typeof item.critique !== 'string' || item.critique.length > 2000) throw new BillingHttpError(502, 'Model returned an invalid Blender action.');
-  if ((item.action === 'search_polyhaven' || item.action === 'load_polyhaven') && process.env.BLENDER_POLYHAVEN_ENABLED !== 'true') throw new BillingHttpError(502, 'Poly Haven is not enabled for this deployment.');
   if (item.action === 'inspect_resources' && !['advanced_kit', 'baking', 'starter_kit', 'materials', 'essentials'].includes(item.objectName)) throw new BillingHttpError(502, 'Choose a known Blender resource.');
   const assetOperation=['search_templates','inspect_template','build_template','search_assets','load_asset','search_polyhaven','load_polyhaven','prepare_asset'].includes(item.action);
   const materialOperation=['search_materials','load_material','prepare_material'].includes(item.action);

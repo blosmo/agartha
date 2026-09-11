@@ -100,7 +100,7 @@ export function qualityRequest(input: QualityInput) {
   }
   if (review && (['export-hero', 'export-front', 'export-right'].some(label => !seen.has(label)) || !Number.isSafeInteger(input.candidateRevision) || input.candidateRevision! < 1 || !/^[a-f0-9]{64}$/.test(input.glbSha256 ?? ''))) throw new BillingHttpError(400, 'Review requires three fresh export views and a candidate binding.');
   const context = `Customer brief: ${input.brief}` + (review ? `\nService strategy: ${JSON.stringify(parseStrategy(input.strategy))}\nCandidate revision: ${input.candidateRevision}\nGLB SHA256: ${input.glbSha256}` : `\nRemaining inference allowance: ${input.remainingCents} cents.`);
-  const system = review ? CRITIC : process.env.BLENDER_POLYHAVEN_ENABLED === 'true' ? PLANNER : PLANNER.replace(POLYHAVEN_STRATEGY, ''); const tool = review ? REVIEW_TOOL : STRATEGY_TOOL;
+  const system = review ? CRITIC : PLANNER; const tool = review ? REVIEW_TOOL : STRATEGY_TOOL;
   const content: unknown[] = [{ type: 'input_text', text: context }];
   for (const image of images) content.push({ type: 'input_text', text: image.label }, { type: 'input_image', image_url: image.image, detail: 'high' });
   // UTF-8 bytes overbound text tokens; 8192 tokens per bounded image overbounds vision.
