@@ -104,8 +104,7 @@ it('allows only named read-only resource inspections with no supplied code', () 
   expect(() => parseStudioAction({ ...action, code: 'import bpy' })).toThrow('arguments');
 });
 
-it('exposes bounded Poly Haven reuse and keeps provider metadata untrusted',()=>{
- vi.stubEnv('BLENDER_POLYHAVEN_ENABLED','true');
+it('exposes bounded Poly Haven reuse by default and keeps provider metadata untrusted',()=>{
  const action={action:'search_polyhaven',code:JSON.stringify({q:'soccer ball',cursor:'ball_01'}),objectName:'',views:[],summary:'Search Poly Haven',critique:''};
  expect(JSON.parse(parseStudioAction(action).code)).toEqual({q:'soccer ball',cursor:'ball_01'});
  const load={...action,action:'load_polyhaven',code:JSON.stringify({id:'dirty_football',name:'Soccer ball'})};
@@ -123,15 +122,11 @@ it('exposes bounded Poly Haven reuse and keeps provider metadata untrusted',()=>
 });
 
 
-it('keeps Poly Haven actions and instructions disabled until cloud activation',()=>{
- vi.stubEnv('BLENDER_POLYHAVEN_ENABLED','false');
+it('keeps Poly Haven actions and planning available without configuration',()=>{
  const request=studioRequest({brief:'A sports diorama',history:'',remainingCents:835});
- expect(JSON.stringify(request.body.tools)).not.toContain('polyhaven');
- expect(JSON.stringify(request.body.input[0])).not.toContain('search_polyhaven');
+ expect(JSON.stringify(request.body.tools)).toContain('search_polyhaven');
+ expect(JSON.stringify(request.body.input[0])).toContain('search_polyhaven');
  const strategy=()=>qualityRequest({kind:'strategy',brief:'A soccer ball',remainingCents:835});
- expect(JSON.stringify(strategy().body.input[0])).not.toContain('Poly Haven');
- vi.stubEnv('BLENDER_POLYHAVEN_ENABLED','true');
  expect(JSON.stringify(strategy().body.input[0])).toContain('Poly Haven');
- vi.stubEnv('BLENDER_POLYHAVEN_ENABLED','false');
- expect(()=>parseStudioAction({action:'search_polyhaven',code:'{"q":"ball"}',objectName:'',views:[],summary:'Search',critique:''})).toThrow('not enabled');
+ expect(parseStudioAction({action:'search_polyhaven',code:'{"q":"ball"}',objectName:'',views:[],summary:'Search',critique:''}).action).toBe('search_polyhaven');
 });
