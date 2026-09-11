@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 import httpx
 from .managed import BASE_NAMES, FILE_LIMIT, EXPORT_CODE, ManagedFiles, quality_review_valid
+from .resource_inspection import resource_inspection_code
 from .review import VIEWS, render_view_code
 from .export_review import render_export_view_code
 from .turnaround import DELIVERY_RESERVE_SECONDS, remaining_seconds, render_turnaround
@@ -29,6 +30,10 @@ FINAL_RENDER = 'import bpy\n' + FINAL_EXPORT[FINAL_EXPORT.index('scene = bpy.con
 
 class InferenceProtocolError(RuntimeError):
     """Unusable inference results stop execution rather than inviting candidate repair."""
+
+
+class InvalidModelAction(ValueError):
+    """A completed, billed model action failed validation and may be corrected."""
 
 
 class ReviewBudgetReserved(RuntimeError):
@@ -92,6 +97,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
     status, progress = 'failed', 'The reference-guided job could not complete.'
     history = 'Inspect the persistent scene, then build a strong blockout matching the reference. Work through Blender tools and use rendered evidence to guide each stage.'
     reference_cost = 0
+    invalid_actions = 0
     component_sharing = row.get('shareComponents')
     sharing_enabled = row.get('shareMaterials') is True
     history += ' Component publication: '+json.dumps(component_sharing or 'disabled')+'.'
@@ -134,6 +140,45 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         elif reference_saved:
             files.save_review(job_id, {'protocol': 2, 'jobId': job_id, 'referenceModel': REFERENCE_MODEL, 'referenceCostCents': reference_cost, 'model': 'openai/gpt-6-astra', 'acceptedRevision': accepted_revision, 'candidateRevision': revision, 'quality': {'reviewer': 'independent', 'scope': 'Blender renders', 'reviews': list(legacy_reviews.values()), 'stopReason': stop_reason}, 'actions': events})
 
+    def workflow_history() -> str:
+        header = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}. Component publication: {json.dumps(component_sharing or "disabled")}.\n'
+        recent = []
+        for event in events[-6:]:
+            detail = {key: value for key, value in event.items() if key not in {'time', 'sourceMetadata'}}
+            if event['action'] in {'search_assets', 'search_materials', 'search_templates', 'inspect_template'} and isinstance(detail.get('result'), str):
+                # Avoid double-escaping metadata, and retain identifiers as structured data.
+                try: detail['result'] = json.loads(detail['result'])
+                except json.JSONDecodeError: pass
+            recent.append(detail)
+
+        def serialized() -> str:
+            return header + json.dumps(recent, ensure_ascii=False)
+
+        if len(serialized().encode()) > 15000:
+            for detail in recent:
+                result = detail.get('result')
+                if isinstance(result, dict) and isinstance(result.get('entries'), list):
+                    for entry in result['entries']:
+                        entry.pop('description', None)
+                        if isinstance(entry.get('name'), str): entry['name'] = entry['name'][:40]
+            for detail in recent[:-1]:
+                if len(serialized().encode()) <= 15000: break
+                detail.pop('result', None)  # Retain the fact and summary of earlier inspection.
+        if len(serialized().encode()) > 15000:
+            for detail in recent:
+                for key in ['critique', 'summary', 'error']:
+                    if isinstance(detail.get(key), str): detail[key] = detail[key].encode()[:500].decode(errors='ignore')
+            result = recent[-1].get('result')
+            if isinstance(result, dict) and isinstance(result.get('entries'), list):
+                recent[-1]['result'] = {'entries': [{'id': entry['id']} for entry in result['entries']], 'cursor': result.get('cursor')}
+        while len(serialized().encode()) > 15000:
+            # Non-catalog tool output may be shortened, never a catalog's IDs or cursor.
+            value = recent[-1].get('result')
+            if not isinstance(value, str) or not value:
+                raise ValueError('Workflow history exceeds its structured context limit.')
+            recent[-1]['result'] = value[:len(value) // 2]
+        return serialized()
+
     def inference(operation: str, kind: str, **payload: Any) -> dict[str, Any]:
         current()
         done = threading.Event()
@@ -161,6 +206,8 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     if not isinstance(result, dict): raise InferenceProtocolError('Inference response must be an object.')
                     if quality and kind == 'modeling' and response.status_code == 409:
                         if result.get('code') == 'quality_review_reserved': raise ReviewBudgetReserved('Modeling allowance is reserved for final review.')
+                    if quality and kind == 'modeling' and response.status_code == 502 and result.get('code') == 'inference_action_invalid':
+                        raise InvalidModelAction(str(result.get('error', 'Invalid Blender action.'))[:500])
                     if quality and response.status_code >= 400:
                         details = {'status': response.status_code, 'kind': kind, 'operationId': operation}
                         for key, limit in [('error', 500), ('code', 100)]:
@@ -264,7 +311,14 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             publication_preview = asset_preview or material_preview
             visible_model_views = [image for image in rendered if not publication_preview or image['label'] != publication_preview['label']]
             try:
-                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), history=history.encode()[-15000:].decode(errors='ignore'), images=references + visible_model_views + ([publication_preview] if publication_preview else []))
+                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), history=history, images=references + visible_model_views + ([publication_preview] if publication_preview else []))
+            except InvalidModelAction as error:
+                current()
+                invalid_actions += 1
+                events.append({'turn': turn, 'action': 'invalid_action', 'error': str(error), 'result': 'No Blender action was executed. Return one corrected action with valid arguments.', 'candidateRevision': revision})
+                trace(); history = workflow_history()
+                if invalid_actions >= 3: raise InferenceProtocolError('Model returned invalid actions after two bounded correction attempts.')
+                continue
             except ReviewBudgetReserved:
                 current()
                 status, progress = 'partial' if saved else 'failed', 'Modeling stopped to preserve independent review allowance.'
@@ -282,12 +336,13 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                         progress = 'The final candidate did not pass independent review; retained available files.'
                     trace()
                 break
+            invalid_actions = 0
             if asset_preview and prepared_asset: prepared_asset['reviewed'] = True
             if material_preview and prepared_material: prepared_material['reviewed'] = True
             if scene_matches:
                 reviewed_views.update(image['label'].removeprefix('render-') for image in visible_model_views)
             action = step.get('action')
-            if action not in {'inspect_scene', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
+            if action not in {'inspect_scene', 'inspect_resources', 'inspect_object', 'edit', 'render_views', 'accept', 'restore', 'finish', 'search_templates', 'inspect_template', 'build_template', 'search_assets', 'load_asset', 'prepare_asset', 'publish_asset', 'search_materials', 'load_material', 'prepare_material', 'publish_material'}: raise ValueError('Unknown Blender action.')
             event = {'turn': turn, 'action': action, 'candidateRevision': revision, 'summary': str(step.get('summary', ''))[:1000], 'critique': str(step.get('critique', ''))[:2000], 'inspectedViews': sorted(reviewed_views), 'time': int(time.time())}
             events.append(event)
             operation = f'{executor}-tool-{turn}'
@@ -316,7 +371,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                                 if 'values' in spec: controls[key]['choiceCount']=len(spec['values'])
                             result={'id':entry['id'],'name':entry['name'],'controls':controls,'license':entry['license'],'attribution':entry['attribution'],'inspectControl':'Call inspect_template with parameter to see every option.'}
                     event['result']=json.dumps(result,ensure_ascii=False)
-                    trace();history=f'Candidate revision {revision}. Current candidate accepted: {accepted_current}.\n'+json.dumps([event],ensure_ascii=False)
+                    trace(); history = workflow_history()
                     continue
                 if action == 'search_assets':
                     parameters = json.loads(step.get('code', '{}'))
@@ -324,7 +379,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     compact = {'entries':[{'id':entry['id'],'name':entry['metadata']['name'].encode()[:100].decode(errors='ignore'),'description':entry['metadata'].get('description','').encode()[:80].decode(errors='ignore')} for entry in result['entries']], 'cursor':result.get('cursor')}
                     event['result'] = json.dumps(compact,ensure_ascii=False)
                     trace()
-                    history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current candidate accepted: {accepted_current}.\n'+json.dumps([event],ensure_ascii=False)
+                    history = workflow_history()
                     continue
                 if action == 'search_materials':
                     parameters = json.loads(step.get('code', '{}'))
@@ -332,13 +387,16 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     compact = {'entries':[{'id':entry['id'],'name':entry['name'].encode()[:100].decode(errors='ignore'),'tileSize':entry['tileSize'],'description':entry['description'].encode()[:80].decode(errors='ignore')} for entry in result['entries']], 'cursor':result.get('cursor')}
                     event['result'] = json.dumps(compact,ensure_ascii=False)
                     trace()
-                    history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}. Component publication: {json.dumps(component_sharing or 'disabled')}.\n'+json.dumps(events[-3:],ensure_ascii=False)
+                    history = workflow_history()
                     continue
                 if not running:
                     heartbeat('Starting the private Blender workspace.')
                     broker.start(token, reservation); running = True; monitor(reservation)
                 heartbeat(event['summary'] or 'Operating Blender.')
-                if action in {'inspect_scene', 'inspect_object'}:
+                if action == 'inspect_resources':
+                    result = execute(resource_inspection_code(step.get('objectName', '')), operation)
+                    event['result'] = json.dumps(result)[:12000]
+                elif action in {'inspect_scene', 'inspect_object'}:
                     name = 'get_scene_info' if action == 'inspect_scene' else 'get_object_info'
                     arguments = {'user_prompt': row['brief'][:1000]}
                     if action == 'inspect_object': arguments['object_name'] = step['objectName']
@@ -527,8 +585,7 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                 event['error'] = str(error)[:2500]
                 if action in {'edit','load_material','load_asset','build_template'}: rendered = []; reviewed_views.clear()
             trace()
-            recent = [{key: value for key, value in item.items() if key != 'time'} for item in events[-6:]]
-            history = f'Candidate revision {revision}. Accepted revision {accepted_revision}. Current scene matches candidate: {scene_matches}. Current candidate accepted: {accepted_current}. Material publication enabled: {sharing_enabled}. Component publication: {json.dumps(component_sharing or 'disabled')}.\n' + json.dumps(recent,ensure_ascii=False)
+            history = workflow_history()
         else:
             status, progress = 'partial' if saved else 'failed', 'Action limit reached; preserved available files.'
     except InterruptedError:

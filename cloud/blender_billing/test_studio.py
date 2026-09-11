@@ -103,7 +103,7 @@ class StudioTests(unittest.TestCase):
                 if not outputs:raise RuntimeError('budget exhausted')
                 value=outputs.pop(0)
                 if isinstance(value,Exception): raise value
-                if not isinstance(value, bytes) and value.get('action') == 'accept' and accept_seconds is not None:
+                if not isinstance(value, (bytes, httpx.Response)) and value.get('action') == 'accept' and accept_seconds is not None:
                     broker.owned.return_value={'status':'running','launchClaimedAt':(time.time()+accept_seconds-1800)*1000,'reservedMinutes':30}
             if kind==cancel_after: row['cancelRequested']=True
             if kind=='review' and mutate_after_review: state['model']=b'BLENDER-B'

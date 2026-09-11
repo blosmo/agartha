@@ -1,5 +1,6 @@
 from __future__ import annotations
 import hashlib
+import httpx
 import json
 import tempfile
 import unittest
@@ -42,6 +43,66 @@ class ManagedQualityTests(unittest.TestCase):
         self.assertTrue(all(call.kwargs['qualityApproved'] for call in broker.ledger.call.call_args_list if call.args[0]=='recordManagedAcceptance'))
         codes=[call.args[2]['params']['arguments'].get('code','') for call in broker.call.call_args_list]
         self.assertEqual(sum('bpy.ops.import_scene.gltf' in code for code in codes),3)
+
+    def test_invalid_settled_model_action_gets_a_new_bounded_correction(self):
+        failure = httpx.Response(502, json={'code': 'inference_action_invalid', 'error': 'Invalid component parameters for search_templates.'}, request=httpx.Request('POST', 'https://example.test/inference'))
+        store, broker, requests, _, finish, _ = self.run_quality([failure, action('edit', 'REVISION_A'), action('accept'), action('finish')], quality_verdicts=[verdict()])
+        modeling = [item for item in requests if item['kind'] == 'modeling']
+        self.assertEqual(finish['status'], 'completed')
+        self.assertEqual(modeling[0]['operationId'], 'worker-studio-0')
+        self.assertEqual(modeling[1]['operationId'], 'worker-studio-1')
+        self.assertIn('search_templates', modeling[1]['history'])
+        self.assertEqual(json.loads(store.read('job', 'review.json'))['actions'][0]['action'], 'invalid_action')
+        self.assertFalse(any(call.args[3] == 'worker-tool-0' for call in broker.call.call_args_list))
+
+    def test_ambiguous_and_unrecognized_model_failures_never_invite_correction(self):
+        for status, code in [(503, 'inference_action_invalid'), (503, 'inference_usage_reconciliation'), (502, 'inference_incomplete')]:
+            failure = httpx.Response(status, json={'code': code, 'error': 'Stopped'}, request=httpx.Request('POST', 'https://example.test/inference'))
+            _, broker, requests, _, finish, _ = self.run_quality([failure, action('edit', 'REVISION_A')])
+            self.assertEqual([item['kind'] for item in requests], ['strategy', 'modeling'])
+            self.assertEqual(finish['status'], 'failed')
+            broker.start.assert_not_called()
+
+    def test_repeated_invalid_model_actions_stop_after_two_corrections(self):
+        failures = [httpx.Response(502, json={'code': 'inference_action_invalid', 'error': 'Invalid action'}, request=httpx.Request('POST', 'https://example.test/inference')) for _ in range(3)]
+        _, broker, requests, _, finish, _ = self.run_quality([*failures, action('edit', 'REVISION_A')])
+        self.assertEqual(sum(item['kind'] == 'modeling' for item in requests), 3)
+        self.assertEqual(finish['status'], 'failed'); broker.start.assert_not_called()
+
+    def test_asset_search_preserves_prior_scene_inspection_in_history(self):
+        with patch('cloud.blender_billing.asset_exchange.AssetExchange') as exchange:
+            exchange.return_value.search.return_value = {'entries': [], 'cursor': None}
+            _, _, requests, _, finish, _ = self.run_quality([action('inspect_scene'), action('search_assets', '{"q":"elephant"}'), action('edit', 'REVISION_A'), action('accept'), action('finish')], quality_verdicts=[verdict()])
+        modeling = [item for item in requests if item['kind'] == 'modeling']
+        self.assertIn('inspect_scene', modeling[2]['history'])
+        self.assertIn('search_assets', modeling[2]['history'])
+        self.assertEqual(finish['status'], 'completed')
+
+    def test_escaped_search_metadata_keeps_ids_cursor_and_recent_inspection(self):
+        ids = ['bundle-' + format(i, '064x') for i in range(25)]
+        cursor = 'bundle-' + 'f' * 64
+        entries = [{'id': key, 'metadata': {'name': '"' * 80, 'description': '"' * 80}} for key in ids]
+        with patch('cloud.blender_billing.asset_exchange.AssetExchange') as exchange:
+            exchange.return_value.search.return_value = {'entries': entries, 'cursor': cursor}
+            _, _, requests, _, finish, _ = self.run_quality([action('inspect_scene'), action('search_assets', '{"q":"elephant"}'), action('edit', 'REVISION_A'), action('accept'), action('finish')], quality_verdicts=[verdict()])
+        history = [item for item in requests if item['kind'] == 'modeling'][2]['history']
+        self.assertTrue(history.startswith('Candidate revision 0.'))
+        self.assertIn('inspect_scene', history)
+        for identifier in [*ids, cursor]: self.assertIn(identifier, history)
+        json.loads(history.split('\n', 1)[1])
+        self.assertLessEqual(len(history.encode()), 15000)
+        self.assertEqual(finish['status'], 'completed')
+
+    def test_resource_inspection_does_not_export_or_change_candidate(self):
+        inspect = {**action('inspect_resources'), 'objectName': 'advanced_kit'}
+        _, broker, requests, _, finish, _ = self.run_quality([inspect, action('edit', 'REVISION_A'), action('accept'), action('finish')], quality_verdicts=[verdict()])
+        self.assertEqual(finish['status'], 'completed')
+        resource_call = next(call for call in broker.call.call_args_list if call.args[3] == 'worker-tool-0')
+        code = resource_call.args[2]['params']['arguments']['code']
+        self.assertIn('/opt/agartha/toolkit/advanced_kit.py', code)
+        self.assertNotIn('bpy.ops.export_scene', code)
+        self.assertNotIn('save_as_mainfile', code)
+        self.assertIn('Candidate revision 0.', next(item for item in requests if item['operationId'] == 'worker-studio-1')['history'])
 
     def test_rejection_requires_changed_export_then_repair_can_pass(self):
         store,_,requests,_,finish,_=self.run_quality([action('edit','REVISION_A'),action('accept'),action('accept'),action('edit','REVISION_B'),action('accept'),action('finish')],quality_verdicts=[verdict(False),verdict()])
