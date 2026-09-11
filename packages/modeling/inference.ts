@@ -106,7 +106,14 @@ export async function runInference(input: StepInput, ledger: LedgerCall, credent
   }
   if (input.protocol === 2 || input.protocol === 3) {
     if (call.name !== 'blender_action') throw new BillingHttpError(502, 'Model did not return a Blender action.');
-    return parseStudioAction(step);
+    try { return parseStudioAction(step); }
+    catch (error) {
+      if (error instanceof BillingHttpError && error.status === 502) {
+        // This signal is emitted only after completed generation and acknowledged billing.
+        throw new BillingHttpError(502, error.message, 'inference_action_invalid');
+      }
+      throw error;
+    }
   }
   if (call.name !== 'modeling_step' || !step || typeof step.code !== 'string' || Buffer.byteLength(step.code) > 32_000 || typeof step.summary !== 'string' || typeof step.done !== 'boolean') throw new BillingHttpError(502, 'Model returned an invalid edit.');
   return { code: step.code, summary: step.summary.slice(0, 1000), done: step.done };

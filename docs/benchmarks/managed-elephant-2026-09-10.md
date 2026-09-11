@@ -1,6 +1,6 @@
 # Managed elephant comparison: 2026-09-10
 
-This comparison records one legacy managed job and four version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
+This comparison records one legacy managed job and five version-3 attempts with the same brief and a 500-cent cap per job. The third run was separately authorized after the first version-3 attempt failed before compute. The cumulative approved ceiling remained 1000 cents; the third 500-cent cap was permitted only after the first two runs settled at a combined 116 cents. These are test-wallet operator jobs; assets remain private. The earlier agent-authored direct elephant is a separate experience and is not this baseline.
 
 ## Exact brief
 
@@ -62,7 +62,7 @@ The next bounded tuning increases planner and reviewer output ceilings from 4,09
 
 Increasing the ceiling and reducing reasoning effort did not resolve the failure. The quick, usage-less response does not establish actual reasoning-token exhaustion. The request matches the documented Responses format; the available evidence does not identify a further safe parameter correction. Paid retries stopped pending a reliable provider response or a more specific diagnosis. Temporary operator overrides were removed without releasing the unresolved holds. No successful improved model is available, and public version 3 remains disabled.
 
-Five dispatches have produced 140 cents of known service charges and 138 cents of unresolved maximum liability, totaling 278 cents of accounted exposure. Further private verification is authorized within the original 1,000-cent cumulative ceiling, with each new job capped at 500 cents. Unknown charges remain included until reconciled. Version 3 remains disabled as the public default pending a successful model and export review.
+At that point, five dispatches had produced 140 cents of known service charges and 138 cents of unresolved maximum liability, totaling 278 cents of accounted exposure. Further private verification is authorized within the original 1,000-cent cumulative ceiling, with each new job capped at 500 cents. Unknown charges remain included until reconciled. Version 3 remains disabled as the public default pending a successful model and export review.
 
 ## Controlled provider diagnosis and schema correction
 
@@ -71,6 +71,14 @@ Seven small probes used the same Astra gateway, separate durable operation label
 Removing **only the string regex pattern** from the original planner schema completed in 17.855 seconds with 576 input tokens and 559 output tokens. The 2,061-byte strategy passed `parseStrategy`. Strict mode, string length limits, array limits, model, prompt, reasoning effort, and output ceiling were unchanged. This isolates the repeated whitespace regex as the trigger in this provider path. It does not imply that every regex is unsupported.
 
 The fix removes that pattern from planner and critic schemas and retains local whitespace, Unicode, length, field, and byte validation. A regression test failed before the change and passed afterward. The seven probes account for 140 cents conservatively: 20 cents of rounded, padded metered exposure and 120 cents retained for ambiguous requests. Together with the five jobs, total accounted exposure is 418 cents before another full run. Full model delivery and public activation still require verification.
+
+## Model action recovery
+
+Full managed verification now passes planning and launches Blender. The next failure exposed a separate control-flow defect: a completed but invalid modeling action ended the job rather than allowing a bounded correction. An edit used only for resource discovery also triggered automatic export before geometry existed, and asset searches replaced previous inspection history.
+
+The follow-up fixes distinguish a completed, billed but invalid modeling action from uncertain inference. The modeler may issue up to two consecutive corrective requests under fresh operation IDs. Invalid actions never execute, while uncertain and reviewer failures still stop. Search results preserve recent inspection history and structured identifiers within the serialized context bound. The tool description names every operation requiring JSON parameters. A fixed read-only resource action supplies toolkit signatures and installed catalogs without requiring model export.
+
+Regression tests reproduce the recovery and history faults. Actual Blender checks confirm toolkit inspection does not change the scene. Private run identifiers, billing receipts and spending details remain in the operator's verification report.
 
 ## Reproduction and evidence
 

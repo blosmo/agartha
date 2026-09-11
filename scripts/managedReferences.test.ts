@@ -94,3 +94,10 @@ it('validates reusable component discovery and bounded assembly transforms',()=>
   expect(()=>parseStudioAction({...load,code:JSON.stringify({...JSON.parse(load.code),...changes})})).toThrow('component parameters');
  }
 });
+
+it('allows only named read-only resource inspections with no supplied code', () => {
+  const action = { action: 'inspect_resources', code: '', objectName: 'advanced_kit', views: [], summary: 'Read toolkit help', critique: '' };
+  expect(parseStudioAction(action)).toEqual(action);
+  expect(() => parseStudioAction({ ...action, objectName: '/private/credentials' })).toThrow('resource');
+  expect(() => parseStudioAction({ ...action, code: 'import bpy' })).toThrow('arguments');
+});
