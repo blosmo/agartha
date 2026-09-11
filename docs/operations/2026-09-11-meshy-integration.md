@@ -47,9 +47,9 @@ Generated GLBs and their reference/provenance are stored privately with the mana
 ## Local verification
 
 - Production build passed, including script and Convex type checks.
-- All npm test stages passed: 899 tests across protocol, CLI, web, scripts, billing, playground, Convex, renderer and release checks. Local-server suites required localhost access outside the sandbox.
-- Python managed/studio/exchange tests passed. Retry tests model the broker's cached error responses and confirm one paid task with distinct Blender retry attempts.
-- Real Blender 5.2.1 emitted `GENERATED_COMPONENTS_BLENDER_ROUNDTRIP_OK`. The fixture checks embedded textures, skinning, animation, shape-key targets, parent transforms, source exclusion and idempotent import behavior.
-- Focused independent review found and resolved the image-response limit, recovery starvation and cached-error retry issues.
+- All npm test stages passed: 910 tests across protocol, CLI, web, scripts, billing, playground, Convex, renderer and release checks. Local-server suites required localhost access outside the sandbox.
+- All 217 Blender billing Python tests and 20 Blender MCP client tests passed. Retry tests model the broker's cached error responses and confirm one paid task with distinct Blender retry attempts.
+- Real Blender 5.2.1 emitted `GENERATED_COMPONENTS_BLENDER_ROUNDTRIP_OK`. The fixture checks embedded textures, skinning, animation, shape-key targets, parent transforms, source exclusion, unrelated static modifier output and idempotent import behavior. CI runs this same verifier with the pinned Blender runtime.
+- Focused independent review found and resolved the image-response limit, recovery starvation, cached-error retry issues, late successful artifact retention, reference replacement capacity, optional rigging fallback and mixed morph/modifier export.
 - Browser visual inspection was unavailable because the browser tool timed out. Form submission, disabled capabilities, bounds and saved-request replay have automated coverage.
 - No paid Meshy calls, subscription purchase, production deployment or live activation were performed.
