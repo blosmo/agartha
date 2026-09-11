@@ -40,6 +40,15 @@ describe('Meshy provider transport', () => {
     expect(ledger).toHaveBeenCalledWith('completeManagedMeshyTask', expect.objectContaining({ chargeCents: 60, result: { status: 'succeeded', modelUrl: 'https://assets.meshy.ai/models/a.glb' } }));
   });
 
+  it('refreshes an unretained settled result without charging or dispatching again', async () => {
+    const ledger = vi.fn(async (name: string) => name === 'getManagedMeshyOperation' ? { meshTaskId: 'task-1', meshStage: 'image-to-3d', meshResult: { status: 'succeeded', modelUrl: 'https://assets.meshy.ai/expired.glb' }, meshArtifactReady: false, chargeCents: 60 } : {});
+    const fetcher = vi.fn().mockResolvedValue(response({ id: 'task-1', status: 'SUCCEEDED', consumed_credits: 30, model_urls: { glb: 'https://assets.meshy.ai/fresh.glb' } }));
+    await expect(pollMeshy({ ...base, refreshResult: true }, ledger as LedgerCall, 'secret', fetcher)).resolves.toMatchObject({ status: 'succeeded', chargeCents: 60, result: { modelUrl: 'https://assets.meshy.ai/fresh.glb' } });
+    expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('/image-to-3d/task-1'), expect.objectContaining({ method: 'GET' }));
+    expect(ledger).not.toHaveBeenCalledWith('completeManagedMeshyTask', expect.anything());
+    expect(ledger).not.toHaveBeenCalledWith('completeManagedInference', expect.anything());
+  });
+
   it('refunds a failed task even when the provider reports credits', async () => {
     const ledger = vi.fn(async (name: string) => name === 'getManagedMeshyOperation' ? { meshTaskId: 'task-1', meshStage: 'image-to-3d', maxCostCents: 60 } : {});
     const fetcher = vi.fn().mockResolvedValue(response({ id: 'task-1', status: 'FAILED', consumed_credits: 30 }));

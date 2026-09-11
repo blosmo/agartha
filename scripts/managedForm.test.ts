@@ -91,6 +91,17 @@ it('submits the optional Meshy allowance inside the same total cap', async () =>
   expect(el('cost').textContent).toContain('$0.60 charged of $5.00 cap.');
 });
 
+it('shows an authenticated late Meshy component download', async () => {
+  const name = 'recovered-' + 'a'.repeat(64) + '.glb';
+  await boot({ status: 'partial', progress: 'Provider component retained', workflowVersion: 3, referenceMode: 'none', visuallyInspected: false, artifacts: [{ name, url: `/api/blender/jobs/job/artifacts/${name}` }] });
+  (el('references') as HTMLInputElement).checked = false;
+  (el('references') as HTMLInputElement).dispatchEvent(new Event('change', { bubbles: true }));
+  (el('brief') as HTMLTextAreaElement).value = 'A ceramic teapot';
+  (el('budget') as HTMLInputElement).value = '5.00';
+  el('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(el('artifacts').textContent).toContain('Download generated component'));
+});
+
 it('hides Meshy and omits its allowance when the capability is disabled', async () => {
   const { requests } = await boot(undefined, { enabled: false, maximumAllowanceCents: 1000 });
   expect((el('meshy-option') as HTMLElement).hidden).toBe(true);

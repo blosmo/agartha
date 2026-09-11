@@ -43,7 +43,7 @@ export async function managedInference(req: BillingRequest, res: ServerResponse)
     if (row.workflowVersion !== 3 || !row.meshyAllowance || !row.meshyRate || !process.env.MESHY_API_KEY) throw new BillingHttpError(409, 'Meshy is not enabled for this job.');
     const ids = { jobId: body.jobId, executorId: body.executorId, operationId: body.operationId, rate: row.meshyRate };
     // Previously dispatched tasks can settle after cancellation or a feature shutdown.
-    if (body.kind === 'meshy-poll') { jsonResponse(res, await pollMeshy(ids, ledger, process.env.MESHY_API_KEY)); return; }
+    if (body.kind === 'meshy-poll') { jsonResponse(res, await pollMeshy({ ...ids, refreshResult: body.refreshResult === true }, ledger, process.env.MESHY_API_KEY)); return; }
     if (!meshy.enabled) throw new BillingHttpError(503, 'Meshy generation is not available.');
     jsonResponse(res, await startMeshy({ ...ids, stage: body.stage, image: body.image, parentOperationId: body.parentOperationId, heightMeters: body.heightMeters, humanoid: body.humanoid }, ledger, process.env.MESHY_API_KEY)); return;
   }

@@ -218,6 +218,21 @@ def main() -> None:
         array = static_mesh.modifiers.new("ManagedStaticArrayCopies", "ARRAY")
         array.count = 4
         array.relative_offset_displace = (1.5, 0, 0)
+        bpy.ops.mesh.primitive_cube_add(size=0.4, location=(-3, 0, 0.2))
+        rigged_static = bpy.context.object
+        rigged_static.name = "RiggedStaticArray"
+        rigged_static.data.name = "RiggedStaticArray"
+        for collection in list(rigged_static.users_collection):
+            collection.objects.unlink(rigged_static)
+        model.objects.link(rigged_static)
+        rigged_static.parent = imported_armature
+        group = rigged_static.vertex_groups.new(name="root")
+        group.add(list(range(len(rigged_static.data.vertices))), 1.0, "REPLACE")
+        skin = rigged_static.modifiers.new("RiggedStaticSkin", "ARMATURE")
+        skin.object = imported_armature
+        rigged_array = rigged_static.modifiers.new("RiggedStaticArrayCopies", "ARRAY")
+        rigged_array.count = 4
+        rigged_array.relative_offset_displace = (1.5, 0, 0)
         camera_data = bpy.data.cameras.new("FixtureCamera")
         camera = bpy.data.objects.new("FixtureCamera", camera_data)
         bpy.context.scene.collection.objects.link(camera)
@@ -236,6 +251,7 @@ def main() -> None:
         assert final_document.get("images") and all("uri" not in item for item in final_document["images"]), "managed export lost embedded texture"
         assert any(primitive.get("targets") for mesh in final_document.get("meshes", []) for primitive in mesh.get("primitives", [])), "managed export lost shape-key targets"
         assert mesh_triangles(final_document, "ManagedStaticArray") == 48, "managed export lost modifiers on an unrelated static mesh"
+        assert mesh_triangles(final_document, "RiggedStaticArray") == 48, "managed export lost non-armature modifiers on a rigged mesh"
 
     print("GENERATED_COMPONENTS_BLENDER_ROUNDTRIP_OK")
 

@@ -47,17 +47,23 @@ bpy.context.view_layer.objects.active = meshes[0]
 baked_meshes = []
 try:
     for obj in meshes:
-        if obj.data.shape_keys or any(modifier.type == 'ARMATURE' for modifier in obj.modifiers) or not obj.modifiers:
+        if obj.data.shape_keys or not any(modifier.type != 'ARMATURE' and modifier.show_viewport for modifier in obj.modifiers):
             continue
         original = obj.data
         modifier_state = [(modifier, modifier.show_viewport, modifier.show_render) for modifier in obj.modifiers]
+        for modifier, _, _ in modifier_state:
+            if modifier.type == 'ARMATURE':
+                modifier.show_viewport = False
+                modifier.show_render = False
+        bpy.context.view_layer.update()
         baked = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph), preserve_all_data_layers=True, depsgraph=depsgraph)
         baked.name = original.name
         obj.data = baked
-        for modifier, _, _ in modifier_state:
-            modifier.show_viewport = False
-            modifier.show_render = False
+        for modifier, show_viewport, show_render in modifier_state:
+            modifier.show_viewport = show_viewport if modifier.type == 'ARMATURE' else False
+            modifier.show_render = show_render if modifier.type == 'ARMATURE' else False
         baked_meshes.append((obj, original, baked, modifier_state))
+    bpy.context.view_layer.update()
     bpy.ops.export_scene.gltf(filepath='/workspace/artifacts/model.glb', export_format='GLB', use_selection=True, export_apply=False, export_animations=True, export_cameras=False, export_lights=False)
 finally:
     for obj, original, baked, modifier_state in reversed(baked_meshes):
@@ -66,6 +72,7 @@ finally:
             modifier.show_viewport = show_viewport
             modifier.show_render = show_render
         bpy.data.meshes.remove(baked)
+    bpy.context.view_layer.update()
 scene = bpy.context.scene
 scene.render.engine = 'CYCLES'
 scene.cycles.device = 'CPU'

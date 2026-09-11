@@ -4,6 +4,7 @@ import json
 import struct
 import time
 import unittest
+import httpx
 from unittest.mock import Mock, patch
 
 from .meshy_exchange import MeshyExchange, validate_generated_glb
@@ -78,6 +79,21 @@ class MeshyExchangeTests(unittest.TestCase):
         self.assertEqual(metadata['riggingFallback'], 'base-model')
         self.assertEqual(save.call_count, 1)
 
+    def test_walking_transport_failure_keeps_the_valid_rigged_model(self):
+        base = textured_glb()
+        rigged = textured_glb(rigged=True)
+        results = iter([
+            {'status': 'succeeded', 'taskId': 'base-task', 'result': {'status': 'succeeded', 'modelUrl': 'https://assets.meshy.ai/base.glb'}},
+            {'status': 'succeeded', 'taskId': 'rig-task', 'result': {'status': 'succeeded', 'modelUrl': 'https://assets.meshy.ai/rig.glb', 'walkingUrl': 'https://assets.meshy.ai/walk.glb'}},
+        ])
+        save = Mock()
+        exchange = MeshyExchange(lambda *_args, **_kwargs: next(results), lambda _message: None, lambda: time.time() + 100, client=Mock())
+        exchange.download = Mock(side_effect=[base, rigged, httpx.ReadError('walking unavailable')])
+        payload, metadata = exchange.generate('stable-operation', 'data:image/jpeg;base64,/9j/', rigging=True, save=save)
+        self.assertEqual(payload, rigged)
+        self.assertEqual(metadata['rigged'], True)
+        self.assertEqual(metadata['animated'], False)
+
     def test_reconciliation_failure_does_not_abort_other_rows(self):
         broker = Mock()
         broker.ledger.call.return_value = [
@@ -109,6 +125,21 @@ class MeshyExchangeTests(unittest.TestCase):
             reconcile_meshy(broker, files, 'https://example.test/inference', 'broker-key')
         files.save_recovered_component.assert_called_once()
         broker.ledger.call.assert_called_with('recordManagedMeshyArtifact', jobId='job-a', executorId='worker-a', operationId='op-a', recovered=True, artifactName='recovered-' + 'a' * 64 + '.glb')
+
+    def test_rigging_recovery_rejects_a_nonanimated_walk_and_keeps_the_rig(self):
+        row = {'jobId': 'job-a', 'executorId': 'worker-a', 'operationId': 'op-rig', 'meshStage': 'rigging'}
+        broker = Mock()
+        broker.ledger.call.side_effect = [[row], {'meshArtifactReady': True}]
+        response = Mock()
+        response.json.return_value = {'status': 'succeeded', 'taskId': 'rig-task', 'result': {'status': 'succeeded', 'walkingUrl': 'https://assets.meshy.ai/walk.glb', 'modelUrl': 'https://assets.meshy.ai/rig.glb'}}
+        client = Mock(); client.post.return_value = response
+        context = Mock(); context.__enter__ = Mock(return_value=client); context.__exit__ = Mock(return_value=False)
+        files = Mock(); files.save_recovered_component.return_value = 'recovered-' + 'b' * 64 + '.glb'
+        rest = textured_glb(rigged=True)
+        with patch('cloud.blender_billing.meshy_exchange.httpx.Client', return_value=context), patch.object(MeshyExchange, 'download', side_effect=[textured_glb(rigged=True), rest]):
+            from .meshy_exchange import reconcile_meshy
+            reconcile_meshy(broker, files, 'https://example.test/inference', 'broker-key')
+        self.assertEqual(files.save_recovered_component.call_args.args[2], rest)
 
 
 if __name__ == '__main__':

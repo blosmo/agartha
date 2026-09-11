@@ -104,11 +104,11 @@ class MeshyExchange:
                         if not walking_document.get('skins') or not walking_document.get('animations'):
                             raise ValueError('The generated walking model has no skin or animation.')
                         payload, animated = walking, True
-                    except ValueError:
+                    except (ValueError, httpx.TransportError, httpx.HTTPStatusError):
                         pass  # The validated rigged rest model remains useful.
                 metadata = {**base_metadata, 'generationTaskId': base_metadata['taskId'], 'taskId': result.get('taskId'), 'rigged': True, 'animated': animated, 'sha256': hashlib.sha256(payload).hexdigest()}
                 save(rig_operation, payload, metadata)
-            except ValueError:
+            except (ValueError, httpx.TransportError, httpx.HTTPStatusError):
                 # Optional rigging must not strand a valid paid textured base.
                 payload, metadata = base_payload, {**base_metadata, 'riggingFallback': 'base-model'}
         return payload, metadata
@@ -123,20 +123,24 @@ def reconcile_meshy(broker: Any, files: Any, inference_url: str, broker_key: str
     with httpx.Client(timeout=8, follow_redirects=False) as client:
         for row in rows:
             try:
-                response = client.post(inference_url, headers={'x-agartha-broker-key': broker_key}, json={'protocol': 3, 'kind': 'meshy-poll', **{key: row[key] for key in ['jobId', 'executorId', 'operationId']}})
+                response = client.post(inference_url, headers={'x-agartha-broker-key': broker_key}, json={'protocol': 3, 'kind': 'meshy-poll', 'refreshResult': True, **{key: row[key] for key in ['jobId', 'executorId', 'operationId']}})
                 response.raise_for_status()
                 outcome = response.json()
                 response.close()
                 result = outcome.get('result') if isinstance(outcome, dict) else None
                 if outcome.get('status') != 'succeeded' or not isinstance(result, dict) or result.get('status') != 'succeeded':
                     continue
-                urls = [result.get('walkingUrl'), result.get('modelUrl')] if row.get('meshStage') == 'rigging' else [result.get('modelUrl')]
+                urls = [(result.get('walkingUrl'), True), (result.get('modelUrl'), False)] if row.get('meshStage') == 'rigging' else [(result.get('modelUrl'), False)]
                 exchange = MeshyExchange(lambda *_args, **_kwargs: {}, lambda _message: None, time.time, client=client)
                 payload = None
-                for url in urls:
+                for url, require_animation in urls:
                     if not url: continue
                     try:
-                        payload = exchange.download(url)
+                        candidate = exchange.download(url)
+                        document = validate_generated_glb(candidate)
+                        if row.get('meshStage') == 'rigging' and (not document.get('skins') or require_animation and not document.get('animations')):
+                            continue
+                        payload = candidate
                         break
                     except ValueError:
                         continue

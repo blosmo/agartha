@@ -22,6 +22,8 @@ type MeshyOperation = {
   maxCostCents?: number;
   meshParentOperationId?: string;
   payloadFingerprint?: string;
+  meshArtifactReady?: boolean;
+  chargeCents?: number;
 };
 
 type CommonInput = { jobId: string; executorId: string; operationId: string; rate: MeshyRate };
@@ -210,19 +212,26 @@ function parseResult(stage: MeshyStage, data: any): MeshyResult {
   return { status: 'failed' };
 }
 
-export async function pollMeshy(input: CommonInput, ledger: LedgerCall, credential: string, fetcher: Fetcher = fetch) {
+export async function pollMeshy(input: CommonInput & { refreshResult?: boolean }, ledger: LedgerCall, credential: string, fetcher: Fetcher = fetch) {
   validId(input.jobId, 'job ID'); validId(input.executorId, 'executor ID'); validId(input.operationId, 'operation ID');
   if (!credential) error(500, 'Meshy credential is not configured.');
   const ids = idsOf(input);
   const operation = await ledger<MeshyOperation | null>('getManagedMeshyOperation', ids);
   if (!operation?.meshTaskId || !operation.meshStage) error(404, 'Meshy operation or task was not found.', 'meshy_operation_missing');
-  if (operation.meshResult) return normalized(input.operationId, operation);
+  const refreshing = input.refreshResult === true && operation.meshResult?.status === 'succeeded' && !operation.meshArtifactReady;
+  if (operation.meshResult && !refreshing) return normalized(input.operationId, operation);
   const taskId = validateTaskId(operation.meshTaskId);
   const response = await providerRequest(fetcher, `${MESHY_ORIGIN}/${operation.meshStage}/${encodeURIComponent(taskId)}`, {}, credential, 'GET');
   if (!response.ok) error(503, `Meshy polling failed. (provider_status=${response.status})`, 'meshy_poll_failed');
   const data = await readJson(response);
   if (data?.id !== taskId) error(502, 'Meshy returned a mismatched task ID.', 'meshy_task_mismatch');
   const status = String(data?.status ?? '').toUpperCase();
+  if (refreshing) {
+    if (status !== 'SUCCEEDED') error(503, 'Meshy completed result is temporarily unavailable.', 'meshy_result_refresh_failed');
+    const result = parseResult(operation.meshStage, data);
+    if (result.status !== 'succeeded') error(503, 'Meshy completed result is temporarily unavailable.', 'meshy_result_refresh_failed');
+    return normalized(input.operationId, { ...operation, meshResult: result }, operation.chargeCents);
+  }
   if (status === 'PENDING' || status === 'IN_PROGRESS') return { operationId: input.operationId, taskId, status: 'pending' as const };
   if (status !== 'SUCCEEDED' && status !== 'FAILED' && status !== 'CANCELED') error(502, 'Meshy returned an unknown task status.', 'meshy_status_invalid');
   let result: MeshyResult;
