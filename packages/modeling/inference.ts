@@ -77,6 +77,7 @@ export async function runInference(input: StepInput, ledger: LedgerCall, credent
   const calls = Array.isArray(data.output) ? data.output.filter((item: any) => item?.type === 'function_call') : [];
   const quality = input.protocol === 3 && (input.kind === 'strategy' || input.kind === 'review');
   const invalid = (message: string, code: string) => new BillingHttpError(502, `${message} (tools=${calls.length}, status=${status}, reason=${reason})`, code);
+  if (status === 'incomplete' && reason === 'max_output_tokens' && input.protocol === 3 && (input.kind ?? 'modeling') === 'modeling') throw invalid('The modeling output reached its limit; no action executed. Return a smaller focused edit.', 'inference_output_incomplete');
   if (status === 'incomplete') throw invalid('Inference stopped before completing its structured result.', 'inference_incomplete');
   if (status !== 'completed') throw invalid('Inference did not complete successfully.', 'inference_response_status');
   if (calls.length !== 1) throw invalid('Inference must return exactly one structured result.', quality ? 'quality_tool_count' : 'inference_tool_count');

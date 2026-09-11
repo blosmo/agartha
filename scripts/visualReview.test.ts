@@ -38,3 +38,7 @@ it('uses the existing durable charge fence and settles before returning review f
   await expect(runInference(input, duplicate as LedgerCall, 'key', fetcher)).rejects.toThrow('already dispatched');
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
+
+it('does not treat a modeler contact sheet as independent full-view evidence', () => {
+  expect(() => criticRequest({ ...input, images: [images[0], images[1], { label: 'render-sheet', image: images[0].image }] })).toThrow('image');
+});

@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 import httpx
 from .managed import BASE_NAMES, FILE_LIMIT, EXPORT_CODE, ManagedFiles, quality_review_valid
+from .modeling_images import modeler_images
 from .resource_inspection import resource_inspection_code
 from .review import VIEWS, render_view_code
 from .export_review import render_export_view_code
@@ -32,8 +33,8 @@ class InferenceProtocolError(RuntimeError):
     """Unusable inference results stop execution rather than inviting candidate repair."""
 
 
-class InvalidModelAction(ValueError):
-    """A completed, billed model action failed validation and may be corrected."""
+class CorrectableModelResponse(ValueError):
+    """A billed response produced no executable action and may be corrected."""
 
 
 class ReviewBudgetReserved(RuntimeError):
@@ -214,8 +215,8 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
                     if not isinstance(result, dict): raise InferenceProtocolError('Inference response must be an object.')
                     if quality and kind == 'modeling' and response.status_code == 409:
                         if result.get('code') == 'quality_review_reserved': raise ReviewBudgetReserved('Modeling allowance is reserved for final review.')
-                    if quality and kind == 'modeling' and response.status_code == 502 and result.get('code') == 'inference_action_invalid':
-                        raise InvalidModelAction(str(result.get('error', 'Invalid Blender action.'))[:500])
+                    if quality and kind == 'modeling' and response.status_code == 502 and result.get('code') in {'inference_action_invalid', 'inference_output_incomplete'}:
+                        raise CorrectableModelResponse(str(result.get('error', 'Invalid Blender action.'))[:500])
                     if quality and response.status_code >= 400:
                         details = {'status': response.status_code, 'kind': kind, 'operationId': operation}
                         for key, limit in [('error', 500), ('code', 100)]:
@@ -292,6 +293,23 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
         broker.ledger.call('recordManagedAcceptance', jobId=job_id, executorId=executor, **({'qualityApproved': True} if quality else {}))
         accepted_review = verdict
 
+    def finish_with_review(reason: str) -> None:
+        nonlocal status, progress
+        status, progress = ('partial' if saved else 'failed'), 'Modeling stopped to preserve independent review allowance.'
+        if accepted_current and scene_matches:
+            status, progress = 'completed', 'Delivered the independently accepted model within the budget.'
+        elif saved and scene_matches:
+            event = {'action': 'service_review', 'candidateRevision': revision, 'reason': reason}
+            events.append(event)
+            try:
+                accept_candidate(executor + '-budget-accept', independent_review(executor + '-budget-review'))
+                status, progress = 'completed', 'The final exported candidate passed independent review within the budget.'
+                event['result'] = progress
+            except ValueError as error:
+                event['error'] = str(error)[:2500]
+                progress = 'The final candidate did not pass independent review; retained available files.'
+            trace()
+
     try:
         if row.get('referenceMode') == 'generate':
             heartbeat('Generating a four-view design reference with GPT Image 2.5 Flare.')
@@ -319,30 +337,19 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             publication_preview = asset_preview or material_preview
             visible_model_views = [image for image in rendered if not publication_preview or image['label'] != publication_preview['label']]
             try:
-                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), history=history, images=references + visible_model_views + ([publication_preview] if publication_preview else []))
-            except InvalidModelAction as error:
+                step = inference(f'{executor}-studio-{turn}', 'modeling', **({'strategy': strategy} if quality else {}), history=history, images=modeler_images(references, visible_model_views, publication_preview) if quality else references + visible_model_views + ([publication_preview] if publication_preview else []))
+            except CorrectableModelResponse as error:
                 current()
                 invalid_actions += 1
                 events.append({'turn': turn, 'action': 'invalid_action', 'error': str(error), 'result': 'No Blender action was executed. Return one corrected action with valid arguments.', 'candidateRevision': revision})
                 trace(); history = workflow_history()
-                if invalid_actions >= 3: raise InferenceProtocolError('Model returned invalid actions after two bounded correction attempts.')
+                if invalid_actions >= 3:
+                    finish_with_review('modeling_correction_limit')
+                    break
                 continue
             except ReviewBudgetReserved:
                 current()
-                status, progress = 'partial' if saved else 'failed', 'Modeling stopped to preserve independent review allowance.'
-                if accepted_current and scene_matches:
-                    status, progress = 'completed', 'Delivered the independently accepted model within the budget.'
-                elif saved and scene_matches:
-                    event = {'action': 'service_review', 'candidateRevision': revision, 'reason': 'modeling_budget_reserved'}
-                    events.append(event)
-                    try:
-                        accept_candidate(executor + '-budget-accept', independent_review(executor + '-budget-review'))
-                        status, progress = 'completed', 'The final exported candidate passed independent review within the budget.'
-                        event['result'] = progress
-                    except ValueError as error:
-                        event['error'] = str(error)[:2500]
-                        progress = 'The final candidate did not pass independent review; retained available files.'
-                    trace()
+                finish_with_review('modeling_budget_reserved')
                 break
             invalid_actions = 0
             if asset_preview and prepared_asset: prepared_asset['reviewed'] = True
@@ -613,7 +620,10 @@ def run_studio(broker: Any, files: ManagedFiles, token: str, job_id: str, execut
             trace()
             history = workflow_history()
         else:
-            status, progress = 'partial' if saved else 'failed', 'Action limit reached; preserved available files.'
+            if quality:
+                finish_with_review('modeling_action_limit')
+            else:
+                status, progress = 'partial' if saved else 'failed', 'Action limit reached; preserved available files.'
     except InterruptedError:
         status, progress = 'cancelled', 'Stopped at your request or because the job is no longer active.'
     except Exception as error:
