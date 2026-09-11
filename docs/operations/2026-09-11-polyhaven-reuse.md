@@ -21,6 +21,8 @@ The football imported into local Blender 5.2.1 with packed materials, duplicated
 
 Provider/CLI tests cover pagination, caching, redirects, credentials, checksums, dependency allowlisting, unsupported formats, texture limits, network failure, malformed data, deadlines, cancellation, atomic output and JSON errors. Managed-flow tests exercise search, download/upload binding, rendered-candidate acceptance and recovery after provider failure.
 
+On the isolated current-main PR checkout, `npm test` passed all 874 JavaScript/release tests, `npm run build` passed, and Python broker discovery passed all 138 tests. Code review found no remaining actionable implementation findings after the recovery and provenance fixes.
+
 No paid managed generation or production deployment was performed for this verification. Local native rendering required GPU access outside the shell sandbox. Network and loopback restrictions in the sandbox are not product failures.
 
 ## Rollout and post-deploy validation
