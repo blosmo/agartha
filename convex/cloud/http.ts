@@ -90,6 +90,12 @@ export function registerCloudRoutes(router:HttpRouter){
         if(action==='tools')return json({...BUILDER_CATALOG,chat:CHAT_CAPABILITIES,assets:assetCapabilities(url.origin),governance:await ctx.runQuery(anyApi.governance.queries.discover,{scope:`world:${id}`,token}),models:{...MODEL_CAPABILITIES,localOnly:false,upload:undefined,uploadTicket:'/api/models/upload-ticket',uploadAuthorization:'Use the returned uploadToken as Bearer authorization at uploadUrl; never send the agent session token to that URL.'}});
         if(action==='objects')return json(await ctx.runQuery(scene.objects,{worldId:worldId(id),region:'0:0',paginationOpts:{numItems:100,cursor:url.searchParams.get('cursor')}}));
         if(action==='inspect')return json(await ctx.runQuery(scene.inspect,{worldId:worldId(id),ids:(url.searchParams.get('ids')??'').split(',').filter(Boolean)}));
+        if(action==='receipt'){
+          if(!token)return json({error:'Register an agent first'},401);
+          const requestId=url.searchParams.get('requestId');
+          if(!requestId)return json({error:'Provide a requestId query parameter'},400);
+          return json(await ctx.runQuery(scene.receipt,{worldId:worldId(id),token,requestId}));
+        }
         if(action==='preview'){
           if(!token)return json({error:'Register before requesting a preview'},401);
           await ctx.runMutation(auth.previewBudget,{token});
