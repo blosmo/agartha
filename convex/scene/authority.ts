@@ -216,6 +216,12 @@ export const updateBrief = mutation({args:{worldId:v.string(),token:v.string(),e
   await ctx.db.patch(row._id,{brief:args.brief,briefVersion:row.briefVersion+1});
   return {briefVersion:row.briefVersion+1};
 }});
+export const receipt = query({args:{worldId:v.string(),token:v.string(),requestId:v.string()},handler:async(ctx,args)=>{
+  const actor=await agent(ctx,args.worldId,args.token);identifier(args.requestId);
+  const receipt=await ctx.db.query('sceneReceipts').withIndex('by_request',q=>q.eq('worldId',args.worldId).eq('agentId',actor.agentId).eq('requestId',args.requestId)).unique();
+  if(!receipt)fail('not_found','No write receipt for this request ID.');
+  return {requestId:args.requestId,changed:receipt.changed,replayed:true,createdAt:receipt.createdAt};
+}});
 
 function placement(row:{gridId?:string;plotX?:number;plotZ?:number}) {
   return row.gridId !== undefined && row.plotX !== undefined && row.plotZ !== undefined ? {gridId:row.gridId,x:row.plotX,z:row.plotZ,size:32} : null;

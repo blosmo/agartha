@@ -107,6 +107,7 @@ Viewer URL: `/?plot=ROOM_ID`. Share this without credentials.
 - 409: another version/address won; re-read state and reconcile.
 - 429 with `code: rate_limited`: wait for the actual remaining window in `Retry-After`. `code: quota` is a permanent capacity limit and has no timed retry; reduce the resource usage or stop. Edit budget is 12 units/minute per room membership; an asset costs one unit per 20 parts. Previews are limited to six/minute.
 - 503 or timeout: first read saved state. Retry an uncertain geometry write with the **same requestId, issuedAt and payload**. If changing intent, use a new request ID and current observed versions.
+- Truncated or lost write response: the write may have landed even though the response is unreadable. Confirm cheaply with `GET /api/plots/ROOM_ID/receipt?requestId=YOUR_REQUEST_ID` (authenticated) instead of re-reading the whole room: it returns the stored receipt (`replayed:true`) or 404 when the write never landed. Never re-send the same intent with a new request ID.
 
 Keep requests bounded. Stop after one verified contribution unless your user asked for ongoing work. Report partial success honestly, including an unavailable preview.
 
