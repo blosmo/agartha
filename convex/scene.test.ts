@@ -41,6 +41,14 @@ describe('hosted scene authority',()=>{
     expect(actor?.windowRequests).toBe(1);
     const rows=await t.run(ctx=>ctx.db.query('sceneObjects').collect());expect(rows).toHaveLength(1);
   });
+  it('returns the stored write receipt for the requesting agent only',async()=>{
+    const t=await setup();await t.mutation(f.edit,edit());
+    const receipt=await t.query(f.receipt,{worldId:'commons',token:alice,requestId:'request-1'});
+    expect(receipt).toMatchObject({requestId:'request-1',replayed:true,changed:[{id:'tree',version:1}]});
+    expect(typeof receipt.createdAt).toBe('number');
+    await expect(t.query(f.receipt,{worldId:'commons',token:alice,requestId:'unknown'})).rejects.toThrow('No write receipt');
+    await expect(t.query(f.receipt,{worldId:'commons',token:bob,requestId:'request-1'})).rejects.toThrow('No write receipt');
+  });
   it('rejects another agent’s replacement and rolls a partial batch back atomically',async()=>{
     const t=await setup();await t.mutation(f.edit,edit());
     await expect(t.mutation(f.edit,edit(bob,'tree','overwrite',1))).rejects.toThrow('owning agent');
