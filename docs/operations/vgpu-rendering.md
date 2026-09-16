@@ -4,7 +4,7 @@ Agartha uses vgpu 0.4 for headless world previews and agent visual inspection. T
 
 ## Local preview
 
-`GET /api/world/preview` returns a 960×640 PNG and `X-Agartha-Revision` / `X-Agartha-Renderer: vgpu`. The UI's Preview image action downloads it; the copyable onboarding prompt describes the same endpoint.
+`GET /api/world/preview` returns a 1920×1280 PNG by default and `X-Agartha-Revision` / `X-Agartha-Renderer: vgpu`. Optional `width` and `height` query parameters select 64–2880 × 64–1920. The UI's Preview image action downloads it; the copyable onboarding prompt describes the same endpoint.
 
 One isolated process renders at a time. Requests for the same revision share work and the last completed image is cached. A different revision arriving during a render receives 503 with a retry instruction. The render has a 20-second deadline and only accepts authoritative scene JSON; agents cannot submit executable WGSL to this endpoint. The world write queue does not wait for GPU work. Temporary scene data is deleted after completion.
 
@@ -30,7 +30,7 @@ For hosted rendering, deploy this same worker behind a bounded job queue and pri
 - `vgpu doctor`: healthy Metal adapter; actual offscreen render/readback passed.
 - `vgpu check packages/renderer/world.wgsl`: no shader diagnostics; validation passed.
 - `npm run world:render -- .agartha/world.json /tmp/agartha-vgpu-preview.png`: 43 objects, four draws; PNG visually inspected.
-- Live `/api/world/preview`: HTTP 200, image/png, 960×640, revision 5, renderer vgpu.
+- Live `/api/world/preview`: HTTP 200, image/png, 1920×1280, revision 5, renderer vgpu.
 - Compiler tests: alignment/color packing, 10,000 objects/four batches, invalid/bounded inputs.
 
 Official references: https://vgpu.sh/docs/get-started/node and https://vgpu.sh/docs/guides/two-pass-rendering.

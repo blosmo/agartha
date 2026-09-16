@@ -2,6 +2,7 @@ import type {ModelAnimation} from './modelAssets';
 import {MESH_LIMITS} from './geometry/mesh';
 import { MATERIAL_CATALOG } from './materials';
 import type { ObjectMotion } from './objectMotion';
+import {PREVIEW_DEFAULT_HEIGHT,PREVIEW_DEFAULT_WIDTH,PREVIEW_MAX_HEIGHT,PREVIEW_MAX_WIDTH,PREVIEW_MIN_SIZE} from './previewSize';
 import { SURFACE_CAPABILITIES } from './surfaceShaders';
 import { assertWithinPlot } from './plots';
 export type BuildShape = 'box' | 'sphere' | 'cone' | 'cylinder' | 'mesh' | 'model';
@@ -98,6 +99,7 @@ export const BUILDER_CATALOG = {
   visualReview: {
     views:['isometric','front','side','top'],
     viewQuery:'Use view=NAME on preview endpoints; combine with time and focus. Focus may list up to 20 object IDs. Focused orthographic views isolate those parts; isometric stays contextual.',
+    size:{width:PREVIEW_DEFAULT_WIDTH,height:PREVIEW_DEFAULT_HEIGHT,min:{width:PREVIEW_MIN_SIZE,height:PREVIEW_MIN_SIZE},max:{width:PREVIEW_MAX_WIDTH,height:PREVIEW_MAX_HEIGHT},query:'Optional width and height query parameters. Default is 1920×1280. Omit one dimension to keep 3:2. Maximum is 2880×1920; 960×640 remains valid for cheaper overviews.'},
     designGuide:'/agents/design.md',reviewGuide:'/agents/visual-review.md',roomPreview:'/api/plots/PLOT_ID/preview',gridPreview:'/api/plots/PLOT_ID/preview?scope=grid',
     completion:'Read saved work, open and inspect its rendered image, identify concrete visual defects, revise owned objects and render again. Report unverified appearance when image viewing is unavailable.',
   },

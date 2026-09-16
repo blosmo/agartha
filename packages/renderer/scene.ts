@@ -8,6 +8,7 @@ import type { MaterialTextures } from './pbr';
 import { motionExtents, motionPose, parseObjectMotion, type ObjectMotion } from '../protocol/src/objectMotion';
 import { compileSurface } from '../protocol/src/surfaceShaders';
 import { MESH_ID, SHADER_ID, type SharedMesh, type SharedShader } from '../protocol/src/sharedLibrary';
+import {PREVIEW_DEFAULT_HEIGHT,PREVIEW_DEFAULT_WIDTH,parsePreviewSize} from '../protocol/src/previewSize.js';
 import {previewViewDirection,type PreviewView} from '../protocol/src/previewView.js';
 import { box, cone, cylinder, sphere, orthographicCamera } from 'vgpu/scene';
 import { draw, frame, geometry, sampler, storage, target, type Gpu } from 'vgpu';
@@ -70,8 +71,8 @@ export function sceneCameraUniform(camera:ReturnType<typeof sceneCamera>,seconds
   return {viewProjection:camera.viewProjection,time:seconds,viewDirection:previewViewDirection(view)};
 }
 /** Device-owned resources are released together through gpu.dispose() by the caller. */
-export function renderScene(gpu:Gpu,objects:readonly RenderObject[],shader:string,width=960,height=640,shaders:readonly SharedShader[]=[],materials:ReadonlyMap<string,MaterialTextures>=new Map(),pbrShader='',meshes:readonly SharedMesh[]=[],definitions:ReadonlyMap<string,RenderMaterial>=new Map(),seconds=0,focusObjects?:readonly RenderObject[],view:PreviewView='isometric',environment?:RoomEnvironment){
-  if(!Number.isInteger(width)||!Number.isInteger(height)||width<64||height<64||width>1920||height>1080)throw new Error('Preview size must be 64–1920 × 64–1080.');
+export function renderScene(gpu:Gpu,objects:readonly RenderObject[],shader:string,width=PREVIEW_DEFAULT_WIDTH,height=PREVIEW_DEFAULT_HEIGHT,shaders:readonly SharedShader[]=[],materials:ReadonlyMap<string,MaterialTextures>=new Map(),pbrShader='',meshes:readonly SharedMesh[]=[],definitions:ReadonlyMap<string,RenderMaterial>=new Map(),seconds=0,focusObjects?:readonly RenderObject[],view:PreviewView='isometric',environment?:RoomEnvironment){
+  ({width,height}=parsePreviewSize(width,height));
   const ordered=orderSceneObjects(objects,definitions,view);
   const batches=packScene(ordered,seconds,definitions);
   const programs=new Map(shaders.map(definition=>[definition.id,compileSurface(definition.expression).wgsl]));

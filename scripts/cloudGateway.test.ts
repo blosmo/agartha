@@ -63,7 +63,23 @@ it('includes unique native model bytes in previews without forwarding private he
  const res=response();await handler({method:'GET',headers:{host:'world.example',authorization:'Bearer agent-token'},query:{path:'plots/plot-1-0/preview',time:'1',focus:'fox-2,fox,fox',view:'side'}} as never,res as never);
  expect(res.statusCode).toBe(200);expect(fetcher).toHaveBeenCalledTimes(4);
  expect(fetcher.mock.calls[1][1].headers.Authorization).toBe('Bearer agent-token');expect(fetcher.mock.calls[2][1].headers).toBeUndefined();
- const payload=JSON.parse(fetcher.mock.calls[3][1].body);expect(payload.modelFiles).toEqual({[modelId]:Buffer.from(bytes).toString('base64')});expect(payload.objects.map((item:{id:string})=>item.id)).toEqual(['plot-1-0-fox','plot-1-0-fox-2']);expect(payload.previewTime).toBe(1);expect(payload.focusId).toBe('plot-1-0-fox,plot-1-0-fox-2');expect(payload.view).toBe('side');expect(res.headers['X-Agartha-Preview-View']).toBe('side');expect(fetcher.mock.calls[3][1].headers.Authorization).toBe('Bearer render-key');
+ const payload=JSON.parse(fetcher.mock.calls[3][1].body);expect(payload.modelFiles).toEqual({[modelId]:Buffer.from(bytes).toString('base64')});expect(payload.objects.map((item:{id:string})=>item.id)).toEqual(['plot-1-0-fox','plot-1-0-fox-2']);expect(payload.previewTime).toBe(1);expect(payload.focusId).toBe('plot-1-0-fox,plot-1-0-fox-2');expect(payload.view).toBe('side');expect(payload.width).toBe(1920);expect(payload.height).toBe(1280);expect(res.headers['X-Agartha-Preview-View']).toBe('side');expect(res.headers['X-Agartha-Preview-Size']).toBe('1920x1280');expect(fetcher.mock.calls[3][1].headers.Authorization).toBe('Bearer render-key');
+});
+
+it('rejects an invalid preview size before reading cloud state or starting render work',async()=>{
+ vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ const res=response();await handler({method:'GET',headers:{host:'world.example'},query:{path:'plots/plot-1-0/preview',width:'4000'}} as never,res as never);
+ expect(res.statusCode).toBe(400);expect(JSON.parse(res.body)).toEqual({error:'Preview size must be 64–2880 × 64–1920.'});expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('forwards an explicit preview size to the PNG worker',async()=>{
+ vi.stubEnv('AGARTHA_CONVEX_SITE_URL','https://example.convex.site');vi.stubEnv('AGARTHA_CLOUD_GATEWAY_KEY','gateway-secret');vi.stubEnv('AGARTHA_RENDER_URL','https://render.example');vi.stubEnv('AGARTHA_RENDER_KEY','render-key');
+ const source={schema:1,id:'plot-1-0',name:'Preview',brief:'',revision:2,objects:[{id:'seat',name:'Seat',shape:'box',position:[0,1,0],scale:[1,1,1],color:'#cc8844'}],events:[],placement:{x:1,z:0,size:32}};
+ const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({render:true,source}))).mockResolvedValueOnce(new Response(new Uint8Array([137,80,78,71]),{headers:{'Content-Type':'image/png'}}));vi.stubGlobal('fetch',fetcher);
+ const res=response();await handler({method:'GET',headers:{host:'world.example',authorization:'Bearer agent-token'},query:{path:'plots/plot-1-0/preview',width:'960',height:'640'}} as never,res as never);
+ expect(res.statusCode).toBe(200);expect(res.headers['X-Agartha-Preview-Size']).toBe('960x640');
+ const payload=JSON.parse(fetcher.mock.calls[1][1].body);expect(payload.width).toBe(960);expect(payload.height).toBe(640);
 });
 
 it('rejects an invalid preview view before reading cloud state or starting render work',async()=>{

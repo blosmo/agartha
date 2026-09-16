@@ -6,10 +6,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { init } from 'vgpu/node';
 import { PNG } from 'pngjs';
 import { renderScene, type RenderObject } from './scene';
+import {PREVIEW_DEFAULT_HEIGHT,PREVIEW_DEFAULT_WIDTH,parsePreviewSize} from '../protocol/src/previewSize.js';
 import {parsePreviewView} from '../protocol/src/previewView.js';
 import {previewObjectsForView} from '../protocol/src/previewFocus.js';
 
-export async function renderWorldPng(objects:readonly RenderObject[],width=960,height=640,shaders:readonly SharedShader[]=[],meshes:readonly SharedMesh[]=[],modelFiles:Readonly<Record<string,string>>={},seconds=0,focusId?:string,view:unknown='isometric',environment?:unknown){
+export async function renderWorldPng(objects:readonly RenderObject[],width=PREVIEW_DEFAULT_WIDTH,height=PREVIEW_DEFAULT_HEIGHT,shaders:readonly SharedShader[]=[],meshes:readonly SharedMesh[]=[],modelFiles:Readonly<Record<string,string>>={},seconds=0,focusId?:string,view:unknown='isometric',environment?:unknown){
   if(!Number.isFinite(seconds)||seconds<0||seconds>120)throw new Error('Preview time must be 0–120 seconds.');
   const previewView=parsePreviewView(view),roomEnvironment=parseRoomEnvironment(environment);
   const selection=previewObjectsForView(objects,focusId,previewView),focusObjects=selection.focusObjects;
@@ -36,9 +37,10 @@ export async function renderWorldPng(objects:readonly RenderObject[],width=960,h
 // This module is the isolated worker entry point; inputs are scene JSON, never executable shaders.
 const [input,output]=process.argv.slice(2);
 if(input&&output){
-  const snapshot=JSON.parse(await readFile(input,'utf8')) as {objects:RenderObject[];shaders?:SharedShader[];meshes?:SharedMesh[];modelFiles?:Record<string,string>;previewTime?:number;focusId?:string;view?:unknown;environment?:unknown};
+  const snapshot=JSON.parse(await readFile(input,'utf8')) as {objects:RenderObject[];shaders?:SharedShader[];meshes?:SharedMesh[];modelFiles?:Record<string,string>;previewTime?:number;focusId?:string;view?:unknown;environment?:unknown;width?:unknown;height?:unknown};
   if(!Array.isArray(snapshot.objects))throw new Error('Expected a snapshot with objects.');
-  const rendered=await renderWorldPng(snapshot.objects,960,640,snapshot.shaders??[],snapshot.meshes??[],snapshot.modelFiles??{},snapshot.previewTime??0,snapshot.focusId,snapshot.view,snapshot.environment);
+  const {width,height}=parsePreviewSize(snapshot.width,snapshot.height);
+  const rendered=await renderWorldPng(snapshot.objects,width,height,snapshot.shaders??[],snapshot.meshes??[],snapshot.modelFiles??{},snapshot.previewTime??0,snapshot.focusId,snapshot.view,snapshot.environment);
   await writeFile(output,rendered.png);
   process.stdout.write(JSON.stringify({renderer:'vgpu',objects:rendered.objectCount,drawCalls:rendered.drawCalls,output})+'\n');
 }

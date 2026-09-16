@@ -21,6 +21,7 @@ import { plotPreviewSnapshot } from './plotPreview';
 import { PlotStore } from './plotStore';
 import { createWorldPreview } from './worldPreview';
 import { WorldError } from './src/worlds/world';
+import {parsePreviewSize,previewSizeHeader} from '../../packages/protocol/src/previewSize';
 import {parsePreviewView} from '../../packages/protocol/src/previewView';
 import {canonicalPreviewFocus,selectPreviewFocus} from '../../packages/protocol/src/previewFocus';
 
@@ -86,14 +87,15 @@ export function plotSpacePlugin(originFile: string): Plugin {
       } else if (action === 'preview' && req.method === 'GET') {
         let view;try{view=parsePreviewView(url.searchParams.get('view'));}catch(error){throw new WorldError(error instanceof Error?error.message:'Invalid preview view.');}
         let focusId;try{focusId=canonicalPreviewFocus(url.searchParams.get('focus'));}catch(error){throw new WorldError(error instanceof Error?error.message:'Invalid preview focus.');}
+        let size;try{size=parsePreviewSize(url.searchParams.get('width'),url.searchParams.get('height'));}catch(error){throw new WorldError(error instanceof Error?error.message:'Invalid preview size.');}
         const world = await store.get(id);
         let focusObjects;try{focusObjects=selectPreviewFocus(world.objects,focusId);}catch(error){throw new WorldError(error instanceof Error?error.message:'Invalid preview focus.',404);}
         const grid = url.searchParams.get('scope') === 'grid' ? await store.neighborhood(addressFromId(id)) : undefined;
         const candidates = view!=='isometric'&&focusObjects?[{...world,objects:focusObjects}]:grid ? [...grid.plots,...grid.empty.map(address=>({schema:1 as const,id:address.id,name:'Open ground',brief:'',revision:-1,objects:[],events:[],placement:{x:address.x,z:address.z,size:32 as const}}))] : [world];
         const worlds = await Promise.all(candidates.map(plot=>library.enrich(plot,true)));
         const previewTime=Number(url.searchParams.get('time')??0);if(!Number.isFinite(previewTime)||previewTime<0||previewTime>120)throw new WorldError('Preview time must be 0–120 seconds.');
-        const rendered = plotPreviewSnapshot(worlds, world,previewTime,focusId,view);
-        try { const png = await preview(rendered.snapshot);res.setHeader('X-Agartha-Snapshot',rendered.digest);res.setHeader('Content-Type','image/png');res.setHeader('X-Agartha-Revision',String(world.revision));res.setHeader('X-Agartha-Plot',id);res.setHeader('X-Agartha-Renderer','vgpu');res.setHeader('X-Agartha-Preview-Time',String(previewTime));res.setHeader('X-Agartha-Preview-View',view);res.end(png); }
+        const rendered = plotPreviewSnapshot(worlds, world,previewTime,focusId,view,size);
+        try { const png = await preview(rendered.snapshot);res.setHeader('X-Agartha-Snapshot',rendered.digest);res.setHeader('Content-Type','image/png');res.setHeader('X-Agartha-Revision',String(world.revision));res.setHeader('X-Agartha-Plot',id);res.setHeader('X-Agartha-Renderer','vgpu');res.setHeader('X-Agartha-Preview-Time',String(previewTime));res.setHeader('X-Agartha-Preview-View',view);res.setHeader('X-Agartha-Preview-Size',previewSizeHeader(size));res.end(png); }
         catch (error) { throw new WorldError(error instanceof Error ? error.message : 'Preview failed',503); }
       } else if (!action) {
         if (req.method === 'POST' && Array.isArray(input.objects)) await library.validateReferences(input.objects as Array<{shaderId?:string}>);
