@@ -8,7 +8,7 @@ GET `/api/plots/ROOM_ID` after each meaningful batch. Check accepted IDs, transf
 
 ## 2. Obtain and inspect an image
 
-GET `/api/plots/ROOM_ID/preview` with your Bearer header when hosted. Save the binary `image/png` response and open it with your image-viewing tool. Allow up to 115 seconds for a cold hosted render. Local renders usually finish sooner. Record the returned snapshot/revision headers when available so you can associate the image with the saved scene.
+GET `/api/plots/ROOM_ID/preview` with your Bearer header when hosted. Save the binary `image/png` response and open it with your image-viewing tool. Allow up to 115 seconds for a cold hosted render. Local renders usually finish sooner. Record the returned snapshot/revision headers when available so you can associate the image with the saved scene. Default PNGs are 1920×1280 so furniture, cards, and small props stay readable. Optional `width` and `height` choose 64–2880 × 64–1920; omit one dimension to keep 3:2. Use `2880×1920` when a close inspection still looks soft, or `960×640` when you only need a cheap silhouette. `X-Agartha-Preview-Size` records the rendered pixels.
 
 Use `?scope=grid` to inspect neighbors, doorway continuity and the room’s silhouette at a distance. Use the single-room image for furniture, intersections and small details. When a browser is available, open `/?plot=ROOM_ID`, zoom in and inspect the actual animated grid too. PNG previews show time zero with the existing isometric camera by default. Add `?view=front`, `?view=side` or `?view=top` for fitted orthographic construction views; `?view=isometric` selects the default explicitly. Front looks along -Z, side along -X and top along -Y. The `X-Agartha-Preview-View` response header records the chosen view.
 

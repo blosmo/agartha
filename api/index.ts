@@ -8,6 +8,7 @@ import type {IncomingMessage,ServerResponse} from 'node:http';
 import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {plotPreviewSnapshot} from '../apps/web/plotPreview.js';
 import type {SharedWorld} from '../apps/web/src/worlds/world.js';
+import {parsePreviewSize,previewSizeHeader,type PreviewSize} from '../packages/protocol/src/previewSize.js';
 import {parsePreviewView,type PreviewView} from '../packages/protocol/src/previewView.js';
 import {canonicalPreviewFocus,selectPreviewFocus} from '../packages/protocol/src/previewFocus.js';
 type Request=IncomingMessage&{body?:unknown;query:Record<string,string|string[]|undefined>};
@@ -34,8 +35,10 @@ export default async function handler(req:Request,res:ServerResponse){
       await hostedChatStream(req,res,streamUrl,base);return;
     }
     let previewView:PreviewView='isometric';
+    let previewSize:PreviewSize|undefined;
     const roomPreview = path.startsWith('plots/') && path.endsWith('/preview');
     if(roomPreview){try{previewView=parsePreviewView(req.query.view);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview view.'},400);return;}}
+    if(roomPreview){try{previewSize=parsePreviewSize(req.query.width,req.query.height);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview size.'},400);return;}}
     let requestedFocus:string|undefined;
     if(roomPreview){try{requestedFocus=canonicalPreviewFocus(req.query.focus);}catch(error){send({error:error instanceof Error?error.message:'Invalid preview focus.'},400);return;}}
     let body:Record<string,any>={};
@@ -116,11 +119,11 @@ export default async function handler(req:Request,res:ServerResponse){
       }
       const previewTime=Number(req.query.time??0);if(!Number.isFinite(previewTime)||previewTime<0||previewTime>120){send({error:'Preview time must be 0–120 seconds.'},400);return;}
       const focusId=requestedFocus;
-      const rendered=plotPreviewSnapshot(worlds.map(world=>({...world,meshes:meshes.filter(mesh=>world.objects.some(object=>object.meshId===mesh.id))})),source,previewTime,focusId,previewView);
-      const image=await fetch(new URL('/render',worker),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${renderKey}`},body:JSON.stringify({environment:rendered.snapshot.environment,objects:rendered.snapshot.objects,shaders:rendered.snapshot.shaders??[],meshes:rendered.snapshot.meshes??[],modelFiles,previewTime,focusId:rendered.snapshot.focusId,view:previewView}),signal:AbortSignal.timeout(80000)});
+      const rendered=plotPreviewSnapshot(worlds.map(world=>({...world,meshes:meshes.filter(mesh=>world.objects.some(object=>object.meshId===mesh.id))})),source,previewTime,focusId,previewView,previewSize);
+      const image=await fetch(new URL('/render',worker),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${renderKey}`},body:JSON.stringify({environment:rendered.snapshot.environment,objects:rendered.snapshot.objects,shaders:rendered.snapshot.shaders??[],meshes:rendered.snapshot.meshes??[],modelFiles,previewTime,focusId:rendered.snapshot.focusId,view:previewView,width:rendered.snapshot.width,height:rendered.snapshot.height}),signal:AbortSignal.timeout(80000)});
       if(!image.ok){send({error:'Cloud preview rendering failed. Your saved world is unchanged.'},503);return;}
       if(data.proposal){res.setHeader('X-Agartha-Proposal',data.proposal.proposalId);res.setHeader('X-Agartha-Proposal-Revision',String(data.proposal.revision));res.setHeader('X-Agartha-Base-Snapshot',data.proposal.baseSnapshotVersion);}
-      res.setHeader('Content-Type','image/png');res.setHeader('X-Agartha-Renderer','vgpu-cloud');res.setHeader('X-Agartha-Preview-Lighting','approximate; browser adds shadows, reflections and bloom');res.setHeader('X-Agartha-Revision',String(source.revision));res.setHeader('X-Agartha-Snapshot',rendered.digest);res.setHeader('X-Agartha-Plot',source.id);res.setHeader('X-Agartha-Preview-Time',String(previewTime));res.setHeader('X-Agartha-Preview-View',previewView);res.end(Buffer.from(await image.arrayBuffer()));return;
+      res.setHeader('Content-Type','image/png');res.setHeader('X-Agartha-Renderer','vgpu-cloud');res.setHeader('X-Agartha-Preview-Lighting','approximate; browser adds shadows, reflections and bloom');res.setHeader('X-Agartha-Revision',String(source.revision));res.setHeader('X-Agartha-Snapshot',rendered.digest);res.setHeader('X-Agartha-Plot',source.id);res.setHeader('X-Agartha-Preview-Time',String(previewTime));res.setHeader('X-Agartha-Preview-View',previewView);res.setHeader('X-Agartha-Preview-Size',previewSizeHeader({width:rendered.snapshot.width,height:rendered.snapshot.height}));res.end(Buffer.from(await image.arrayBuffer()));return;
     }
     send(data);
   }catch(error){if(res.headersSent){res.end();return;}if(error instanceof ChatValidationError){send({error:error.message},400);return;}console.error('Agartha gateway failure',error instanceof Error?error.name:'unknown');send({error:'Cloud request could not complete. Observe the world before retrying a write.'},503);}

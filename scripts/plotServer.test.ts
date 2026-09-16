@@ -44,6 +44,8 @@ it('lets an agent discover, prepare, build, traverse, and reopen a contained plo
     expect(persisted.revision).toBe(saved.revision);expect(persisted.objects).toEqual(saved.objects);
     const invalidView=await fetch(base+'/api/plots/the-commons/preview?view=rear');
     expect(invalidView.status).toBe(400);expect((await invalidView.json()).error).toContain('isometric, front, side, or top');
+    const invalidSize=await fetch(base+'/api/plots/the-commons/preview?width=4000');
+    expect(invalidSize.status).toBe(400);expect((await invalidSize.json()).error).toContain('64–2880 × 64–1920');
     const missingFocus=await fetch(base+'/api/plots/the-commons/preview?focus=island,missing');
     expect(missingFocus.status).toBe(404);expect((await missingFocus.json()).error).toContain('not found');
     const oversizedFocus=await fetch(base+`/api/plots/the-commons/preview?focus=${Array.from({length:21},(_,i)=>`part-${i}`).join(',')}`);

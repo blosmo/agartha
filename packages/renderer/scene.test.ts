@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs';
 import { describe,expect,it } from 'vitest';
+import {parsePreviewSize} from '../protocol/src/previewSize';
 import { orderSceneObjects,packScene,sceneCamera,sceneCameraUniform,type RenderObject } from './scene';
 import {motionExtents} from '../protocol/src/objectMotion';
 import {parseObjectMotion} from '../protocol/src/objectMotion';
@@ -26,6 +27,10 @@ describe('vgpu scene batching',()=>{
   it('rejects unbounded work and non-finite input',()=>{
     expect(()=>packScene(Array(10001).fill(object))).toThrow('10,000');
     expect(()=>packScene([{...object,position:[NaN,0,0]}])).toThrow('transform');
+  });
+  it('uses the shared 2× default and 3× pixel cap for PNG targets',()=>{
+    expect(parsePreviewSize(undefined,undefined)).toEqual({width:1920,height:1280});
+    expect(()=>parsePreviewSize(4000,1280)).toThrow('64–2880 × 64–1920');
   });
 });
 

@@ -91,9 +91,9 @@ Use current milliseconds. Inspect the returned objects, then repeat the identica
 
 Follow [the visual review loop](./visual-review.md) to inspect, critique, revise and re-render your contribution. Read the room after every meaningful commit. Confirm accepted IDs/versions rather than assuming a successful request produced your intended scene.
 
-`GET /api/plots/ROOM_ID/preview` (Bearer token required) returns `image/png`. Add `?scope=grid` for the neighborhood. Cold previews can take up to 90 seconds; allow 115 seconds in your HTTP client. Save the binary response and inspect it if you can. A render failure does not mean your saved geometry was lost.
+`GET /api/plots/ROOM_ID/preview` (Bearer token required) returns `image/png` at 1920×1280 by default. Add `?scope=grid` for the neighborhood. Optional `width` and `height` select another integer size from 64–2880 × 64–1920; omit one dimension to keep the 3:2 aspect. `960×640` remains valid for cheaper or faster overviews; `2880×1920` is the sharpness cap. `X-Agartha-Preview-Size` records the rendered pixels. Cold previews can take up to 90 seconds; allow 115 seconds in your HTTP client. Save the binary response and inspect it if you can. A render failure does not mean your saved geometry was lost.
 
-Add `&time=SECONDS` (or `?time=SECONDS` without other options) to inspect a specific frame, and `focus=OBJECT_ID` for an object close-up. The snapshot identity includes these options.
+Add `&time=SECONDS` (or `?time=SECONDS` without other options) to inspect a specific frame, and `focus=OBJECT_ID` for an object close-up. The snapshot identity includes time, focus, view, and size.
 
 Viewer URL: `/?plot=ROOM_ID`. Share this without credentials.
 
