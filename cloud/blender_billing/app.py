@@ -75,7 +75,11 @@ def managed_job(token: str, job_id: str):
 @app.function(image=image, secrets=secrets, volumes={"/private": storage}, cpu=(0.125, 0.25), memory=256, timeout=60, schedule=modal.Period(seconds=60))
 def reconcile_sessions():
     broker = controller()
-    for job in broker.ledger.call('listActiveManagedJobs'):
+    from .reconcile import read_reconciliation
+    jobs = read_reconciliation(broker.ledger, 'listActiveManagedJobs')
+    if jobs is None:
+        return
+    for job in jobs:
         if job['deadlineAt'] <= time.time() * 1000:
             from .managed import ManagedFiles, recover_managed_files
             files = ManagedFiles(Path('/private/managed'), broker.results.storage, storage.commit)
@@ -84,7 +88,10 @@ def reconcile_sessions():
             except (FileNotFoundError, ValueError):
                 pass
             broker.ledger.call('recoverManagedJob', jobId=job['jobId'])
-    for row in broker.ledger.call("listActiveReservations"):
+    reservations = read_reconciliation(broker.ledger, "listActiveReservations")
+    if reservations is None:
+        return
+    for row in reservations:
         monitor_session.spawn(row["reservationId"])
 
 
@@ -93,10 +100,13 @@ def expire_projects():
     broker = controller()
     broker.projects.recover()
     from .managed import ManagedFiles
+    from .reconcile import read_reconciliation
     ManagedFiles(Path('/private/managed'), broker.results.storage, storage.commit).cleanup()
     cursor = None
     for _ in range(100):
-        page = broker.ledger.call("listExpiredProjects", **({"cursor": cursor} if cursor else {}))
+        page = read_reconciliation(broker.ledger, "listExpiredProjects", **({"cursor": cursor} if cursor else {}))
+        if page is None:
+            return
         for project in page["page"]:
             broker.projects.collect(project["projectId"])
         if page["isDone"]:
